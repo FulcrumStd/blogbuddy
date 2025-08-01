@@ -14,16 +14,15 @@
   "contributes": {
     "commands": [
       {
-        "command": "blogbuddy.helloWorld",
-        "title": "Blog Buddy Hello 3"
+        "command": "blogbuddy.showMainMenu",
+        "title": "Show Main Menu"
       }
     ],
     "keybindings": [
       {
-        "command": "blogbuddy.helloWorld",
+        "command": "blogbuddy.showMainMenu",
         "key": "ctrl+shift+b",
-        "mac": "cmd+shift+b",
-        "when": "editorTextFocus"
+        "mac": "cmd+shift+b"
       }
     ]
   },

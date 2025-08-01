@@ -34,11 +34,11 @@
 ### Day 3 - 第一个自定义命令 (1.5小时)
 **学习目标：** 实现基本命令注册和执行
 **任务清单：**
-- [ ] 删除默认Hello World命令
-- [ ] 创建`showMainMenu`命令
-- [ ] 实现QuickPick菜单显示功能
-- [ ] 配置快捷键 `Ctrl+Shift+B`
-- [ ] 测试菜单显示和选择功能
+- [x] 删除默认Hello World命令
+- [x] 创建`showMainMenu`命令
+- [x] 实现QuickPick菜单显示功能
+- [x] 配置快捷键 `Ctrl+Shift+B`
+- [x] 测试菜单显示和选择功能
 
 **学习重点：** 命令注册、QuickPick API使用
 
