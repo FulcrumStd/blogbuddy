@@ -45,11 +45,11 @@
 ### Day 4 - 编辑器API基础 (1.5小时)
 **学习目标：** 学习文本编辑相关API
 **任务清单：**
-- [ ] 学习获取活动编辑器：`vscode.window.activeTextEditor`
-- [ ] 实现获取选中文本功能
-- [ ] 实现替换选中文本功能
-- [ ] 创建简单的文本转大写命令作为练习
-- [ ] 理解Selection和Range概念
+- [x] 学习获取活动编辑器：`vscode.window.activeTextEditor`
+- [x] 实现获取选中文本功能
+- [x] 实现替换选中文本功能
+- [x] 创建简单的文本转大写命令作为练习
+- [x] 理解Selection和Range概念
 
 **学习重点：** 编辑器API、文本操作
 
