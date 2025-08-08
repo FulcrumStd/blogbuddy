@@ -24,7 +24,40 @@
         "key": "ctrl+shift+b",
         "mac": "cmd+shift+b"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "BlogBuddy",
+      "properties": {
+        "blogbuddy.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API密钥",
+          "order": 1
+        },
+        "blogbuddy.model": {
+          "type": "string",
+          "enum": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
+          "default": "gpt-3.5-turbo",
+          "description": "使用的AI模型",
+          "order": 2
+        },
+        "blogbuddy.temperature": {
+          "type": "number",
+          "default": 0.7,
+          "minimum": 0,
+          "maximum": 2,
+          "description": "AI生成文本的创造性程度 (0-2)",
+          "order": 4
+        },
+        "blogbuddy.autoSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "AI处理后自动保存文件",
+          "order": 7
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
