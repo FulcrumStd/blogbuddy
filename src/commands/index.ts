@@ -1,7 +1,7 @@
 // commands/index.ts
 import { ExtensionContext } from 'vscode';
-import { registerShowMainMenuCommands } from './showMainMenu';
+import { registerShowMenuCommands } from './MenuCommands';
 
 export function registerAllCommands(context: ExtensionContext) {
-    registerShowMainMenuCommands(context);
+    registerShowMenuCommands(context);
 }

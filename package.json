@@ -7,9 +7,11 @@
     "vscode": "^1.102.0"
   },
   "categories": [
-    "Writing"
+    "Other"
   ],
-  "activationEvents": ["onLanguage:markdown"],
+  "activationEvents": [
+    "onLanguage:markdown"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -27,34 +29,25 @@
     ],
     "configuration": {
       "type": "object",
-      "title": "BlogBuddy",
+      "title": "Blog Buddy",
       "properties": {
         "blogbuddy.apiKey": {
           "type": "string",
           "default": "",
-          "description": "OpenAI API密钥",
+          "description": "OpenAI API key",
           "order": 1
+        },
+        "blogbuddy.baseUrl": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI base url",
+          "order": 2
         },
         "blogbuddy.model": {
           "type": "string",
-          "enum": ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"],
-          "default": "gpt-3.5-turbo",
-          "description": "使用的AI模型",
-          "order": 2
-        },
-        "blogbuddy.temperature": {
-          "type": "number",
-          "default": 0.7,
-          "minimum": 0,
-          "maximum": 2,
-          "description": "AI生成文本的创造性程度 (0-2)",
-          "order": 4
-        },
-        "blogbuddy.autoSave": {
-          "type": "boolean",
-          "default": false,
-          "description": "AI处理后自动保存文件",
-          "order": 7
+          "default": "gpt-5-mini",
+          "description": "Model name",
+          "order": 3
         }
       }
     }
@@ -74,16 +67,19 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.102.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.102.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "esbuild": "^0.25.3",
-    "npm-run-all": "^4.1.5",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "openai": "^5.12.2"
   }
 }
