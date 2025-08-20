@@ -4,11 +4,7 @@ import {ConfigWatcher} from './services/ConfigWatcher';
 
 
 export function activate(context: vscode.ExtensionContext) {
-
-    const configWatcher = new ConfigWatcher();  
-    context.subscriptions.push(configWatcher);  
-
-
+    context.subscriptions.push(new ConfigWatcher());  
 	registerAllCommands(context);
 }
 

@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
 export enum ConfigKey {
-    API_KEY = "api_key",
+    API_KEY = "apiKey",
     MODEL = "model",
-    BASE_URL = "base_url"
+    BASE_URL = "baseUrl"
 }
 
 
@@ -32,7 +32,6 @@ export class ConfigService {
      * 获取所有配置
      */
     public getAllConfig() {
-        const config = vscode.workspace.getConfiguration(this.configSection);
         return {
             apiKey: this.get<string>(ConfigKey.API_KEY, ''),
             model: this.get<string>(ConfigKey.MODEL, ''),

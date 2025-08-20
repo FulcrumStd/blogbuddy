@@ -26,7 +26,7 @@ export class TextUtils {
             // 没有选中文本，获取当前段落
             const currentLine = selection.active.line;
             const lineText = editor.document.lineAt(currentLine).text;
-            
+
             if (lineText.trim() === '') {
                 return null;
             }
@@ -290,7 +290,7 @@ export class Utils {
         delay: number = 1000
     ): Promise<T> {
         let lastError: any;
-        
+
         for (let i = 0; i <= maxRetries; i++) {
             try {
                 return await operation();
@@ -301,7 +301,7 @@ export class Utils {
                 }
             }
         }
-        
+
         throw lastError;
     }
 
@@ -328,5 +328,18 @@ export class Utils {
             minute: '2-digit',
             second: '2-digit'
         });
+    }
+
+    /**
+     * 判空字符串
+     */
+    static isEmpty(str: string | null | undefined): boolean {
+        // 检查是否为 null 或 undefined
+        if (str === null || str === undefined) {
+            return true;
+        }
+
+        // 检查去掉首尾空白字符后是否为空
+        return str.trim().length === 0;
     }
 }

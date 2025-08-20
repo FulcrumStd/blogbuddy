@@ -18,6 +18,10 @@
       {
         "command": "blogbuddy.showMainMenu",
         "title": "Show Main Menu"
+      },
+      {
+        "command": "blogbuddy.magic",
+        "title": "Hi bb"
       }
     ],
     "keybindings": [
@@ -25,6 +29,14 @@
         "command": "blogbuddy.showMainMenu",
         "key": "ctrl+shift+b",
         "mac": "cmd+shift+b"
+      },
+      {
+        "command": "blogbuddy.magic",
+        "key": "cmd+b cmd+b",
+        "mac": "cmd+b cmd+b",
+        "win": "ctrl+b cmd+b",
+        "linux": "ctrl+b cmd+b",
+        "when": "editorTextFocus"
       }
     ],
     "configuration": {
@@ -39,13 +51,13 @@
         },
         "blogbuddy.baseUrl": {
           "type": "string",
-          "default": "",
+          "default": "https://openrouter.ai/api/v1",
           "description": "OpenAI base url",
           "order": 2
         },
         "blogbuddy.model": {
           "type": "string",
-          "default": "gpt-5-mini",
+          "default": "openai/gpt-5-mini",
           "description": "Model name",
           "order": 3
         }

@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 
 export enum ErrorCode {
+    UNKNOWN_CMD = 'UNKNOWN_CMD',
     NETWORK_ERROR = 'NETWORK_ERROR',
     API_KEY_INVALID = 'API_KEY_INVALID',
     QUOTA_EXCEEDED = 'QUOTA_EXCEEDED',
@@ -153,6 +154,10 @@ export class ErrorHandler {
      */
     public createError(code: ErrorCode, details?: any): AppError {
         const errorMap = {
+            [ErrorCode.UNKNOWN_CMD]: {
+                message: 'BB unknown cmd',
+                userMessage: 'BB 无法识别的命令'
+            },
             [ErrorCode.NETWORK_ERROR]: {
                 message: 'Network request failed',
                 userMessage: '网络连接失败，请检查网络设置后重试'

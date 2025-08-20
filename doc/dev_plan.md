@@ -102,11 +102,11 @@
 ### Day 9 - HTTP请求与AI服务 (2小时)
 **学习目标：** 实现AI API调用
 **任务清单：**
-- [ ] 学习Node.js中的fetch使用
-- [ ] 创建AIService类
-- [ ] 实现基础的OpenAI API调用
-- [ ] 添加请求头和认证
-- [ ] 测试API连接（可以用测试密钥）
+- [x] 学习Node.js中的fetch使用
+- [x] 创建AIService类
+- [x] 实现基础的OpenAI API调用
+- [x] 添加请求头和认证
+- [x] 测试API连接（可以用测试密钥）
 
 **学习重点：** HTTP请求、API集成
 
