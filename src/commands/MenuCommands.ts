@@ -1,9 +1,8 @@
 // src/commands/MenuCommands.ts
 import * as vscode from 'vscode';
-import { TextCommands } from './TextCommands';
 import { UIUtils, FileUtils } from '../utils/helpers';
 import { ErrorHandler } from '../utils/ErrorHandler';
-import { learnProgress } from '../features/learnProgress';
+import { AIProxy } from '../utils/aiProxy';
 
 
 export function registerShowMenuCommands(context: vscode.ExtensionContext){
@@ -14,11 +13,9 @@ export function registerShowMenuCommands(context: vscode.ExtensionContext){
 
 
 export class MenuCommands {
-    private textCommands: TextCommands;
     private errorHandler: ErrorHandler;
 
     constructor() {
-        this.textCommands = new TextCommands();
         this.errorHandler = ErrorHandler.getInstance();
     }
 
@@ -43,28 +40,10 @@ export class MenuCommands {
 
             const menuItems = [
                 {
-                    label: '$(edit) 文本处理',
-                    description: '扩写、润色、大小写转换等文本操作',
-                    detail: '包含AI文本处理和基础文本操作功能',
-                    command: 'showTextMenu'
-                },
-                {
-                    label: '$(table) 内容生成',
-                    description: '生成表格、图表等内容',
-                    detail: '使用AI生成各种类型的内容',
-                    command: 'showGenerateMenu'
-                },
-                {
-                    label: '$(beaker) 交互演示',
-                    description: '演示用户交互功能',
-                    detail: '包含输入框、确认对话框、进度条和各种通知类型',
-                    command: 'learnProgress'
-                },
-                {
-                    label: '$(check) 文本检查',
-                    description: '语法检查、文本对比等',
-                    detail: '文本质量检查和对比功能',
-                    command: 'showCheckMenu'
+                    label: '$(graph) Usage 统计',
+                    description: '查看AI使用统计信息',
+                    detail: '显示请求次数、Token使用量和模型统计',
+                    command: 'showUsageStats'
                 },
                 {
                     label: '$(question) 帮助信息',
@@ -89,137 +68,49 @@ export class MenuCommands {
     }
 
     /**
-     * 显示文本处理菜单
+     * 显示用量统计
      */
-    async showTextMenu(): Promise<void> {
-        const items = [
-            {
-                label: '$(arrow-up) 扩写段落',
-                description: '让AI帮助扩写选中的文本段落',
-                detail: '使用AI技术扩展和丰富选中的文本内容',
-                command: 'expandText'
-            },
-            {
-                label: '$(sparkle) 润色文本',
-                description: '改进文本的表达和流畅度',
-                detail: '使用AI优化文本的语言表达和逻辑结构',
-                command: 'improveText'
-            },
-            {
-                label: '$(globe) 翻译文本',
-                description: '翻译选中的文本',
-                detail: '将文本翻译成其他语言',
-                command: 'translateText'
-            },
-            {
-                label: '$(case-sensitive) 转换为大写',
-                description: '转换选中的内容为大写字母',
-                detail: '将选中的文本转换为大写格式',
-                command: 'convertSelectedTextToUpper'
-            },
-            {
-                label: '$(edit) 转换本行为大写',
-                description: '转换本行内容为大写字母',
-                detail: '将当前行的文本转换为大写格式',
-                command: 'convertLineToUpper'
-            },
-            {
-                label: '$(arrow-left) 返回主菜单',
-                description: '返回到主菜单',
-                detail: '回到上一级菜单',
-                command: 'showMainMenu'
+    async showUsageStats(): Promise<void> {
+        const aiProxy = AIProxy.getInstance();
+        const stats = aiProxy.getUsageStats();
+        
+        let statsText = '# AI 使用统计\n\n';
+        
+        if (stats.totalRequests === 0) {
+            statsText += '暂无使用记录。开始使用AI功能后，这里会显示详细的使用统计。';
+        } else {
+            statsText += '| 用途 | 请求次数 | Token使用量 | 使用模型 |\n';
+            statsText += '|------|---------|------------|----------|\n';
+            
+            for (const [flag, flagStat] of stats.flagStats) {
+                statsText += `| ${flag} | ${flagStat.requests} | ${flagStat.tokensUsed} | ${flagStat.model} |\n`;
             }
-        ];
-
-        const selected = await UIUtils.showQuickPick(items, {
-            title: '文本处理功能',
-            placeHolder: '选择文本处理操作...',
-            matchOnDescription: true,
-            matchOnDetail: true,
-            ignoreFocusOut: true
-        });
-
-        if (selected) {
-            await this.handleMenuSelection(selected.command);
+            
+            statsText += `| **总计** | **${stats.totalRequests}** | **${stats.totalTokensUsed}** | - |\n`;
         }
-    }
 
-    /**
-     * 显示内容生成菜单（占位符）
-     */
-    async showGenerateMenu(): Promise<void> {
-        const items = [
-            {
-                label: '$(table) 生成表格',
-                description: '根据描述生成Markdown表格',
-                detail: '即将在后续版本中实现',
-                command: 'generateTable'
-            },
-            {
-                label: '$(graph) 生成图表',
-                description: '生成Mermaid图表代码',
-                detail: '即将在后续版本中实现',
-                command: 'generateDiagram'
-            },
-            {
-                label: '$(arrow-left) 返回主菜单',
-                description: '返回到主菜单',
-                detail: '回到上一级菜单',
-                command: 'showMainMenu'
-            }
-        ];
+        const choice = await vscode.window.showInformationMessage(
+            '查看AI使用统计',
+            '在编辑器中打开',
+            '重置统计',
+            '关闭'
+        );
 
-        const selected = await UIUtils.showQuickPick(items, {
-            title: '内容生成功能',
-            placeHolder: '选择内容生成操作...',
-            ignoreFocusOut: true
-        });
-
-        if (selected) {
-            if (selected.command === 'showMainMenu') {
-                await this.showMainMenu();
-            } else {
-                vscode.window.showInformationMessage(`${selected.description}功能即将在后续版本中实现`);
-            }
-        }
-    }
-
-    /**
-     * 显示文本检查菜单（占位符）
-     */
-    async showCheckMenu(): Promise<void> {
-        const items = [
-            {
-                label: '$(check) 语法检查',
-                description: '检查文本的语法和拼写',
-                detail: '即将在后续版本中实现',
-                command: 'checkGrammar'
-            },
-            {
-                label: '$(diff) 文本对比',
-                description: '对比两段文本的差异',
-                detail: '即将在后续版本中实现',
-                command: 'compareText'
-            },
-            {
-                label: '$(arrow-left) 返回主菜单',
-                description: '返回到主菜单',
-                detail: '回到上一级菜单',
-                command: 'showMainMenu'
-            }
-        ];
-
-        const selected = await UIUtils.showQuickPick(items, {
-            title: '文本检查功能',
-            placeHolder: '选择文本检查操作...',
-            ignoreFocusOut: true
-        });
-
-        if (selected) {
-            if (selected.command === 'showMainMenu') {
-                await this.showMainMenu();
-            } else {
-                vscode.window.showInformationMessage(`${selected.description}功能即将在后续版本中实现`);
+        if (choice === '在编辑器中打开') {
+            const doc = await vscode.workspace.openTextDocument({
+                content: statsText,
+                language: 'markdown'
+            });
+            await vscode.window.showTextDocument(doc);
+        } else if (choice === '重置统计') {
+            const confirm = await vscode.window.showWarningMessage(
+                '确定要重置所有使用统计吗？此操作不可撤销。',
+                '确定',
+                '取消'
+            );
+            if (confirm === '确定') {
+                aiProxy.resetUsageStats();
+                vscode.window.showInformationMessage('使用统计已重置');
             }
         }
     }
@@ -233,39 +124,8 @@ export class MenuCommands {
             case 'showMainMenu':
                 await this.showMainMenu();
                 break;
-            case 'showTextMenu':
-                await this.showTextMenu();
-                break;
-            case 'showGenerateMenu':
-                await this.showGenerateMenu();
-                break;
-            case 'showCheckMenu':
-                await this.showCheckMenu();
-                break;
-
-            // 文本处理功能
-            case 'expandText':
-                await this.textCommands.expandText();
-                break;
-            case 'improveText':
-                await this.textCommands.improveText();
-                break;
-            case 'translateText':
-                vscode.window.showInformationMessage('翻译功能即将实现');
-                break;
-            case 'convertSelectedTextToUpper':
-                await this.textCommands.convertSelectedTextToUpper();
-                break;
-            case 'convertLineToUpper':
-                await this.textCommands.convertLineToUpper();
-                break;
-
-            // 其他功能
-            case 'learnProgress':
-                learnProgress();
-                break;
-            case 'openSettings':
-                await this.openSettings();
+            case 'showUsageStats':
+                await this.showUsageStats();
                 break;
             case 'showHelp':
                 await this.showHelp();
@@ -276,15 +136,6 @@ export class MenuCommands {
         }
     }
 
-    /**
-     * 打开设置
-     */
-    private async openSettings(): Promise<void> {
-        await vscode.commands.executeCommand(
-            'workbench.action.openSettings',
-            'blogbuddy'  // 使用你的插件名称
-        );
-    }
 
     /**
      * 显示帮助信息

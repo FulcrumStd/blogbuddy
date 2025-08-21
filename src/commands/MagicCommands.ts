@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { TextUtils } from '../utils/helpers';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { BBCmd } from '../core/constants';
-import { BB } from '../core/Bgent';
+import { BB } from '../core/bgent';
+import { lockDocumentRange } from '../utils/DocumentLock';
 
 export function registerMagicCommands(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand(
@@ -14,7 +15,11 @@ export function registerMagicCommands(context: vscode.ExtensionContext) {
 class MagicCommand {
     async hiBB(): Promise<void> {
         const result = TextUtils.getSelectedTextOrParagraph();
+        const editor = vscode.window.activeTextEditor;
         if (!result) {
+            return;
+        }
+        if (!editor) {
             return;
         }
         const text = result.text;
@@ -31,16 +36,30 @@ class MagicCommand {
             );
         }
         const rp_text = text.slice(0, ps.startIndex) + text.slice(ps.endIndex);
-        const p_t = await BB.i().act(rp_text, cmd, ps.message);
-        const editor = vscode.window.activeTextEditor;
-        if (editor && p_t) {
-            await editor.edit(
-                editBuilder => {
-                    editBuilder.replace(result.range, p_t);
-                }
-            );
+        const lock = lockDocumentRange(editor, result.range, 'BB is working on this...');
+        try {
+            const response = await BB.i().act({
+                filePath: '',
+                selectText: rp_text,
+                cmd: cmd,
+                msg: ps.message
+            });
+            if (editor && response.replaceText.length > 0) {
+                await editor.edit(
+                    editBuilder => editBuilder.replace(result.range, response.replaceText)
+                );
+            }
+            vscode.window.showInformationMessage('BB: DONNNNNNNE!');
         }
-        vscode.window.showInformationMessage("BB: DONNNNNNNE!");
+        catch (e: unknown) {
+            if (e instanceof Error) {
+                vscode.window.showErrorMessage(e.message);
+            }
+        }
+        finally {
+            lock.dispose();
+
+        }
     }
 }
 

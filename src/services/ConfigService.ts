@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 
 export enum ConfigKey {
-    API_KEY = "apiKey",
-    MODEL = "model",
-    BASE_URL = "baseUrl"
+    API_KEY = 'apiKey',
+    MODEL = 'model',
+    BASE_URL = 'baseUrl'
 }
 
 
