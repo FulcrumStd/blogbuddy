@@ -144,3 +144,7 @@ dist
 node_modules
 .vscode-test/
 *.vsix
+
+# MacOS
+
+.DS_Store
