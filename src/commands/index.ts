@@ -1,9 +1,9 @@
 // commands/index.ts
 import { ExtensionContext } from 'vscode';
-import { registerShowMenuCommands } from './MenuCommands';
-import { registerMagicCommands } from './MagicCommands';
+import { registerMenuCommand } from './menuCommand';
+import { registerBBCommand } from './bbCommand';
 
 export function registerAllCommands(context: ExtensionContext) {
-    registerShowMenuCommands(context);
-    registerMagicCommands(context);
+    registerMenuCommand(context);
+    registerBBCommand(context);
 }

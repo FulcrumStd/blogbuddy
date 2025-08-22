@@ -1,12 +1,19 @@
 // src/utils/helpers.ts
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * 文本操作工具函数
  */
 export class TextUtils {
     /**
-     * 获取当前选中的文本，如果没有选中则获取当前段落
+     * 获取当前选中的文本，如果没有选中则获取当前段落（空行分隔的文本块）
+     * 
+     * 逻辑：
+     * 1. 如果用户有选择文本，则返回选择的文本
+     * 2. 如果用户没有选择文本，并且光标所在位置不是空行，则向上向下查找空行边界，
+     *    将两个空行之间的所有文字作为选择范围
      */
     static getSelectedTextOrParagraph(): { text: string; range: vscode.Range } | null {
         const editor = vscode.window.activeTextEditor;
@@ -15,24 +22,52 @@ export class TextUtils {
         }
 
         const selection = editor.selection;
+        const document = editor.document;
         let text = '';
         let range: vscode.Range;
 
         if (!selection.isEmpty) {
-            // 有选中文本
-            text = editor.document.getText(selection);
+            // 1. 如果用户有选择文本，则返回选择的文本
+            text = document.getText(selection);
             range = new vscode.Range(selection.start, selection.end);
         } else {
-            // 没有选中文本，获取当前段落
+            // 2. 如果用户没有选择文本，获取段落范围（空行分隔的文本块）
             const currentLine = selection.active.line;
-            const lineText = editor.document.lineAt(currentLine).text;
+            const currentLineText = document.lineAt(currentLine).text;
 
-            if (lineText.trim() === '') {
+            // 如果光标在空行上，返回null
+            if (currentLineText.trim() === '') {
                 return null;
             }
 
-            text = lineText;
-            range = editor.document.lineAt(currentLine).range;
+            // 向上查找段落开始（找到空行或文档开始）
+            let startLine = currentLine;
+            while (startLine > 0) {
+                const prevLine = startLine - 1;
+                const prevLineText = document.lineAt(prevLine).text;
+                if (prevLineText.trim() === '') {
+                    break; // 找到空行，停止
+                }
+                startLine = prevLine;
+            }
+
+            // 向下查找段落结束（找到空行或文档结束）
+            let endLine = currentLine;
+            const lastLineIndex = document.lineCount - 1;
+            while (endLine < lastLineIndex) {
+                const nextLine = endLine + 1;
+                const nextLineText = document.lineAt(nextLine).text;
+                if (nextLineText.trim() === '') {
+                    break; // 找到空行，停止
+                }
+                endLine = nextLine;
+            }
+
+            // 构建范围和文本
+            const startPos = new vscode.Position(startLine, 0);
+            const endPos = new vscode.Position(endLine, document.lineAt(endLine).text.length);
+            range = new vscode.Range(startPos, endPos);
+            text = document.getText(range);
         }
 
         return { text, range };
@@ -165,6 +200,108 @@ export class FileUtils {
         } catch (error) {
             console.error('保存文档失败:', error);
             return false;
+        }
+    }
+
+    /**
+     * 支持的文件类型枚举
+     */
+    static readonly SupportedFileTypes = {
+        TEXT: ['.txt', '.md', '.log'],
+        CODE: ['.js', '.ts', '.jsx', '.tsx', '.json', '.html', '.css', '.scss', '.less'],
+        CONFIG: ['.json', '.yml', '.yaml', '.xml', '.ini', '.env'],
+        MARKDOWN: ['.md', '.markdown'],
+        ALL: ['.txt', '.md', '.log', '.js', '.ts', '.jsx', '.tsx', '.json', '.html', '.css', '.scss', '.less', '.yml', '.yaml', '.xml', '.ini', '.env', '.markdown']
+    } as const;
+
+    /**
+     * 读取文件内容，支持文件类型限制
+     * @param filePath 文件路径
+     * @param allowedExtensions 允许的文件扩展名数组，如 ['.js', '.ts', '.md']
+     * @returns 文件内容或null（如果文件类型不被允许或读取失败）
+     */
+    static async readFileContent(
+        filePath: string, 
+        allowedExtensions: readonly string[] = FileUtils.SupportedFileTypes.ALL
+    ): Promise<string | null> {
+        try {
+            // 检查文件是否存在
+            if (!fs.existsSync(filePath)) {
+                console.warn(`文件不存在: ${filePath}`);
+                return null;
+            }
+
+            // 获取文件扩展名
+            const fileExtension = path.extname(filePath).toLowerCase();
+            
+            // 检查文件类型是否被允许
+            if (!allowedExtensions.includes(fileExtension)) {
+                console.warn(`不允许读取的文件类型: ${fileExtension}, 文件: ${filePath}`);
+                console.warn(`允许的文件类型: ${allowedExtensions.join(', ')}`);
+                return null;
+            }
+
+            // 检查文件大小（限制为10MB）
+            const stats = fs.statSync(filePath);
+            const maxFileSize = 10 * 1024 * 1024; // 10MB
+            if (stats.size > maxFileSize) {
+                console.warn(`文件过大 (${Math.round(stats.size / 1024 / 1024)}MB): ${filePath}`);
+                return null;
+            }
+
+            // 读取文件内容
+            const content = fs.readFileSync(filePath, 'utf-8');
+            return content;
+
+        } catch (error) {
+            console.error(`读取文件失败: ${filePath}`, error);
+            return null;
+        }
+    }
+
+    /**
+     * 异步读取文件内容，支持文件类型限制
+     * @param filePath 文件路径
+     * @param allowedExtensions 允许的文件扩展名数组
+     * @returns Promise<文件内容或null>
+     */
+    static async readFileContentAsync(
+        filePath: string, 
+        allowedExtensions: readonly string[] = FileUtils.SupportedFileTypes.ALL
+    ): Promise<string | null> {
+        try {
+            // 检查文件是否存在
+            const exists = await fs.promises.access(filePath).then(() => true).catch(() => false);
+            if (!exists) {
+                console.warn(`文件不存在: ${filePath}`);
+                return null;
+            }
+
+            // 获取文件扩展名
+            const fileExtension = path.extname(filePath).toLowerCase();
+            
+            // 检查文件类型是否被允许
+            if (!allowedExtensions.includes(fileExtension)) {
+                console.warn(`不允许读取的文件类型: ${fileExtension}, 文件: ${filePath}`);
+                console.warn(`允许的文件类型: ${allowedExtensions.join(', ')}`);
+                return null;
+            }
+
+            // 检查文件大小（限制为10MB）
+            const stats = await fs.promises.stat(filePath);
+            const maxFileSize = 10 * 1024 * 1024; // 10MB
+            if (stats.size > maxFileSize) {
+                console.warn(`文件过大 (${Math.round(stats.size / 1024 / 1024)}MB): ${filePath}`);
+                return null;
+            }
+
+            // 异步读取文件内容
+            const content = await fs.promises.readFile(filePath, 'utf-8');
+            return content;
+
+        } catch (error) {
+            console.error(`异步读取文件失败: ${filePath}`, error);
+            return null;
         }
     }
 }

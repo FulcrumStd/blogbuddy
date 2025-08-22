@@ -1,18 +1,17 @@
 import * as vscode from 'vscode';
 import { TextUtils } from '../utils/helpers';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { BBCmd } from '../core/constants';
-import { BB } from '../core/bgent';
+import { BB,BBCmd } from '../core/bb';
 import { lockDocumentRange } from '../utils/DocumentLock';
 
-export function registerMagicCommands(context: vscode.ExtensionContext) {
+export function registerBBCommand(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand(
-        'blogbuddy.magic',
-        () => new MagicCommand().hiBB()
+        'blogbuddy.bb',
+        () => new BBCommand().hiBB()
     ));
 }
 
-class MagicCommand {
+class BBCommand {
     async hiBB(): Promise<void> {
         const result = TextUtils.getSelectedTextOrParagraph();
         const editor = vscode.window.activeTextEditor;
@@ -27,7 +26,7 @@ class MagicCommand {
         if (!ps) {
             return;
         }
-        const cmd = Object.values(BBCmd).find(status => ps.command.includes(status));
+        const cmd = Object.values(BBCmd).find(status => ps.command === status);
         if (!cmd) {
             throw new AppError(
                 ErrorCode.UNKNOWN_CMD,
@@ -37,9 +36,10 @@ class MagicCommand {
         }
         const rp_text = text.slice(0, ps.startIndex) + text.slice(ps.endIndex);
         const lock = lockDocumentRange(editor, result.range, 'BB is working on this...');
+        const sb = vscode.window.setStatusBarMessage('BB is working');
         try {
             const response = await BB.i().act({
-                filePath: '',
+                filePath: editor.document.uri.fsPath,
                 selectText: rp_text,
                 cmd: cmd,
                 msg: ps.message
@@ -58,7 +58,7 @@ class MagicCommand {
         }
         finally {
             lock.dispose();
-
+            sb.dispose();
         }
     }
 }
@@ -73,7 +73,7 @@ interface ParseResult {
 
 function findAndParse(text: string): ParseResult | null {
     // 查找、匹配第一个类似 <bbcmd:content> 的指令字符串
-    const regex = /<(\w+)(?::([^>]*))?>/;
+    const regex = /<([\w-]+)(?::([^>]*))?>/;
     const match = text.match(regex);
 
     if (match) {

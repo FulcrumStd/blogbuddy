@@ -72,7 +72,6 @@ export class DocumentLockManager {
         docLocks.set(lockId, { range, message, displayText });
 
         this.updateDecorations(editor);
-        vscode.window.setStatusBarMessage(`$(lock) ${message}`, 30000);
 
         // 返回自动释放的 Disposable
         return new vscode.Disposable(() => {
@@ -171,7 +170,7 @@ export class DocumentLockManager {
             // 添加背景锁定装饰
             lockDecorations.push({
                 range: lock.range,
-                hoverMessage: new vscode.MarkdownString(`🔒 **锁定区域**: ${lock.message}`)
+                hoverMessage: new vscode.MarkdownString(lock.message)
             });
 
             // 如果有显示文本，添加文本装饰
@@ -253,12 +252,6 @@ class SelectionGuard implements vscode.Disposable {
                         
                         adjustedSelection = this.moveSelectionOutside(selection, lockedRange);
                         changed = true;
-                        
-                        // 显示提示信息
-                        const message = this.lockManager.getLockMessage(document, lockedRange);
-                        if (message) {
-                            vscode.window.showWarningMessage(`⚠️ ${message}`);
-                        }
                     }
                 }
                 adjustedSelections.push(adjustedSelection);

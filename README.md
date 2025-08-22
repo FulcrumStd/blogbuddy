@@ -1,71 +1,108 @@
-# blogbuddy README
+# BlogBuddy - Your AI-Powered Blog Writing Sidekick
 
-This is the README for your extension "blogbuddy". After writing up a brief description, we recommend including the following sections.
+<div align="center">
 
-## Features
+![BlogBuddy Logo](images/logo.png)
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+**Blog Buddy** makes Markdown magic happen with AI-powered writing assistance!
 
-For example if there is an image subfolder under your extension project workspace:
+[![Version](https://img.shields.io/badge/version-0.0.1-FFD900.svg)](https://github.com/SandyKidYao/blogbuddy)
+[![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
+[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)
 
-\!\[feature X\]\(images/feature-x.png\)
+</div>
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+[中文 Version](README_中文.md)
 
-## Requirements
+## ✨ What is Blog Buddy?
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+Blog Buddy (BB) is a VS Code extension designed to enhance your blog writing workflow without disrupting your creative flow. Instead of switching contexts or opening external tools, you simply insert BB command tags directly in your Markdown content and trigger them with keyboard shortcuts. It's that simple!
 
-## Extension Settings
+## 🚀 Key Features
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+### Smart Command Tags
+Use intuitive command tags anywhere in your blog posts (all tags support `<bb-xxx:custom instructions>` format):
+- `<bb:task description>` - Direct AI agent mode - give BB any task to complete
+- `<bb-expd:expansion requirements>` - Expand and elaborate on surrounding text content
+- `<bb-impv:improvement focus>` - Polish text quality (inline for local text, standalone for full document)
+- `<bb-tslt:target language>` - Translate content (must specify target language)
+- `<bb-tldr:summary style>` - Generate TL;DR summaries
+- `<bb-mmd:diagram description>` - Generate Mermaid diagrams
+- `<bb-kwd:keyword focus>` - Extract keywords
+- `<bb-tag>` - Add BlogBuddy attribution badge
 
-For example:
+### Seamless Workflow Integration
+- **Non-intrusive**: Commands are embedded directly in your content
+- **Keyboard-driven**: Activate with simple key combinations
+- **Context-aware**: AI understands your full document context
+- **Instant results**: Commands execute and replace content in-place
 
-This extension contributes the following settings:
+### AI-Powered Assistance
+BlogBuddy leverages advanced AI models to help you:
+- **Expand** brief ideas into full paragraphs
+- **Improve** text clarity, grammar, and flow
+- **Translate** content to different languages
+- **Summarize** long content with TL;DR sections
+- **Create** visual diagrams with Mermaid syntax
+- **Extract** relevant keywords for SEO
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+## 📖 How to Use
 
-## Known Issues
+### Quick Start
+1. Install BlogBuddy from the VS Code marketplace
+2. Configure your AI provider settings (API key, base URL, model)
+3. Start writing your blog post in Markdown
+4. Insert BB commands where you need AI assistance
+5. Use keyboard shortcuts to activate commands
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+### Basic Usage
+1. **Insert a command tag** in your text:
+   ```markdown
+   Here's a brief overview of machine learning.
+   <bb-expd:focus on practical applications>
+   ```
 
-## Release Notes
+2. **Select the text** containing the command tag (and surrounding content for context)
 
-Users appreciate release notes as you update your extension.
+3. **Press the activation key**: `Cmd+B Cmd+B` (Mac) or `Ctrl+B Ctrl+B` (Windows/Linux)
 
-### 1.0.0
+4. **Watch BB work its magic** - the command tag and surrounding text will be processed and replaced with AI-generated content
 
-Initial release of ...
+### Menu Access
+Alternatively, use `Cmd+Shift+B` (Mac) or `Ctrl+Shift+B` (Windows/Linux) to open the BB menu for additional options.
 
-### 1.0.1
+### 📚 Detailed Documentation
+For comprehensive feature documentation, examples, and advanced usage tips, see our detailed guide:
+**➡️ [Complete User Guide](docs/help.md)**
 
-Fixed issue #.
+## ⌨️ Keyboard Shortcuts
 
-### 1.1.0
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | Execute BB command on selected text |
+| `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | Open BB menu |
 
-Added features X, Y, and Z.
+## ⚙️ Configuration
+
+BlogBuddy requires AI provider configuration. Go to VS Code Settings and configure:
+
+- **API Key**: Your AI provider API key
+- **Base URL**: AI service endpoint (default: OpenRouter)
+- **Model**: AI model to use (default: GPT-4o-mini)
+- **Mermaid Output**: Choose between code blocks or rendered images
+
+## 🎯 Perfect For
+
+- **Blog Writers** who want AI assistance without leaving their editor
+- **Content Creators** looking to enhance their writing workflow
+- **Technical Writers** who need diagram generation and content expansion
+- **Multilingual Bloggers** requiring translation assistance
+- **Anyone** who values seamless, keyboard-driven productivity
+
+## 🐛 Issues & Feedback
+
+Found a bug or have a feature suggestion? Please [open an issue](https://github.com/SandyKidYao/blogbuddy/issues) on our GitHub repository.
 
 ---
 
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
+**Happy Blogging with BB! 🎉**

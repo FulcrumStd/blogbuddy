@@ -3,7 +3,8 @@ import * as vscode from 'vscode';
 export enum ConfigKey {
     API_KEY = 'apiKey',
     MODEL = 'model',
-    BASE_URL = 'baseUrl'
+    BASE_URL = 'baseURL',
+    MERMAID_CODE = 'mermaidCode'
 }
 
 
@@ -35,7 +36,8 @@ export class ConfigService {
         return {
             apiKey: this.get<string>(ConfigKey.API_KEY, ''),
             model: this.get<string>(ConfigKey.MODEL, ''),
-            baseUrl: this.get<string>(ConfigKey.BASE_URL, '')
+            baseURL: this.get<string>(ConfigKey.BASE_URL, ''),
+            mermaidCode: this.get<boolean>(ConfigKey.MERMAID_CODE, false)
         };
     }
 
@@ -52,7 +54,7 @@ export class ConfigService {
         }
 
         // 验证API密钥
-        if (!config.baseUrl || config.baseUrl.trim() === '') {
+        if (!config.baseURL || config.baseURL.trim() === '') {
             errors.push('API base url is not setting');
         }
 

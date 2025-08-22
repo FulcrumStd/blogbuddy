@@ -48,7 +48,7 @@ export class AIProxy {
             const config = ConfigService.getInstance().getAllConfig();
             this.client = new OpenAI({
                 apiKey: config.apiKey,
-                baseURL: config.baseUrl
+                baseURL: config.baseURL
             });
         }
     }
