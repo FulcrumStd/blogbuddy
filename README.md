@@ -14,6 +14,12 @@
 
 [中文 Version](README_中文.md)
 
+## ⚠️ Important Notice
+
+> **🚧 Development Status**: This project is currently in active development. Features may have bugs and are subject to change in future updates. Please use with caution in production environments.
+
+> **🧪 Experimental Feature**: The `bb` command (AI Agent mode) is currently under development and in experimental stage. This feature may not work as expected and could undergo significant changes.
+
 ## ✨ What is Blog Buddy?
 
 Blog Buddy (BB) is a VS Code extension designed to enhance your blog writing workflow without disrupting your creative flow. Instead of switching contexts or opening external tools, you simply insert BB command tags directly in your Markdown content and trigger them with keyboard shortcuts. It's that simple!
