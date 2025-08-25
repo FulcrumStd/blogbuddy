@@ -1,11 +1,12 @@
 import * as vscode from 'vscode';
 import { TextUtils } from '../utils/helpers';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { BB, BBCmd } from '../core/bb';
 import { StreamingTextUtils } from '../utils/StreamingTextWriter';
 import { ConfigService } from '../services/ConfigService';
 import { lockDocumentRange } from '../utils/DocumentLock';
 import { StatusBarAnimation } from '../utils/StatusBarAnimation';
+import { BBCmd, ProcessRequest } from '../core/types';
+import { BB } from '../core/bb';
 
 export function registerBBCommand(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand(
@@ -37,17 +38,23 @@ class BBCommand {
                 "BB don't know cmd: " + ps.command,
             );
         }
-        const rp_text = text.slice(0, ps.startIndex) + text.slice(ps.endIndex);
+        const bquest = {
+                filePath: editor.document.uri.fsPath,
+                selectText: text.slice(0, ps.startIndex) + text.slice(ps.endIndex),
+                cmd: cmd,
+                msg: ps.message,
+                cmdText: ps.fullMatch
+        };
 
         // Check configuration to decide between streaming or non-streaming mode
         const config = ConfigService.getInstance().getAllConfig();
         const useStreaming = config.streaming;
         if (useStreaming) {
             // Streaming processing mode
-            await this.handleStreamingMode(editor, result.range, rp_text, cmd, ps.message);
+            await this.handleStreamingMode(editor, result.range, bquest);
         } else {
             // Traditional non-streaming processing mode
-            await this.handleNonStreamingMode(editor, result.range, rp_text, cmd, ps.message);
+            await this.handleNonStreamingMode(editor, result.range, bquest);
         }
     }
 
@@ -57,22 +64,15 @@ class BBCommand {
     private async handleStreamingMode(
         editor: vscode.TextEditor,
         range: vscode.Range,
-        text: string,
-        cmd: BBCmd,
-        message: string
+        request: ProcessRequest
     ): Promise<void> {
         const animation = StatusBarAnimation.getInstance();
 
         try {
             // Start with streaming animation
-            animation.showStatic(`$(loading~spin) BB streaming ${cmd}`);
+            animation.showStatic(`$(loading~spin) BB streaming ${request.cmd}`);
 
-            const streamGenerator = await BB.i().actStreaming({
-                filePath: editor.document.uri.fsPath,
-                selectText: text,
-                cmd: cmd,
-                msg: message
-            });
+            const streamGenerator = await BB.i().actStreaming(request);
 
             // Use StreamingTextUtils for streaming output and locking
             await StreamingTextUtils.streamChunksToRange(
@@ -84,7 +84,7 @@ class BBCommand {
                     showCursor: true,
                     cursorChar: '<BB',
                     lockRange: true,
-                    lockMessage: `BB is executing ${cmd} command...`,
+                    lockMessage: `BB is executing ${request.cmd} command...`,
                     onProgress: (written: number, total?: number) => {
                         animation.showStatic(`$(loading~spin) BB progress: ${written} chars generated`);
                         console.log(`Streaming progress: ${written} chars written`);
@@ -113,23 +113,16 @@ class BBCommand {
     private async handleNonStreamingMode(
         editor: vscode.TextEditor,
         range: vscode.Range,
-        text: string,
-        cmd: BBCmd,
-        message: string
+        request: ProcessRequest
     ): Promise<void> {
         const lock = lockDocumentRange(editor, range, 'BB is working on this...');
         const animation = StatusBarAnimation.getInstance();
 
         // Start animation with command-specific message
-        animation.showStatic(`$(loading~spin) BB executing ${cmd}`);
+        animation.showStatic(`$(loading~spin) BB executing ${request.cmd}`);
 
         try {
-            const response = await BB.i().act({
-                filePath: editor.document.uri.fsPath,
-                selectText: text,
-                cmd: cmd,
-                msg: message
-            });
+            const response = await BB.i().act(request);
 
             if (editor && response.replaceText.length > 0) {
                 await editor.edit(

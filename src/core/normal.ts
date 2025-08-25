@@ -5,66 +5,43 @@ import { ProcessRequest, ProcessResponse, Processor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// 向后兼容的类型别名
-export type NormalRequest = ProcessRequest;
-export type NormalResult = ProcessResponse & { success?: boolean; result?: string };
-
 export class NormalProcessor implements Processor {
     private static instance: NormalProcessor = new NormalProcessor();
     private constructor() { }
-    
+
     public static getInstance(): NormalProcessor {
         return NormalProcessor.instance;
     }
 
     /**
-     * 统一的处理接口实现
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        const result = await this.handleNormalTask(request);
-        return {
-            replaceText: result.replaceText
-        };
-    }
-
-    /**
      * 处理通用任务请求 - 完全听从用户指示
      */
-    public async handleNormalTask(request: NormalRequest): Promise<NormalResult> {
-        try {
-            // 验证用户是否提供了指示
-            if (Utils.isEmpty(request.msg)) {
-                throw new AppError(
-                    ErrorCode.SERVER_ERROR,
-                    'Normal task requires user instructions. Please specify what you want me to do with the text.',
-                    'Normal task requires user instructions'
-                );
-            }
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        // 验证用户是否提供了指示
+        if (Utils.isEmpty(request.msg)) {
+            throw new AppError(
+                ErrorCode.SERVER_ERROR,
+                'Normal task requires user instructions. Please specify what you want me to do with the text.',
+                'Normal task requires user instructions'
+            );
+        }
 
-            // 判断是否为局部文本操作还是全文操作
-            const hasSelectedText = !Utils.isEmpty(request.selectText);
+        // 判断是否为局部文本操作还是全文操作
+        const hasSelectedText = !Utils.isEmpty(request.selectText);
 
-            if (hasSelectedText) {
-                // 局部文本操作模式
-                return await this.processTextBlock(request);
-            } else {
-                // 全文操作模式
-                return await this.processFullDocument(request);
-            }
-
-        } catch (error) {
-            return {
-                success: false,
-                result: `Normal task failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                replaceText: request.selectText // 失败时返回原文
-            };
+        if (hasSelectedText) {
+            // 局部文本操作模式
+            return await this.processTextBlock(request);
+        } else {
+            // 全文操作模式
+            return await this.processFullDocument(request);
         }
     }
 
     /**
      * 局部文本操作 - 替换局部文本
      */
-    private async processTextBlock(request: NormalRequest): Promise<NormalResult> {
+    private async processTextBlock(request: ProcessRequest): Promise<ProcessResponse> {
         const taskPrompt = this.getNormalBlockPrompt(request.selectText, request.msg);
 
         // 准备消息 - 使用核心系统提示词
@@ -77,8 +54,6 @@ export class NormalProcessor implements Processor {
         const processedContent = await aiProxy.chat(messages, 'NORMAL');
 
         return {
-            success: true,
-            result: 'Text block processing completed successfully.',
             replaceText: processedContent
         };
     }
@@ -86,7 +61,7 @@ export class NormalProcessor implements Processor {
     /**
      * 全文操作 - 生成新文件
      */
-    private async processFullDocument(request: NormalRequest): Promise<NormalResult> {
+    private async processFullDocument(request: ProcessRequest): Promise<ProcessResponse> {
         // 检查文件路径是否存在
         if (Utils.isEmpty(request.filePath)) {
             throw new AppError(
@@ -110,7 +85,7 @@ export class NormalProcessor implements Processor {
             );
         }
 
-        const taskPrompt = this.getNormalDocumentPrompt(fileContent, request.msg);
+        const taskPrompt = this.getNormalDocumentPrompt(fileContent.replace(request.cmdText, ''), request.msg);
 
         // 准备消息 - 使用核心系统提示词
         const messages: Array<any> = [];
@@ -132,11 +107,9 @@ export class NormalProcessor implements Processor {
         // 写入处理内容到新文件
         await fs.promises.writeFile(newFilePath, processedContentWithTag, 'utf-8');
 
-        const resultMessage = `Document processing completed! File saved as: ${newFileName}\n\nProcessed from ${parsedPath.name}${parsedPath.ext} according to your instructions: "${request.msg}"`;
+        const resultMessage = `[Processed](${newFileName})`;
 
         return {
-            success: true,
-            result: resultMessage,
             replaceText: resultMessage
         };
     }
@@ -145,7 +118,7 @@ export class NormalProcessor implements Processor {
      * 获取系统提示词
      */
     private getCoreSystemPrompt(): string {
-    return `
+        return `
 # AI Agent System Prompt
 
 You are an intelligent AI agent designed to help users with various tasks through tool usage and reasoning. You can read files, write content, search information, execute commands, and perform complex multi-step operations.
@@ -310,7 +283,7 @@ Artificial Intelligence is fundamentally transforming every aspect of our modern
 Remember: Your response IS the processed text. Nothing more, nothing less.
 
     `;
-}
+    }
 
     /**
      * 局部文本操作提示词

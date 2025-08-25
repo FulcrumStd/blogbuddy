@@ -2,97 +2,48 @@ import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
 import { ProcessRequest, ProcessResponse, Processor } from './types';
 
-// 向后兼容的类型别名
-export type KeywordRequest = ProcessRequest;
-export type KeywordResult = ProcessResponse & { success?: boolean; result?: string };
 
 export class KeywordExtractor implements Processor {
     private static instance: KeywordExtractor = new KeywordExtractor();
     private constructor() { }
-    
+
     public static getInstance(): KeywordExtractor {
         return KeywordExtractor.instance;
     }
 
     /**
-     * 统一的处理接口实现
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        const result = await this.handleKeywordExtraction(request);
-        return {
-            replaceText: result.replaceText
-        };
-    }
-
-    /**
      * 处理关键词提取请求 - 真正的关键词提取功能
      */
-    public async handleKeywordExtraction(request: KeywordRequest): Promise<KeywordResult> {
-        try {
-            // 读取完整文件内容用于提取关键词
-            const fullContent = await this.getContentForKeywordExtraction(request.filePath, request.selectText);
-            const completePrompt = this.generateCompleteKeywordPrompt(fullContent, request.msg);
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        const completePrompt = await this.generateCompleteKeywordPrompt(request);
 
-            // 准备消息
-            const messages: Array<any> = [];
-            messages.push({ role: 'user', content: completePrompt });
+        // 准备消息
+        const messages: Array<any> = [];
+        messages.push({ role: 'user', content: completePrompt });
 
-            // 调用AI进行关键词提取
-            const aiProxy = AIProxy.getInstance();
-            const keywordContent = await aiProxy.chat(messages, 'KEYWORD');
+        // 调用AI进行关键词提取
+        const aiProxy = AIProxy.getInstance();
+        const keywordContent = await aiProxy.chat(messages, 'KEYWORD');
 
-            return {
-                replaceText: keywordContent,
-                success: true,
-                result: 'Keyword extraction completed successfully.'
-            };
-
-        } catch (error) {
-            return {
-                replaceText: request.selectText, // 失败时返回原文
-                success: false,
-                result: `Keyword extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-            };
-        }
-    }
-
-    /**
-     * 生成关键词提取任务的提示词
-     */
-    public async getKeywordTaskPrompt(request: KeywordRequest): Promise<string> {
-        // 读取完整文件内容用于提取关键词
-        const fullContent = await this.getContentForKeywordExtraction(request.filePath, request.selectText);
-        return this.generateCompleteKeywordPrompt(fullContent, request.msg);
+        return {
+            replaceText: keywordContent,
+        };
     }
 
 
     /**
      * 生成完整的关键词提示词（集中处理所有提示词逻辑）
      */
-    private generateCompleteKeywordPrompt(content: string, userMsg: string): string {
+    private async generateCompleteKeywordPrompt(request: ProcessRequest): Promise<string> {
+        const content = await FileUtils.readFileContentAsync(
+            request.filePath,
+            FileUtils.SupportedFileTypes.MARKDOWN
+        ) || request.selectText;
         const basePrompt = this.buildKeywordPrompt(content);
-        return this.addUserInstructions(basePrompt, userMsg);
+        return this.addUserInstructions(basePrompt, request.msg);
     }
 
-    /**
-     * 获取文件内容用于关键词提取
-     */
-    private async getContentForKeywordExtraction(filePath: string, selectText: string): Promise<string> {
-        if (Utils.isEmpty(filePath)) {
-            return selectText;
-        }
-        
-        try {
-            const content = await FileUtils.readFileContentAsync(
-                filePath,
-                FileUtils.SupportedFileTypes.MARKDOWN
-            );
-            return content || selectText;
-        } catch (error) {
-            console.warn('Failed to read file content for keyword extraction, using selected text:', error);
-            return selectText;
-        }
-    }
+
 
     /**
      * 构建基础关键词提示词
@@ -139,7 +90,7 @@ Return the keyword list with the heading, organized by relevance and search pote
         if (Utils.isEmpty(userMsg)) {
             return basePrompt;
         }
-        
+
         return `${basePrompt}
 
 ## Additional User Instructions:

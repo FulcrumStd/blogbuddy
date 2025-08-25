@@ -6,9 +6,7 @@ import { ProcessRequest, ProcessResponse, Processor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// 向后兼容的类型别名
-export type TranslationRequest = ProcessRequest;
-export type TranslationResult = ProcessResponse & { success?: boolean; result?: string };
+
 
 export class Translator implements Processor {
     private static instance: Translator = new Translator();
@@ -19,20 +17,10 @@ export class Translator implements Processor {
     }
 
     /**
-     * 统一的处理接口实现
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        const result = await this.handleTranslation(request);
-        return {
-            replaceText: result.replaceText
-        };
-    }
-
-    /**
      * 处理翻译请求
      * 读取完整文件内容，翻译后输出到新文件
      */
-    public async handleTranslation(request: TranslationRequest): Promise<TranslationResult> {
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
         // 检查用户是否提供了目标语言
         if (Utils.isEmpty(request.msg)) {
             throw new AppError(
@@ -68,9 +56,8 @@ export class Translator implements Processor {
                     'File reading failed',
                 );
             }
-
-            // 准备翻译消息，使用推断的语言
-            const completePrompt = this.buildTranslatePrompt(fileContent, inferredLanguage);
+            // 准备翻译消息，使用推断的语言，全文内容中替换掉翻译的 bb 标签
+            const completePrompt = this.buildTranslatePrompt(fileContent.replace(request.cmdText, ''), inferredLanguage);
             const messages: Array<ChatCompletionMessageParam> = [];
             messages.push({ role: 'user', content: completePrompt });
 
@@ -93,12 +80,8 @@ export class Translator implements Processor {
             // 创建Markdown超链接格式的replaceText，使用推断的语言
             const markdownLink = `[${inferredLanguage} Version](${newFileName})`;
 
-            const resultMessage = `Translation completed! File saved as: ${newFileName}\n\nTranslated from ${parsedPath.name}${parsedPath.ext} to ${inferredLanguage}`;
-
             return {
                 replaceText: markdownLink,
-                success: true,
-                result: resultMessage
             };
 
         } catch (error) {

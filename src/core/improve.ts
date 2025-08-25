@@ -5,60 +5,38 @@ import { ProcessRequest, ProcessResponse, Processor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-// 向后兼容的类型别名
-export type ImproveRequest = ProcessRequest;
-export type ImproveResult = ProcessResponse & { success?: boolean; result?: string };
 
 export class TextImprover implements Processor {
     private static instance: TextImprover = new TextImprover();
     private constructor() { }
-    
+
     public static getInstance(): TextImprover {
         return TextImprover.instance;
     }
 
     /**
-     * 统一的处理接口实现
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        const result = await this.handleTextImprovement(request);
-        return {
-            replaceText: result.replaceText
-        };
-    }
-
-    /**
      * 处理文本润色请求 - 真正的润色功能
      */
-    public async handleTextImprovement(request: ImproveRequest): Promise<ImproveResult> {
-        try {
-            // 判断是否为文本块润色还是全文润色
-            const hasSelectedText = !Utils.isEmpty(request.selectText);
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        // 判断是否为文本块润色还是全文润色
+        const hasSelectedText = !Utils.isEmpty(request.selectText);
 
-            if (hasSelectedText) {
-                // 文本块润色模式
-                return await this.improveTextBlock(request);
-            } else {
-                // 全文润色模式
-                return await this.improveFullDocument(request);
-            }
-
-        } catch (error) {
-            return {
-                replaceText: request.selectText, // 失败时返回原文
-                success: false,
-                result: `Text improvement failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-            };
+        if (hasSelectedText) {
+            // 文本块润色模式
+            return await this.improveTextBlock(request);
+        } else {
+            // 全文润色模式
+            return await this.improveFullDocument(request);
         }
     }
 
     /**
      * 文本块润色 - 类似 Expand 模式
      */
-    private async improveTextBlock(request: ImproveRequest): Promise<ImproveResult> {
+    private async improveTextBlock(request: ProcessRequest): Promise<ProcessResponse> {
         // 获取全文上下文
         const fileContext = await this.getFileContext(request.filePath);
-        
+
         const completePrompt = this.generateCompleteImprovePrompt(request.selectText, request.msg, 'block', fileContext);
 
         // 准备消息
@@ -70,8 +48,6 @@ export class TextImprover implements Processor {
         const improvedContent = await aiProxy.chat(messages, 'IMPROVE');
 
         return {
-            success: true,
-            result: 'Text block improvement completed successfully.',
             replaceText: improvedContent
         };
     }
@@ -79,7 +55,7 @@ export class TextImprover implements Processor {
     /**
      * 全文润色 - 类似 Translate 模式
      */
-    private async improveFullDocument(request: ImproveRequest): Promise<ImproveResult> {
+    private async improveFullDocument(request: ProcessRequest): Promise<ProcessResponse> {
         // 检查文件路径是否存在
         if (Utils.isEmpty(request.filePath)) {
             throw new AppError(
@@ -103,7 +79,7 @@ export class TextImprover implements Processor {
             );
         }
 
-        const completePrompt = this.generateCompleteImprovePrompt(fileContent, request.msg, 'document');
+        const completePrompt = this.generateCompleteImprovePrompt(fileContent.replace(request.cmdText, ''), request.msg, 'document');
 
         // 准备消息
         const messages: Array<any> = [];
@@ -124,11 +100,9 @@ export class TextImprover implements Processor {
         // 写入润色内容到新文件
         await fs.promises.writeFile(newFilePath, improvedContentWithTag, 'utf-8');
 
-        const resultMessage = `Document improvement completed! File saved as: ${newFileName}\n\nImproved from ${parsedPath.name}${parsedPath.ext}`;
-
+        const resultMessage = `[Improved Version](${newFileName})`;
+        
         return {
-            success: true,
-            result: resultMessage,
             replaceText: resultMessage
         };
     }
@@ -213,7 +187,7 @@ Return only the improved text without explanations or meta-commentary. The resul
         if (Utils.isEmpty(filePath)) {
             return undefined;
         }
-        
+
         try {
             const content = await FileUtils.readFileContentAsync(
                 filePath,
@@ -233,7 +207,7 @@ Return only the improved text without explanations or meta-commentary. The resul
         if (Utils.isEmpty(userMsg)) {
             return basePrompt;
         }
-        
+
         return `${basePrompt}
 
 ## Additional User Instructions:

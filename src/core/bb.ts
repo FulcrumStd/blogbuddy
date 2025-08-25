@@ -6,18 +6,8 @@ import { KeywordExtractor } from './keyword';
 import { MermaidGenerator } from './mermaid';
 import { TextImprover } from './improve';
 import { NormalProcessor } from './normal';
-import { ProcessRequest, ProcessResponse } from './types';
+import { ProcessRequest, ProcessResponse,BBCmd } from './types';
 
-export enum BBCmd {
-    NORMAL = 'bb',          // 直接给 Bgent 指令
-    EXPAND = 'bb-expd',     // 扩写
-    IMPROVE = 'bb-impv',    // 润色
-    MERMAID = 'bb-mmd',     // 生成 Mermaid
-    TRANSLATE = 'bb-tslt',  // 翻译
-    KEYWORD = 'bb-kwd',     // 提取关键词
-    TLDR = 'bb-tldr',       // 加入省流
-    TAG = 'bb-tag',         // 加入 BBtag
-}
 
 export class BB {
     tagText: string = '[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)';
@@ -70,6 +60,10 @@ export class BB {
             switch (request.cmd) {
                 case BBCmd.EXPAND:
                     return yield* await Expander.getInstance().processStreaming(request);
+                case BBCmd.TRANSLATE:
+                    const result = await Translator.getInstance().process(request);
+                    yield result.replaceText;
+                    return result;
                 case BBCmd.TAG:
                     yield this.tagText;
                     return { replaceText: this.tagText };

@@ -1,15 +1,24 @@
-import { BBCmd } from './bb';
-import { StreamingOptions } from '../utils/StreamingTextWriter';
+export enum BBCmd {
+    NORMAL = 'bb',          // 直接给 Bgent 指令
+    EXPAND = 'bb-expd',     // 扩写
+    IMPROVE = 'bb-impv',    // 润色
+    MERMAID = 'bb-mmd',     // 生成 Mermaid
+    TRANSLATE = 'bb-tslt',  // 翻译
+    KEYWORD = 'bb-kwd',     // 提取关键词
+    TLDR = 'bb-tldr',       // 加入省流
+    TAG = 'bb-tag',         // 加入 BBtag
+}
 
 /**
  * 统一的处理请求接口
  * 所有处理器都使用这个接口作为输入
  */
 export interface ProcessRequest {
-    selectText: string;      // 包含 BBCmd 的文本或需要处理的文本
+    selectText: string;      // 用户选中的文本（去除了 BB 标签）
     filePath: string;        // 文本所在文件的路径
     msg: string;             // 用户的附加消息或指令
     cmd: BBCmd;             // 用于标识命令类型
+    cmdText: string         //  匹配到的 BB 标签内容
 }
 
 /**
@@ -18,8 +27,6 @@ export interface ProcessRequest {
  */
 export interface ProcessResponse {
     replaceText: string;     // 替换掉用户选择文本的内容
-    success?: boolean;       // 可选，处理是否成功（向后兼容）
-    result?: string;         // 可选，处理结果消息（向后兼容）
 }
 
 /**
@@ -28,9 +35,6 @@ export interface ProcessResponse {
 export interface StreamingResponse {
     stream: AsyncGenerator<string, ProcessResponse, unknown>;
 }
-
-// 重用utils中的StreamingOptions以保持兼容性
-export type { StreamingOptions };
 
 /**
  * 处理器统一接口
@@ -57,7 +61,6 @@ export interface StreamingProcessor extends Processor {
      * @returns 异步生成器，逐步输出结果
      */
     processStreaming(
-        request: ProcessRequest, 
-        options?: StreamingOptions
+        request: ProcessRequest
     ): Promise<AsyncGenerator<string, ProcessResponse, unknown>>;
 }

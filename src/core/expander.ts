@@ -17,27 +17,20 @@ export class Expander implements StreamingProcessor {
      * 统一的处理接口实现
      */
     public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        try {
-            // 生成完整的扩写提示词
-            const completePrompt = await this.generateCompleteExpandPrompt(request);
+        // 生成完整的扩写提示词
+        const completePrompt = await this.generateCompleteExpandPrompt(request);
 
-            // 准备消息
-            const messages: Array<any> = [];
-            messages.push({ role: 'user', content: completePrompt });
+        // 准备消息
+        const messages: Array<any> = [];
+        messages.push({ role: 'user', content: completePrompt });
 
-            // 调用AI进行扩写
-            const aiProxy = AIProxy.getInstance();
-            const expandedContent = await aiProxy.chat(messages, 'EXPAND');
+        // 调用AI进行扩写
+        const aiProxy = AIProxy.getInstance();
+        const expandedContent = await aiProxy.chat(messages, 'EXPAND');
 
-            return {
-                replaceText: expandedContent
-            };
-
-        } catch (error) {
-            return {
-                replaceText: request.selectText // 失败时返回原文
-            };
-        }
+        return {
+            replaceText: expandedContent
+        };
     }
 
 

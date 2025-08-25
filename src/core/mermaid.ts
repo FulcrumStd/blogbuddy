@@ -1,4 +1,4 @@
-import { Utils, FileUtils } from '../utils/helpers';
+import { Utils} from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
 import { KrokiService } from '../services/KrokiService';
 import { ConfigService, ConfigKey } from '../services/ConfigService';
@@ -6,65 +6,38 @@ import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { ProcessRequest, ProcessResponse, Processor } from './types';
 import * as path from 'path';
 
-// 向后兼容的类型别名
-export type MermaidRequest = ProcessRequest;
-export type MermaidResult = ProcessResponse & { success?: boolean; result?: string };
-
 export class MermaidGenerator implements Processor {
     private static instance: MermaidGenerator = new MermaidGenerator();
     private constructor() { }
-    
+
     public static getInstance(): MermaidGenerator {
         return MermaidGenerator.instance;
     }
 
     /**
-     * 统一的处理接口实现
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        const result = await this.handleMermaidGeneration(request);
-        return {
-            replaceText: result.replaceText
-        };
-    }
-
-    /**
      * 处理 Mermaid 生成请求 - 真正的 Mermaid 生成功能
      */
-    public async handleMermaidGeneration(request: MermaidRequest): Promise<MermaidResult> {
-        try {
-            // 生成 Mermaid 代码
-            const mermaidCode = await this.generateMermaidCode(request);
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        // 生成 Mermaid 代码
+        const mermaidCode = await this.generateMermaidCode(request);
 
-            // 获取配置决定输出方式
-            const configService = ConfigService.getInstance();
-            const mermaidCodeConfig = configService.get<boolean>(ConfigKey.MERMAID_CODE, false);
+        // 获取配置决定输出方式
+        const configService = ConfigService.getInstance();
+        const mermaidCodeConfig = configService.get<boolean>(ConfigKey.MERMAID_CODE, false);
 
-            if (mermaidCodeConfig) {
-                // 返回代码块形式
-                const codeBlock = `\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
-                return {
-                    success: true,
-                    result: 'Mermaid diagram generated as code block.',
-                    replaceText: codeBlock
-                };
-            } else {
-                // 生成 SVG 图片
-                const imagePath = await this.generateSVGImage(mermaidCode, request.filePath);
-                const markdownImage = `![Mermaid Diagram](${path.basename(imagePath)})`;
-                
-                return {
-                    success: true,
-                    result: `Mermaid diagram saved as SVG: ${imagePath}`,
-                    replaceText: markdownImage
-                };
-            }
-
-        } catch (error) {
+        if (mermaidCodeConfig) {
+            // 返回代码块形式
+            const codeBlock = `\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
             return {
-                success: false,
-                result: `Mermaid generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                replaceText: request.selectText // 失败时返回原文
+                replaceText: codeBlock
+            };
+        } else {
+            // 生成 SVG 图片
+            const imagePath = await this.generateSVGImage(mermaidCode, request.filePath);
+            const markdownImage = `![Mermaid Diagram](${path.basename(imagePath)})`;
+
+            return {
+                replaceText: markdownImage
             };
         }
     }
@@ -72,7 +45,7 @@ export class MermaidGenerator implements Processor {
     /**
      * 使用 AI 生成 Mermaid 代码
      */
-    private async generateMermaidCode(request: MermaidRequest): Promise<string> {
+    private async generateMermaidCode(request: ProcessRequest): Promise<string> {
         const completePrompt = this.generateCompleteMermaidPrompt(request.selectText, request.msg);
 
         // 准备消息
@@ -105,7 +78,7 @@ export class MermaidGenerator implements Processor {
      */
     private async generateSVGImage(mermaidCode: string, filePath: string): Promise<string> {
         const krokiService = KrokiService.getInstance();
-        
+
         // 生成文件名和路径
         const fileDir = path.dirname(filePath);
         const fileName = krokiService.generateFileName('mermaid', 'svg');
@@ -121,21 +94,21 @@ export class MermaidGenerator implements Processor {
     private extractMermaidCode(response: string): string {
         // 移除可能的代码块标记
         let code = response.trim();
-        
+
         // 移除 ```mermaid 和 ```
         code = code.replace(/^```(?:mermaid)?\s*\n/, '');
         code = code.replace(/\n```\s*$/, '');
-        
+
         // 移除可能的解释文字（保留第一个图表定义开始的部分）
         const lines = code.split('\n');
         const validPrefixes = [
-            'graph', 'flowchart', 'sequenceDiagram', 'classDiagram', 
+            'graph', 'flowchart', 'sequenceDiagram', 'classDiagram',
             'stateDiagram', 'erDiagram', 'gantt', 'pie', 'gitgraph',
             'mindmap', 'timeline', 'zenuml'
         ];
 
-        const startIndex = lines.findIndex(line => 
-            validPrefixes.some(prefix => 
+        const startIndex = lines.findIndex(line =>
+            validPrefixes.some(prefix =>
                 line.trim().toLowerCase().startsWith(prefix.toLowerCase())
             )
         );
@@ -199,7 +172,7 @@ The output should start directly with the diagram type declaration (e.g., "flowc
         if (Utils.isEmpty(userMsg)) {
             return basePrompt;
         }
-        
+
         return `${basePrompt}
 
 ## Additional User Instructions:

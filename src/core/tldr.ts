@@ -2,9 +2,6 @@ import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
 import { ProcessRequest, ProcessResponse, Processor } from './types';
 
-// 向后兼容的类型别名
-export type TldrRequest = ProcessRequest;
-export type TldrResult = ProcessResponse & { success?: boolean; result?: string };
 
 export class TldrGenerator implements Processor {
     private static instance: TldrGenerator = new TldrGenerator();
@@ -15,23 +12,10 @@ export class TldrGenerator implements Processor {
     }
 
     /**
-     * 统一的处理接口实现
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        const result = await this.handleTldrGeneration(request);
-        return {
-            replaceText: result.replaceText
-        };
-    }
-
-    /**
      * 处理TLDR生成请求 - 真正的TLDR生成功能
      */
-    public async handleTldrGeneration(request: TldrRequest): Promise<TldrResult> {
-        try {
-            // 读取完整文件内容用于生成TLDR
-            const fullContent = await this.getContentForTldrGeneration(request.filePath, request.selectText);
-            const completePrompt = this.generateCompleteTldrPrompt(fullContent, request.msg);
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+            const completePrompt = await this.generateCompleteTldrPrompt(request);
 
             // 准备消息
             const messages: Array<any> = [];
@@ -43,55 +27,20 @@ export class TldrGenerator implements Processor {
 
             return {
                 replaceText: tldrContent,
-                success: true,
-                result: 'TLDR generation completed successfully.'
             };
-
-        } catch (error) {
-            return {
-                replaceText: request.selectText, // 失败时返回原文
-                success: false,
-                result: `TLDR generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-            };
-        }
-    }
-
-    /**
-     * 生成TLDR任务的提示词
-     */
-    public async getTldrTaskPrompt(request: TldrRequest): Promise<string> {
-        // 读取完整文件内容用于生成TLDR
-        const fullContent = await this.getContentForTldrGeneration(request.filePath, request.selectText);
-        return this.generateCompleteTldrPrompt(fullContent, request.msg);
     }
 
 
     /**
      * 生成完整的 TLDR 提示词（集中处理所有提示词逻辑）
      */
-    private generateCompleteTldrPrompt(content: string, userMsg: string): string {
+    private async generateCompleteTldrPrompt(request: ProcessRequest): Promise<string> {
+        const content = await FileUtils.readFileContentAsync(
+            request.filePath,
+            FileUtils.SupportedFileTypes.MARKDOWN
+        ) || request.selectText;
         const basePrompt = this.buildTldrPrompt(content);
-        return this.addUserInstructions(basePrompt, userMsg);
-    }
-
-    /**
-     * 获取文件内容用于 TLDR 生成
-     */
-    private async getContentForTldrGeneration(filePath: string, selectText: string): Promise<string> {
-        if (Utils.isEmpty(filePath)) {
-            return selectText;
-        }
-        
-        try {
-            const content = await FileUtils.readFileContentAsync(
-                filePath,
-                FileUtils.SupportedFileTypes.MARKDOWN
-            );
-            return content || selectText;
-        } catch (error) {
-            console.warn('Failed to read file content for TLDR, using selected text:', error);
-            return selectText;
-        }
+        return this.addUserInstructions(basePrompt, request.msg);
     }
 
     /**
