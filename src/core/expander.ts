@@ -46,7 +46,7 @@ export class Expander implements StreamingProcessor {
             messages.push({ role: 'user', content: completePrompt });
 
             const aiProxy = AIProxy.getInstance();
-            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'EXPAND_STREAM_SIMPLE');
+            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'EXPAND');
 
             let fullResponse = '';
             for await (const chunk of streamGenerator) {
