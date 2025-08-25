@@ -1,27 +1,30 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
+import { ProcessRequest, ProcessResponse, Processor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export interface ImproveRequest {
-    selectText: string;      // 包含 BBCmd 的文本
-    filePath: string;        // 文本所在文件的路径
-    msg: string;             // 用户的附加消息
-}
+// 向后兼容的类型别名
+export type ImproveRequest = ProcessRequest;
+export type ImproveResult = ProcessResponse & { success?: boolean; result?: string };
 
-export interface ImproveResult {
-    success: boolean;
-    result: string;
-    replaceText: string;
-}
-
-export class TextImprover {
+export class TextImprover implements Processor {
     private static instance: TextImprover = new TextImprover();
     private constructor() { }
     
     public static getInstance(): TextImprover {
         return TextImprover.instance;
+    }
+
+    /**
+     * 统一的处理接口实现
+     */
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        const result = await this.handleTextImprovement(request);
+        return {
+            replaceText: result.replaceText
+        };
     }
 
     /**
@@ -42,9 +45,9 @@ export class TextImprover {
 
         } catch (error) {
             return {
+                replaceText: request.selectText, // 失败时返回原文
                 success: false,
-                result: `Text improvement failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                replaceText: request.selectText // 失败时返回原文
+                result: `Text improvement failed: ${error instanceof Error ? error.message : 'Unknown error'}`
             };
         }
     }

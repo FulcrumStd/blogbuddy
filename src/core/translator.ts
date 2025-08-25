@@ -2,27 +2,30 @@ import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { Utils, FileUtils } from '../utils/helpers';
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 import { AIProxy } from '../utils/aiProxy';
+import { ProcessRequest, ProcessResponse, Processor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export interface TranslationRequest {
-    selectText: string;      // 包含 BBCmd 的文本
-    filePath: string;        // 文本所在文件的路径
-    msg: string;             // 用户的附加消息
-}
+// 向后兼容的类型别名
+export type TranslationRequest = ProcessRequest;
+export type TranslationResult = ProcessResponse & { success?: boolean; result?: string };
 
-export interface TranslationResult {
-    success: boolean;
-    result: string;
-    replaceText: string;
-}
-
-export class Translator {
+export class Translator implements Processor {
     private static instance: Translator = new Translator();
     private constructor() { }
 
     public static getInstance(): Translator {
         return Translator.instance;
+    }
+
+    /**
+     * 统一的处理接口实现
+     */
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        const result = await this.handleTranslation(request);
+        return {
+            replaceText: result.replaceText
+        };
     }
 
     /**
@@ -93,9 +96,9 @@ export class Translator {
             const resultMessage = `Translation completed! File saved as: ${newFileName}\n\nTranslated from ${parsedPath.name}${parsedPath.ext} to ${inferredLanguage}`;
 
             return {
+                replaceText: markdownLink,
                 success: true,
-                result: resultMessage,
-                replaceText: markdownLink
+                result: resultMessage
             };
 
         } catch (error) {
@@ -144,11 +147,21 @@ User message: "${userMessage}"`;
         return `You are a professional translator. Your task is to translate the provided text to ${targetLanguage} while maintaining formatting and meaning.
 
 ## Translation Requirements:
-- **Preserve ALL formatting**: Keep all markdown syntax, HTML tags, code blocks, links, and structural elements exactly as they appear
+- **Preserve formatting syntax**: Keep all markdown syntax (# ## ### etc.), HTML tags, code block markers, link syntax, and structural elements exactly as they appear
+- **Translate all content**: Translate ALL readable text content including headings, paragraphs, list items, link text, and image alt text
 - **Maintain meaning**: Ensure complete semantic accuracy while adapting for cultural context
 - **Natural flow**: Produce text that reads naturally in the target language
-- **Handle code**: Do not translate code snippets, variable names, or technical identifiers
-- **Keep structure**: Preserve paragraph breaks, bullet points, numbering, and layout
+
+## Content Translation Rules:
+- **DO translate**: All headings (# Title, ## Subtitle, etc.), paragraph text, list items, link descriptions, image alt text, table content
+- **DO NOT translate**: Code snippets within \`\`\` blocks, inline code within \`backticks\`, URLs, file paths, variable names, technical abbreviations (API, HTTP, CSS, etc.)
+- **Special handling**: For technical terms that have established translations in the target language, use the appropriate translated term
+
+## Examples:
+- \`# Getting Started\` → \`# ${targetLanguage === '中文' ? '开始使用' : 'Getting Started'}\` (translate the heading text)
+- \`\`\`javascript\` → \`\`\`javascript\` (keep code blocks unchanged)
+- \`const API_KEY = "xxx"\` → \`const API_KEY = "xxx"\` (keep code unchanged)
+- \`[Click here](url)\` → \`[${targetLanguage === '中文' ? '点击这里' : 'Click here'}](url)\` (translate link text, keep URL)
 
 ## Target Language: ${targetLanguage}
 
@@ -158,6 +171,6 @@ ${text}
 </text>
 
 ## Output Requirements:
-Return only the translated content without explanations or prefixes. The translation should maintain all original formatting and structure.`;
+Return only the translated content without explanations or prefixes. The translation should maintain all original formatting structure while translating all readable content.`;
     }
 }

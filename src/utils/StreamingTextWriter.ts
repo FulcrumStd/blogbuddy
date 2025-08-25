@@ -8,7 +8,7 @@ export interface StreamingOptions {
     lockRange?: boolean;
     lockMessage?: string;
     onProgress?: (writtenChars: number, totalChars?: number) => void;
-    onComplete?: () => void;
+    onComplete?: (result: string) => void;
     onError?: (error: Error) => void;
 }
 
@@ -37,10 +37,10 @@ export class StreamingTextWriter {
             showCursor: options.showCursor ?? true,
             cursorChar: options.cursorChar ?? '▊',
             lockRange: options.lockRange ?? true,
-            lockMessage: options.lockMessage ?? '正在流式输出文本...',
+            lockMessage: options.lockMessage ?? 'Streaming ...',
             onProgress: options.onProgress ?? (() => {}),
             onComplete: options.onComplete ?? (() => {}),
-            onError: options.onError ?? (() => {})
+            onError: options.onError ?? (() => {}),
         };
 
         if (this.options.showCursor) {
@@ -202,7 +202,7 @@ export class StreamingTextWriter {
         await this.updateEditorText(finalText);
 
         this.cleanup();
-        this.options.onComplete();
+        this.options.onComplete(finalText);
     }
 
     private handleError(error: Error): void {

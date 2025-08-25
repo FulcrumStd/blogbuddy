@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { TextUtils } from '../utils/helpers';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { BB, BBCmd, StreamingActOptions } from '../core/bb';
+import { BB, BBCmd } from '../core/bb';
 import { StreamingTextUtils } from '../utils/StreamingTextWriter';
 import { ConfigService } from '../services/ConfigService';
 import { lockDocumentRange } from '../utils/DocumentLock';
@@ -38,11 +38,10 @@ class BBCommand {
             );
         }
         const rp_text = text.slice(0, ps.startIndex) + text.slice(ps.endIndex);
-        
+
         // Check configuration to decide between streaming or non-streaming mode
         const config = ConfigService.getInstance().getAllConfig();
         const useStreaming = config.streaming;
-        vscode.window.showInformationMessage('BB: Start woking.');
         if (useStreaming) {
             // Streaming processing mode
             await this.handleStreamingMode(editor, result.range, rp_text, cmd, ps.message);
@@ -63,41 +62,17 @@ class BBCommand {
         message: string
     ): Promise<void> {
         const animation = StatusBarAnimation.getInstance();
-        
+
         try {
             // Start with streaming animation
             animation.showStatic(`$(loading~spin) BB streaming ${cmd}`);
-            
-            const streamingOptions: StreamingActOptions = {
-                onChunk: (chunk: string) => {
-                    console.log('BB streaming chunk:', chunk);
-                },
-                onProgress: (current: number, total?: number) => {
-                    if (total && total > 0) {
-                        const percentage = Math.round((current / total) * 100);
-                        animation.showStatic(`$(loading~spin) BB progress: ${percentage}% (${current}/${total} chars)`);
-                    } else {
-                        animation.showStatic(`$(loading~spin) BB progress: ${current} chars generated`);
-                    }
-                },
-                onComplete: (result) => {
-                    console.log('BB processing completed, total length:', result.replaceText.length);
-                    animation.showStatic('BB: Streaming completed!', 3000);
-                    vscode.window.showInformationMessage('BB: Streaming completed!');
-                },
-                onError: (error: Error) => {
-                    console.error('BB processing error:', error);
-                    animation.showStatic(`BB failed: ${error.message}`, 5000);
-                    vscode.window.showErrorMessage(`BB processing failed: ${error.message}`);
-                }
-            };
 
             const streamGenerator = await BB.i().actStreaming({
                 filePath: editor.document.uri.fsPath,
                 selectText: text,
                 cmd: cmd,
                 msg: message
-            }, streamingOptions);
+            });
 
             // Use StreamingTextUtils for streaming output and locking
             await StreamingTextUtils.streamChunksToRange(
@@ -105,27 +80,26 @@ class BBCommand {
                 range,
                 this.convertToStreamChunks(streamGenerator),
                 {
-                    chunkDelay: 30,
+                    chunkDelay: 1,
                     showCursor: true,
                     cursorChar: '<BB',
                     lockRange: true,
                     lockMessage: `BB is executing ${cmd} command...`,
                     onProgress: (written: number, total?: number) => {
-                        if (total && total > 0) {
-                            console.log(`Streaming progress: ${written}/${total} chars`);
-                        } else {
-                            console.log(`Streaming progress: ${written} chars written`);
-                        }
+                        animation.showStatic(`$(loading~spin) BB progress: ${written} chars generated`);
+                        console.log(`Streaming progress: ${written} chars written`);
                     },
-                    onComplete: () => {
-                        console.log('Streaming output completed');
+                    onComplete: (result: string) => {
+                        console.log('BB processing completed, total length:', result.length);
+                        animation.showStatic('BB: Streaming completed!', 3000);
                     },
                     onError: (error: Error) => {
                         console.error('Streaming output error:', error);
+                        animation.showStatic(`BB failed: ${error.message}`, 5000);
+                        vscode.window.showErrorMessage(`BB processing failed: ${error.message}`);
                     }
                 }
             );
-
         } catch (e: unknown) {
             if (e instanceof Error) {
                 vscode.window.showErrorMessage(`BB streaming failed: ${e.message}`);
@@ -145,10 +119,10 @@ class BBCommand {
     ): Promise<void> {
         const lock = lockDocumentRange(editor, range, 'BB is working on this...');
         const animation = StatusBarAnimation.getInstance();
-        
+
         // Start animation with command-specific message
         animation.showStatic(`$(loading~spin) BB executing ${cmd}`);
-        
+
         try {
             const response = await BB.i().act({
                 filePath: editor.document.uri.fsPath,
@@ -156,17 +130,14 @@ class BBCommand {
                 cmd: cmd,
                 msg: message
             });
-            
+
             if (editor && response.replaceText.length > 0) {
                 await editor.edit(
                     editBuilder => editBuilder.replace(range, response.replaceText)
                 );
             }
-            
             // Show completion message
             animation.showStatic('BB: Completed!', 3000);
-            vscode.window.showInformationMessage('BB: Completed!');
-            
         } catch (e: unknown) {
             if (e instanceof Error) {
                 animation.showStatic(`BB failed: ${e.message}`, 5000);
@@ -182,7 +153,7 @@ class BBCommand {
      */
     private async *convertToStreamChunks(
         generator: AsyncGenerator<string, any, unknown>
-    ): AsyncGenerator<{text: string}, void, unknown> {
+    ): AsyncGenerator<{ text: string }, void, unknown> {
         for await (const chunk of generator) {
             yield { text: chunk };
         }

@@ -3,26 +3,29 @@ import { AIProxy } from '../utils/aiProxy';
 import { KrokiService } from '../services/KrokiService';
 import { ConfigService, ConfigKey } from '../services/ConfigService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
+import { ProcessRequest, ProcessResponse, Processor } from './types';
 import * as path from 'path';
 
-export interface MermaidRequest {
-    selectText: string;      // 包含 BBCmd 的文本
-    filePath: string;        // 文本所在文件的路径
-    msg: string;             // 用户的附加消息
-}
+// 向后兼容的类型别名
+export type MermaidRequest = ProcessRequest;
+export type MermaidResult = ProcessResponse & { success?: boolean; result?: string };
 
-export interface MermaidResult {
-    success: boolean;
-    result: string;
-    replaceText: string;
-}
-
-export class MermaidGenerator {
+export class MermaidGenerator implements Processor {
     private static instance: MermaidGenerator = new MermaidGenerator();
     private constructor() { }
     
     public static getInstance(): MermaidGenerator {
         return MermaidGenerator.instance;
+    }
+
+    /**
+     * 统一的处理接口实现
+     */
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        const result = await this.handleMermaidGeneration(request);
+        return {
+            replaceText: result.replaceText
+        };
     }
 
     /**

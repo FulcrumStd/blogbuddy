@@ -1,24 +1,27 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
+import { ProcessRequest, ProcessResponse, Processor } from './types';
 
-export interface KeywordRequest {
-    selectText: string;      // 包含 BBCmd 的文本
-    filePath: string;        // 文本所在文件的路径
-    msg: string;             // 用户的附加消息
-}
+// 向后兼容的类型别名
+export type KeywordRequest = ProcessRequest;
+export type KeywordResult = ProcessResponse & { success?: boolean; result?: string };
 
-export interface KeywordResult {
-    success: boolean;
-    result: string;
-    replaceText: string;
-}
-
-export class KeywordExtractor {
+export class KeywordExtractor implements Processor {
     private static instance: KeywordExtractor = new KeywordExtractor();
     private constructor() { }
     
     public static getInstance(): KeywordExtractor {
         return KeywordExtractor.instance;
+    }
+
+    /**
+     * 统一的处理接口实现
+     */
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        const result = await this.handleKeywordExtraction(request);
+        return {
+            replaceText: result.replaceText
+        };
     }
 
     /**
@@ -39,16 +42,16 @@ export class KeywordExtractor {
             const keywordContent = await aiProxy.chat(messages, 'KEYWORD');
 
             return {
+                replaceText: keywordContent,
                 success: true,
-                result: 'Keyword extraction completed successfully.',
-                replaceText: keywordContent
+                result: 'Keyword extraction completed successfully.'
             };
 
         } catch (error) {
             return {
+                replaceText: request.selectText, // 失败时返回原文
                 success: false,
-                result: `Keyword extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                replaceText: request.selectText // 失败时返回原文
+                result: `Keyword extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}`
             };
         }
     }

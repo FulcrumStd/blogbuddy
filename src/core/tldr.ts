@@ -1,24 +1,27 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
+import { ProcessRequest, ProcessResponse, Processor } from './types';
 
-export interface TldrRequest {
-    selectText: string;      // 包含 BBCmd 的文本
-    filePath: string;        // 文本所在文件的路径
-    msg: string;             // 用户的附加消息
-}
+// 向后兼容的类型别名
+export type TldrRequest = ProcessRequest;
+export type TldrResult = ProcessResponse & { success?: boolean; result?: string };
 
-export interface TldrResult {
-    success: boolean;
-    result: string;
-    replaceText: string;
-}
-
-export class TldrGenerator {
+export class TldrGenerator implements Processor {
     private static instance: TldrGenerator = new TldrGenerator();
     private constructor() { }
     
     public static getInstance(): TldrGenerator {
         return TldrGenerator.instance;
+    }
+
+    /**
+     * 统一的处理接口实现
+     */
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
+        const result = await this.handleTldrGeneration(request);
+        return {
+            replaceText: result.replaceText
+        };
     }
 
     /**
@@ -39,16 +42,16 @@ export class TldrGenerator {
             const tldrContent = await aiProxy.chat(messages, 'TLDR');
 
             return {
+                replaceText: tldrContent,
                 success: true,
-                result: 'TLDR generation completed successfully.',
-                replaceText: tldrContent
+                result: 'TLDR generation completed successfully.'
             };
 
         } catch (error) {
             return {
+                replaceText: request.selectText, // 失败时返回原文
                 success: false,
-                result: `TLDR generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                replaceText: request.selectText // 失败时返回原文
+                result: `TLDR generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`
             };
         }
     }

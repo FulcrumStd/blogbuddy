@@ -1,37 +1,22 @@
 import { Utils, FileUtils } from '../utils/helpers';
-import { AIProxy, StreamingChatOptions } from '../utils/aiProxy';
+import { AIProxy } from '../utils/aiProxy';
+import { ProcessRequest, ProcessResponse, StreamingProcessor } from './types';
 
-export interface ExpansionRequest {
-    selectText: string;      // 包含 BBCmd 的文本
-    filePath: string;        // 文本所在文件的路径
-    msg: string;             // 用户的附加消息
-}
 
-export interface ExpansionResult {
-    success: boolean;
-    result: string;
-    replaceText: string;
-}
-
-export interface StreamingExpansionOptions {
-    onChunk?: (chunk: string) => void;
-    onProgress?: (current: number, total?: number) => void;
-    onComplete?: (fullResult: string) => void;
-    onError?: (error: Error) => void;
-}
-
-export class Expander {
+export class Expander implements StreamingProcessor {
     private static instance: Expander = new Expander();
     private constructor() { }
-    
+
     public static getInstance(): Expander {
         return Expander.instance;
     }
 
+
+
     /**
-     * 处理扩写请求 - 真正的扩写功能
+     * 统一的处理接口实现
      */
-    public async handleExpansion(request: ExpansionRequest): Promise<ExpansionResult> {
+    public async process(request: ProcessRequest): Promise<ProcessResponse> {
         try {
             // 生成完整的扩写提示词
             const completePrompt = await this.generateCompleteExpandPrompt(request);
@@ -45,123 +30,38 @@ export class Expander {
             const expandedContent = await aiProxy.chat(messages, 'EXPAND');
 
             return {
-                success: true,
-                result: 'Text expansion completed successfully.',
                 replaceText: expandedContent
             };
 
         } catch (error) {
             return {
-                success: false,
-                result: `Expansion failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
                 replaceText: request.selectText // 失败时返回原文
             };
         }
     }
 
-    /**
-     * 处理流式扩写请求 - 返回AsyncGenerator用于逐步输出结果
-     */
-    public async handleExpansionStreaming(
-        request: ExpansionRequest,
-        options: StreamingExpansionOptions = {}
-    ): Promise<AsyncGenerator<string, ExpansionResult, unknown>> {
-        const generator = async function* (this: Expander): AsyncGenerator<string, ExpansionResult, unknown> {
-            try {
-                // 生成完整的扩写提示词
-                const completePrompt = await this.generateCompleteExpandPrompt(request);
-
-                // 准备消息
-                const messages: Array<any> = [];
-                messages.push({ role: 'user', content: completePrompt });
-
-                // 调用AI进行流式扩写
-                const aiProxy = AIProxy.getInstance();
-                let fullResponse = '';
-                let charCount = 0;
-
-                const streamingOptions: StreamingChatOptions = {
-                    onChunk: (chunk: string) => {
-                        fullResponse += chunk;
-                        charCount += chunk.length;
-                        
-                        if (options.onChunk) {
-                            options.onChunk(chunk);
-                        }
-                        
-                        if (options.onProgress) {
-                            // No longer provide inaccurate total estimation
-                            options.onProgress(charCount);
-                        }
-                    },
-                    onComplete: (response: string) => {
-                        if (options.onComplete) {
-                            options.onComplete(response);
-                        }
-                    },
-                    onError: (error: Error) => {
-                        if (options.onError) {
-                            options.onError(error);
-                        }
-                    }
-                };
-
-                const streamGenerator = await aiProxy.chatStreaming(messages, 'EXPAND_STREAM', streamingOptions);
-                
-                // 逐个yield从AI返回的文本块
-                for await (const chunk of streamGenerator) {
-                    yield chunk;
-                }
-
-                // 返回最终结果
-                return {
-                    success: true,
-                    result: 'Streaming text expansion completed successfully.',
-                    replaceText: fullResponse
-                };
-
-            } catch (error) {
-                if (options.onError) {
-                    options.onError(error as Error);
-                }
-
-                return {
-                    success: false,
-                    result: `Streaming expansion failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                    replaceText: request.selectText // 失败时返回原文
-                };
-            }
-        }.bind(this);
-
-        return generator();
-    }
 
     /**
-     * 简化的流式扩写方法 - 仅返回文本流，无回调
+     * 统一的流式处理接口实现
      */
-    public async handleExpansionStreamingSimple(
-        request: ExpansionRequest
-    ): Promise<AsyncGenerator<string, string, unknown>> {
-        const generator = async function* (this: Expander): AsyncGenerator<string, string, unknown> {
-            try {
-                const completePrompt = await this.generateCompleteExpandPrompt(request);
-                const messages: Array<any> = [];
-                messages.push({ role: 'user', content: completePrompt });
+    public async processStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<string, ProcessResponse, unknown>> {
+        const generator = async function* (this: Expander): AsyncGenerator<string, ProcessResponse, unknown> {
+            const completePrompt = await this.generateCompleteExpandPrompt(request);
+            const messages: Array<any> = [];
+            messages.push({ role: 'user', content: completePrompt });
 
-                const aiProxy = AIProxy.getInstance();
-                const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'EXPAND_STREAM_SIMPLE');
-                
-                let fullResponse = '';
-                for await (const chunk of streamGenerator) {
-                    fullResponse += chunk;
-                    yield chunk;
-                }
+            const aiProxy = AIProxy.getInstance();
+            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'EXPAND_STREAM_SIMPLE');
 
-                return fullResponse;
-
-            } catch (error) {
-                throw error;
+            let fullResponse = '';
+            for await (const chunk of streamGenerator) {
+                fullResponse += chunk;
+                yield chunk;
             }
+
+            return { replaceText: fullResponse };
         }.bind(this);
 
         return generator();
@@ -170,13 +70,13 @@ export class Expander {
     /**
      * 生成完整的扩写提示词（集中处理所有提示词逻辑）
      */
-    private async generateCompleteExpandPrompt(request: ExpansionRequest): Promise<string> {
+    private async generateCompleteExpandPrompt(request: ProcessRequest): Promise<string> {
         // 始终读取博客全文作为上下文
         const fileContext = await this.getFileContext(request.filePath, true);
-        
+
         // 构建基础扩写提示词
         const basePrompt = this.buildExpandPrompt(request.selectText, fileContext);
-        
+
         // 添加用户附加指令（如果有）
         return this.addUserInstructions(basePrompt, request.msg);
     }
@@ -188,7 +88,7 @@ export class Expander {
         if (!needsContext || Utils.isEmpty(filePath)) {
             return undefined;
         }
-        
+
         try {
             const content = await FileUtils.readFileContentAsync(
                 filePath,
@@ -246,7 +146,7 @@ Return only the expanded text with no prefixes, explanations, or meta-commentary
         if (Utils.isEmpty(userMsg)) {
             return basePrompt;
         }
-        
+
         return `${basePrompt}
 
 ## Additional User Instructions:
