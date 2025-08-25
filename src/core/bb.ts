@@ -1,6 +1,6 @@
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { Translator } from './translator';
-import { Expander } from './expander';
+import { Expander, StreamingExpansionOptions } from './expander';
 import { TldrGenerator } from './tldr';
 import { KeywordExtractor } from './keyword';
 import { MermaidGenerator } from './mermaid';
@@ -27,6 +27,17 @@ export interface Bquest {
 
 export interface Bsponse {
     replaceText: string      // 替换掉用户选择的包含了 BBCmd 的文本
+}
+
+export interface StreamingBsponse {
+    stream: AsyncGenerator<string, Bsponse, unknown>;
+}
+
+export interface StreamingActOptions {
+    onChunk?: (chunk: string) => void;
+    onProgress?: (current: number, total: number) => void;
+    onComplete?: (result: Bsponse) => void;
+    onError?: (error: Error) => void;
 }
 
 export class BB {
@@ -72,6 +83,47 @@ export class BB {
                 error instanceof Error ? error.message : 'Unknown error',
             );
         }
+    }
+
+    public async actStreaming(
+        request: Bquest,
+        options: StreamingActOptions = {}
+    ): Promise<AsyncGenerator<string, Bsponse, unknown>> {
+        const generator = async function* (this: BB): AsyncGenerator<string, Bsponse, unknown> {
+            try {
+                switch (request.cmd) {
+                    case BBCmd.EXPAND:
+                        return yield* this.handleExpandStreaming(request, options);
+                    case BBCmd.TAG:
+                        return yield* this.handleTagStreaming(request);
+                    default:
+                        throw new AppError(
+                            ErrorCode.UNKNOWN_ERROR,
+                            `BB cannot handle streaming command '${request.cmd}' right now. Only EXPAND and TAG commands support streaming.`,
+                            `Unsupported streaming command: ${request.cmd}`,
+                        );
+                }
+            } catch (error) {
+                if (options.onError) {
+                    options.onError(error as Error);
+                }
+                
+                if (error instanceof AppError) {
+                    throw error;
+                }
+                throw new AppError(
+                    ErrorCode.UNKNOWN_ERROR,
+                    'BB streaming encountered an unexpected error.',
+                    error instanceof Error ? error.message : 'Unknown error',
+                );
+            }
+        }.bind(this);
+
+        return generator();
+    }
+
+    public async actStreamingSimple(request: Bquest): Promise<AsyncGenerator<string, Bsponse, unknown>> {
+        return this.actStreaming(request);
     }
 
     /**
@@ -184,5 +236,68 @@ export class BB {
      */
     private async handleTag(_request: Bquest): Promise<Bsponse> {
         return { replaceText: '[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)' };
+    }
+
+    /**
+     * 处理流式扩写命令
+     */
+    private async *handleExpandStreaming(
+        request: Bquest,
+        options: StreamingActOptions
+    ): AsyncGenerator<string, Bsponse, unknown> {
+        const expander = Expander.getInstance();
+        
+        const streamingOptions: StreamingExpansionOptions = {
+            onChunk: options.onChunk,
+            onProgress: options.onProgress,
+            onError: options.onError
+        };
+
+        const streamGenerator = await expander.handleExpansionStreaming({
+            selectText: request.selectText,
+            filePath: request.filePath,
+            msg: request.msg
+        }, streamingOptions);
+
+        let finalResult: Bsponse = { replaceText: request.selectText };
+        let fullText = '';
+
+        try {
+            for await (const chunk of streamGenerator) {
+                fullText += chunk;
+                yield chunk;
+            }
+            
+            finalResult = { replaceText: fullText };
+            if (options.onComplete) {
+                options.onComplete(finalResult);
+            }
+        } catch (error) {
+            if (options.onError) {
+                options.onError(error as Error);
+            }
+            throw error;
+        }
+
+        return finalResult;
+    }
+
+    /**
+     * 处理流式标签命令 - 模拟流式输出
+     */
+    private async *handleTagStreaming(_request: Bquest): AsyncGenerator<string, Bsponse, unknown> {
+        const tagText = '[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)';
+        const chunks = tagText.split('');
+        
+        for (const char of chunks) {
+            await this.delay(20);
+            yield char;
+        }
+
+        return { replaceText: tagText };
+    }
+
+    private delay(ms: number): Promise<void> {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }

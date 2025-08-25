@@ -66,7 +66,13 @@
           "type": "boolean",
           "default": false,
           "description": "Generate mermaid as code, not image.",
-          "order": 3
+          "order": 4
+        },
+        "blogbuddy.streaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "BB generate content using streaming.",
+          "order": 5
         }
       }
     }

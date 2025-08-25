@@ -2,6 +2,12 @@ import OpenAI from 'openai';
 import { ConfigService } from '../services/ConfigService';
 import { ChatCompletionCreateParams, ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 
+export interface StreamingChatOptions {
+    onChunk?: (chunk: string) => void;
+    onComplete?: (fullResponse: string) => void;
+    onError?: (error: Error) => void;
+}
+
 export interface UsageStats {
     totalRequests: number;
     totalTokensUsed: number;
@@ -125,6 +131,76 @@ export class AIProxy {
         }
         
         return content;
+    }
+
+    public async chatStreaming(
+        messages: ChatCompletionMessageParam[],
+        flag: string,
+        options: StreamingChatOptions = {}
+    ): Promise<AsyncGenerator<string, string, unknown>> {
+        this.initializeClient();
+        const config = ConfigService.getInstance().getAllConfig();
+
+        const params: ChatCompletionCreateParams = {
+            model: config.model,
+            messages: messages,
+            stream: true
+        };
+
+        let fullResponse = '';
+        let totalTokens = 0;
+
+        const generator = async function* (this: AIProxy): AsyncGenerator<string, string, unknown> {
+            try {
+                const stream = await this.client!.chat.completions.create(params);
+                
+                for await (const chunk of stream) {
+                    const delta = chunk.choices[0]?.delta?.content;
+                    
+                    if (delta) {
+                        fullResponse += delta;
+                        
+                        if (options.onChunk) {
+                            options.onChunk(delta);
+                        }
+                        
+                        yield delta;
+                    }
+                    
+                    if (chunk.usage) {
+                        totalTokens = chunk.usage.total_tokens;
+                    }
+                }
+
+                const model = params.model || 'unknown';
+                this.updateUsageStats(flag, model, totalTokens);
+                
+                if (options.onComplete) {
+                    options.onComplete(fullResponse);
+                }
+                
+                return fullResponse;
+
+            } catch (error) {
+                const model = params.model || 'unknown';
+                this.updateUsageStats(flag, model, 0);
+                
+                if (options.onError) {
+                    options.onError(error as Error);
+                }
+                
+                throw error;
+            }
+        }.bind(this);
+
+        return generator();
+    }
+
+    public async chatStreamingSimple(
+        messages: ChatCompletionMessageParam[],
+        flag: string
+    ): Promise<AsyncGenerator<string, string, unknown>> {
+        return this.chatStreaming(messages, flag);
     }
 
     public getUsageStats(): UsageStats {

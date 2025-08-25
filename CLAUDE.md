@@ -374,3 +374,37 @@ const aiResponse = await AIProxy.getInstance().chat(messages, config.model);
 ```
 
 Remember: The application's strength lies in seamless integration and consistent user experience. Every change should enhance the core workflow while maintaining architectural integrity.
+
+## File Creation Guidelines
+
+### 🚫 **CRITICAL: Do NOT Create Unnecessary Files**
+
+**Prohibited File Types:**
+- ❌ **NEVER create example files**: Do not create files like `xxx.example.ts`, `xxx.demo.ts`, `example.ts`, etc.
+- ❌ **NEVER create test documentation**: Do not create files like `xxx.test.md`, `test-guide.md`, `usage.md`, etc.
+- ❌ **NEVER create documentation proactively**: Only create documentation files if explicitly requested by the user
+
+**Why These Rules Exist:**
+- **Code Bloat**: Example files clutter the codebase without providing real functionality
+- **Maintenance Burden**: Additional files require ongoing maintenance and can become outdated
+- **Confusion**: Example files can confuse developers about which files contain actual implementation
+- **Repository Pollution**: Test documentation files add unnecessary noise to the codebase
+
+**What to Do Instead:**
+- **For Examples**: Include usage examples in code comments or existing documentation
+- **For Testing**: Create functional code that can be tested through normal usage
+- **For Documentation**: Only create when explicitly requested by the user
+
+**Acceptable File Creation:**
+- ✅ Core implementation files (actual features)
+- ✅ Configuration files when necessary for functionality  
+- ✅ Types and interfaces that are actually used
+- ✅ Documentation files when explicitly requested by the user
+
+**Before Creating Any File:**
+1. Ask yourself: "Is this file absolutely necessary for the functionality?"
+2. Consider: "Can this information be included in existing files or comments?"
+3. Verify: "Did the user explicitly request this file?"
+
+**Exception:**
+Only create example or test files if the user explicitly requests them with clear statements like "create an example file" or "make a test document".

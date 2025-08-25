@@ -4,7 +4,8 @@ export enum ConfigKey {
     API_KEY = 'apiKey',
     MODEL = 'model',
     BASE_URL = 'baseURL',
-    MERMAID_CODE = 'mermaidCode'
+    MERMAID_CODE = 'mermaidCode',
+    STREAMING = 'streaming'
 }
 
 
@@ -37,7 +38,8 @@ export class ConfigService {
             apiKey: this.get<string>(ConfigKey.API_KEY, ''),
             model: this.get<string>(ConfigKey.MODEL, ''),
             baseURL: this.get<string>(ConfigKey.BASE_URL, ''),
-            mermaidCode: this.get<boolean>(ConfigKey.MERMAID_CODE, false)
+            mermaidCode: this.get<boolean>(ConfigKey.MERMAID_CODE, false),
+            streaming: this.get<boolean>(ConfigKey.STREAMING, true),
         };
     }
 
