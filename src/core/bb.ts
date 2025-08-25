@@ -60,17 +60,25 @@ export class BB {
             switch (request.cmd) {
                 case BBCmd.EXPAND:
                     return yield* await Expander.getInstance().processStreaming(request);
+                case BBCmd.KEYWORD:
+                    return yield* await KeywordExtractor.getInstance().processStreaming(request);
+                case BBCmd.TLDR:
+                    return yield* await TldrGenerator.getInstance().processStreaming(request);
+                case BBCmd.IMPROVE:
+                    return yield* await TextImprover.getInstance().processStreaming(request);
+                case BBCmd.NORMAL:
+                    return yield* await NormalProcessor.getInstance().processStreaming(request);
+                case BBCmd.MERMAID:
+                    return yield* await MermaidGenerator.getInstance().processStreaming(request);
                 case BBCmd.TRANSLATE:
-                    const result = await Translator.getInstance().process(request);
-                    yield {text: result.replaceText};
-                    return result;
+                    return yield* await Translator.getInstance().processStreaming(request);
                 case BBCmd.TAG:
                     yield {text: this.tagText};
                     return { replaceText: this.tagText };
                 default:
                     throw new AppError(
                         ErrorCode.UNKNOWN_ERROR,
-                        `BB cannot handle streaming command '${request.cmd}' right now. Only EXPAND and TAG commands support streaming.`,
+                        `BB cannot handle streaming command '${request.cmd}' right now. Only EXPAND, KEYWORD, TLDR, IMPROVE, NORMAL, MERMAID and TAG commands support streaming.`,
                         `Unsupported command: ${request.cmd}`,
                     );
             }

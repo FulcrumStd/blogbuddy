@@ -1,12 +1,12 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { ProcessRequest, ProcessResponse, Processor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
 
-export class TextImprover implements Processor {
+export class TextImprover implements StreamingProcessor {
     private static instance: TextImprover = new TextImprover();
     private constructor() { }
 
@@ -31,6 +31,24 @@ export class TextImprover implements Processor {
     }
 
     /**
+     * 统一的流式处理接口实现
+     */
+    public async processStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        // 判断是否为文本块润色还是全文润色
+        const hasSelectedText = !Utils.isEmpty(request.selectText);
+
+        if (hasSelectedText) {
+            // 文本块润色模式 - 使用真正的流式处理（类似 Expander）
+            return this.improveTextBlockStreaming(request);
+        } else {
+            // 全文润色模式 - 使用模拟流式处理（类似 Translator）
+            return this.improveFullDocumentStreaming(request);
+        }
+    }
+
+    /**
      * 文本块润色 - 类似 Expand 模式
      */
     private async improveTextBlock(request: ProcessRequest): Promise<ProcessResponse> {
@@ -50,6 +68,35 @@ export class TextImprover implements Processor {
         return {
             replaceText: improvedContent
         };
+    }
+
+    /**
+     * 文本块流式润色 - 类似 Expander 模式（真正的流式处理）
+     */
+    private async improveTextBlockStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: TextImprover): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
+            // 获取全文上下文
+            const fileContext = await this.getFileContext(request.filePath);
+            const completePrompt = this.generateCompleteImprovePrompt(request.selectText, request.msg, 'block', fileContext);
+
+            const messages: Array<any> = [];
+            messages.push({ role: 'user', content: completePrompt });
+
+            const aiProxy = AIProxy.getInstance();
+            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'IMPROVE');
+
+            let fullResponse = '';
+            for await (const chunk of streamGenerator) {
+                fullResponse += chunk;
+                yield { text: chunk };
+            }
+
+            return { replaceText: fullResponse };
+        }.bind(this);
+
+        return generator();
     }
 
     /**
@@ -105,6 +152,20 @@ export class TextImprover implements Processor {
         return {
             replaceText: resultMessage
         };
+    }
+
+    /**
+     * 全文流式润色 - 类似 Translator 模式（模拟流式处理）
+     */
+    private async improveFullDocumentStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: TextImprover): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
+            const response = await this.improveFullDocument(request);
+            yield { text: response.replaceText, replace: true };
+            return response;
+        }.bind(this);
+        return generator();
     }
 
     /**

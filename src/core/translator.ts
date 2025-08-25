@@ -2,18 +2,28 @@ import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { Utils, FileUtils } from '../utils/helpers';
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 import { AIProxy } from '../utils/aiProxy';
-import { ProcessRequest, ProcessResponse, Processor } from './types';
+import { ProcessChunk, ProcessRequest, ProcessResponse, Processor, StreamingProcessor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
 
 
-export class Translator implements Processor {
+export class Translator implements StreamingProcessor {
     private static instance: Translator = new Translator();
     private constructor() { }
 
+
     public static getInstance(): Translator {
         return Translator.instance;
+    }
+
+    public async processStreaming(request: ProcessRequest): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: Translator): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
+            const response = await this.process(request);
+            yield { text: response.replaceText, replace: true };
+            return response;
+        }.bind(this);
+        return generator();
     }
 
     /**

@@ -1,9 +1,9 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
-import { ProcessRequest, ProcessResponse, Processor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
 
 
-export class KeywordExtractor implements Processor {
+export class KeywordExtractor implements StreamingProcessor {
     private static instance: KeywordExtractor = new KeywordExtractor();
     private constructor() { }
 
@@ -28,6 +28,32 @@ export class KeywordExtractor implements Processor {
         return {
             replaceText: keywordContent,
         };
+    }
+
+    /**
+     * 统一的流式处理接口实现
+     */
+    public async processStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: KeywordExtractor): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
+            const completePrompt = await this.generateCompleteKeywordPrompt(request);
+            const messages: Array<any> = [];
+            messages.push({ role: 'user', content: completePrompt });
+
+            const aiProxy = AIProxy.getInstance();
+            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'KEYWORD');
+
+            let fullResponse = '';
+            for await (const chunk of streamGenerator) {
+                fullResponse += chunk;
+                yield { text: chunk };
+            }
+
+            return { replaceText: fullResponse };
+        }.bind(this);
+
+        return generator();
     }
 
 

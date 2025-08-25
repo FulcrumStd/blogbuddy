@@ -1,11 +1,11 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { ProcessRequest, ProcessResponse, Processor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export class NormalProcessor implements Processor {
+export class NormalProcessor implements StreamingProcessor {
     private static instance: NormalProcessor = new NormalProcessor();
     private constructor() { }
 
@@ -39,6 +39,33 @@ export class NormalProcessor implements Processor {
     }
 
     /**
+     * 统一的流式处理接口实现
+     */
+    public async processStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        // 验证用户是否提供了指示
+        if (Utils.isEmpty(request.msg)) {
+            throw new AppError(
+                ErrorCode.SERVER_ERROR,
+                'Normal task requires user instructions. Please specify what you want me to do with the text.',
+                'Normal task requires user instructions'
+            );
+        }
+
+        // 判断是否为局部文本操作还是全文操作
+        const hasSelectedText = !Utils.isEmpty(request.selectText);
+
+        if (hasSelectedText) {
+            // 局部文本操作模式 - 使用真正的流式处理（类似 Expander）
+            return this.processTextBlockStreaming(request);
+        } else {
+            // 全文操作模式 - 使用模拟流式处理（类似 Translator）
+            return this.processFullDocumentStreaming(request);
+        }
+    }
+
+    /**
      * 局部文本操作 - 替换局部文本
      */
     private async processTextBlock(request: ProcessRequest): Promise<ProcessResponse> {
@@ -56,6 +83,35 @@ export class NormalProcessor implements Processor {
         return {
             replaceText: processedContent
         };
+    }
+
+    /**
+     * 局部文本流式操作 - 类似 Expander 模式（真正的流式处理）
+     */
+    private async processTextBlockStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: NormalProcessor): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
+            const taskPrompt = this.getNormalBlockPrompt(request.selectText, request.msg);
+
+            // 准备消息 - 使用核心系统提示词
+            const messages: Array<any> = [];
+            messages.push({ role: 'system', content: this.getCoreSystemPrompt() });
+            messages.push({ role: 'user', content: taskPrompt });
+
+            const aiProxy = AIProxy.getInstance();
+            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'NORMAL');
+
+            let fullResponse = '';
+            for await (const chunk of streamGenerator) {
+                fullResponse += chunk;
+                yield { text: chunk };
+            }
+
+            return { replaceText: fullResponse };
+        }.bind(this);
+
+        return generator();
     }
 
     /**
@@ -112,6 +168,20 @@ export class NormalProcessor implements Processor {
         return {
             replaceText: resultMessage
         };
+    }
+
+    /**
+     * 全文流式操作 - 类似 Translator 模式（模拟流式处理）
+     */
+    private async processFullDocumentStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: NormalProcessor): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
+            const response = await this.processFullDocument(request);
+            yield { text: response.replaceText, replace: true };
+            return response;
+        }.bind(this);
+        return generator();
     }
 
     /**

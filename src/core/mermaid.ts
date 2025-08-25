@@ -3,10 +3,10 @@ import { AIProxy } from '../utils/aiProxy';
 import { KrokiService } from '../services/KrokiService';
 import { ConfigService, ConfigKey } from '../services/ConfigService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { ProcessRequest, ProcessResponse, Processor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
 import * as path from 'path';
 
-export class MermaidGenerator implements Processor {
+export class MermaidGenerator implements StreamingProcessor {
     private static instance: MermaidGenerator = new MermaidGenerator();
     private constructor() { }
 
@@ -43,6 +43,57 @@ export class MermaidGenerator implements Processor {
     }
 
     /**
+     * 统一的流式处理接口实现
+     */
+    public async processStreaming(
+        request: ProcessRequest
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: MermaidGenerator): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
+            // 获取配置决定输出方式
+            const configService = ConfigService.getInstance();
+            const mermaidCodeConfig = configService.get<boolean>(ConfigKey.MERMAID_CODE, false);
+
+            // 流式生成 Mermaid 代码
+            let mermaidCode = '';
+            let hasStarted = false;
+            
+            for await (const chunk of await this.generateMermaidCodeStreaming(request)) {
+                if (!hasStarted) {
+                    // 第一个块时输出代码块开始标记
+                    yield { text: '```mermaid\n' };
+                    hasStarted = true;
+                }
+                
+                mermaidCode += chunk.text;
+                yield chunk;
+            }
+
+            // 输出代码块结束标记
+            yield { text: '\n```' };
+
+            if (mermaidCodeConfig) {
+                // 代码模式：直接返回代码块
+                return {
+                    replaceText: `\`\`\`mermaid\n${mermaidCode}\n\`\`\``
+                };
+            } else {
+                // 图片模式：生成 SVG 图片并替换代码块
+                const imagePath = await this.generateSVGImage(mermaidCode, request.filePath);
+                const markdownImage = `![Mermaid Diagram](${path.basename(imagePath)})`;
+                
+                // 使用 replace: true 替换之前流式输出的代码
+                yield { text: markdownImage, replace: true };
+                
+                return {
+                    replaceText: markdownImage
+                };
+            }
+        }.bind(this);
+
+        return generator();
+    }
+
+    /**
      * 使用 AI 生成 Mermaid 代码
      */
     private async generateMermaidCode(request: ProcessRequest): Promise<string> {
@@ -71,6 +122,47 @@ export class MermaidGenerator implements Processor {
         }
 
         return mermaidCode;
+    }
+
+    /**
+     * 使用 AI 流式生成 Mermaid 代码
+     */
+    private async generateMermaidCodeStreaming(request: ProcessRequest): Promise<AsyncGenerator<ProcessChunk, string, unknown>> {
+        const generator = async function* (this: MermaidGenerator): AsyncGenerator<ProcessChunk, string, unknown> {
+            const completePrompt = this.generateCompleteMermaidPrompt(request.selectText, request.msg);
+
+            // 准备消息
+            const messages: Array<any> = [];
+            messages.push({ role: 'user', content: completePrompt });
+
+            // 调用AI流式生成Mermaid代码
+            const aiProxy = AIProxy.getInstance();
+            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'MERMAID');
+
+            let fullResponse = '';
+            for await (const chunk of streamGenerator) {
+                fullResponse += chunk;
+                yield { text: chunk };
+            }
+
+            // 提取 Mermaid 代码（移除可能的代码块标记）
+            const mermaidCode = this.extractMermaidCode(fullResponse);
+
+            // 验证生成的代码
+            const krokiService = KrokiService.getInstance();
+            const validation = krokiService.validateMermaidCode(mermaidCode);
+            if (!validation.isValid) {
+                throw new AppError(
+                    ErrorCode.SERVER_ERROR,
+                    `Generated Mermaid code is invalid: ${validation.error}`,
+                    'Mermaid code validation failed'
+                );
+            }
+
+            return mermaidCode;
+        }.bind(this);
+
+        return generator();
     }
 
     /**
