@@ -78,7 +78,7 @@ class BBCommand {
             await StreamingTextUtils.streamChunksToRange(
                 editor,
                 range,
-                this.convertToStreamChunks(streamGenerator),
+                streamGenerator,
                 {
                     chunkDelay: 1,
                     showCursor: true,
@@ -138,17 +138,6 @@ class BBCommand {
             }
         } finally {
             lock.dispose();
-        }
-    }
-
-    /**
-     * Convert stream generator to StreamChunk format
-     */
-    private async *convertToStreamChunks(
-        generator: AsyncGenerator<string, any, unknown>
-    ): AsyncGenerator<{ text: string }, void, unknown> {
-        for await (const chunk of generator) {
-            yield { text: chunk };
         }
     }
 }

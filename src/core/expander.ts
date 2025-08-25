@@ -1,6 +1,6 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
-import { ProcessRequest, ProcessResponse, StreamingProcessor } from './types';
+import { ProcessChunk, ProcessRequest, ProcessResponse, StreamingProcessor } from './types';
 
 
 export class Expander implements StreamingProcessor {
@@ -39,8 +39,8 @@ export class Expander implements StreamingProcessor {
      */
     public async processStreaming(
         request: ProcessRequest
-    ): Promise<AsyncGenerator<string, ProcessResponse, unknown>> {
-        const generator = async function* (this: Expander): AsyncGenerator<string, ProcessResponse, unknown> {
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: Expander): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             const completePrompt = await this.generateCompleteExpandPrompt(request);
             const messages: Array<any> = [];
             messages.push({ role: 'user', content: completePrompt });
@@ -51,7 +51,7 @@ export class Expander implements StreamingProcessor {
             let fullResponse = '';
             for await (const chunk of streamGenerator) {
                 fullResponse += chunk;
-                yield chunk;
+                yield { text: chunk };
             }
 
             return { replaceText: fullResponse };

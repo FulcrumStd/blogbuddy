@@ -1,3 +1,5 @@
+import { StreamChunk } from '../utils/StreamingTextWriter';
+
 export enum BBCmd {
     NORMAL = 'bb',          // 直接给 Bgent 指令
     EXPAND = 'bb-expd',     // 扩写
@@ -29,12 +31,7 @@ export interface ProcessResponse {
     replaceText: string;     // 替换掉用户选择文本的内容
 }
 
-/**
- * 统一的流式响应接口
- */
-export interface StreamingResponse {
-    stream: AsyncGenerator<string, ProcessResponse, unknown>;
-}
+export type ProcessChunk=StreamChunk;
 
 /**
  * 处理器统一接口
@@ -62,5 +59,5 @@ export interface StreamingProcessor extends Processor {
      */
     processStreaming(
         request: ProcessRequest
-    ): Promise<AsyncGenerator<string, ProcessResponse, unknown>>;
+    ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>>;
 }

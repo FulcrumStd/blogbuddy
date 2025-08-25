@@ -6,7 +6,7 @@ import { KeywordExtractor } from './keyword';
 import { MermaidGenerator } from './mermaid';
 import { TextImprover } from './improve';
 import { NormalProcessor } from './normal';
-import { ProcessRequest, ProcessResponse,BBCmd } from './types';
+import { ProcessRequest, ProcessResponse,BBCmd, ProcessChunk } from './types';
 
 
 export class BB {
@@ -55,17 +55,17 @@ export class BB {
         }
     }
 
-    public async actStreaming(request: ProcessRequest): Promise<AsyncGenerator<string, ProcessResponse, unknown>> {
-        const generator = async function* (this: BB): AsyncGenerator<string, ProcessResponse, unknown> {
+    public async actStreaming(request: ProcessRequest): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const generator = async function* (this: BB): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             switch (request.cmd) {
                 case BBCmd.EXPAND:
                     return yield* await Expander.getInstance().processStreaming(request);
                 case BBCmd.TRANSLATE:
                     const result = await Translator.getInstance().process(request);
-                    yield result.replaceText;
+                    yield {text: result.replaceText};
                     return result;
                 case BBCmd.TAG:
-                    yield this.tagText;
+                    yield {text: this.tagText};
                     return { replaceText: this.tagText };
                 default:
                     throw new AppError(
