@@ -35,7 +35,7 @@ export interface StreamingBsponse {
 
 export interface StreamingActOptions {
     onChunk?: (chunk: string) => void;
-    onProgress?: (current: number, total: number) => void;
+    onProgress?: (current: number, total?: number) => void;
     onComplete?: (result: Bsponse) => void;
     onError?: (error: Error) => void;
 }

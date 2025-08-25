@@ -15,7 +15,7 @@ export interface ExpansionResult {
 
 export interface StreamingExpansionOptions {
     onChunk?: (chunk: string) => void;
-    onProgress?: (current: number, total: number) => void;
+    onProgress?: (current: number, total?: number) => void;
     onComplete?: (fullResult: string) => void;
     onError?: (error: Error) => void;
 }
@@ -79,7 +79,6 @@ export class Expander {
                 const aiProxy = AIProxy.getInstance();
                 let fullResponse = '';
                 let charCount = 0;
-                const estimatedTotalLength = request.selectText.length * 3; // 估算扩展后的长度
 
                 const streamingOptions: StreamingChatOptions = {
                     onChunk: (chunk: string) => {
@@ -91,7 +90,8 @@ export class Expander {
                         }
                         
                         if (options.onProgress) {
-                            options.onProgress(charCount, Math.max(estimatedTotalLength, charCount));
+                            // No longer provide inaccurate total estimation
+                            options.onProgress(charCount);
                         }
                     },
                     onComplete: (response: string) => {

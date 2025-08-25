@@ -7,7 +7,7 @@ export interface StreamingOptions {
     cursorChar?: string;
     lockRange?: boolean;
     lockMessage?: string;
-    onProgress?: (writtenChars: number, totalChars: number) => void;
+    onProgress?: (writtenChars: number, totalChars?: number) => void;
     onComplete?: () => void;
     onError?: (error: Error) => void;
 }
@@ -82,6 +82,20 @@ export class StreamingTextWriter {
         await this.writeStream(chunks);
     }
 
+    /**
+     * Write streaming content without knowing total length in advance
+     */
+    async writeStreamingChunks(chunks: AsyncIterable<string>): Promise<void> {
+        const streamChunks = this.convertStringChunksToStreamChunks(chunks);
+        await this.writeStream(streamChunks);
+    }
+
+    private async *convertStringChunksToStreamChunks(chunks: AsyncIterable<string>): AsyncGenerator<StreamChunk> {
+        for await (const chunk of chunks) {
+            yield { text: chunk };
+        }
+    }
+
     private async *createStringChunks(text: string, chunkSize: number): AsyncGenerator<StreamChunk> {
         for (let i = 0; i < text.length; i += chunkSize) {
             yield { text: text.slice(i, i + chunkSize) };
@@ -113,7 +127,9 @@ export class StreamingTextWriter {
         await this.updateEditorText(displayText);
         this.writtenChars = textToWrite.length;
 
-        this.options.onProgress(this.writtenChars, this.totalChars);
+        // Support progress reporting with or without total
+        const totalToReport = this.totalChars > 0 ? this.totalChars : undefined;
+        this.options.onProgress(this.writtenChars, totalToReport);
 
         if (this.writtenChars < this.buffer.length) {
             await this.scheduleNextRender();
@@ -259,6 +275,20 @@ export class StreamingTextUtils {
     ): Promise<void> {
         const writer = new StreamingTextWriter(editor, range, options);
         await writer.writeStream(chunks);
+        writer.dispose();
+    }
+
+    /**
+     * Stream raw string chunks without known total length
+     */
+    static async streamStringChunksToRange(
+        editor: vscode.TextEditor,
+        range: vscode.Range,
+        chunks: AsyncIterable<string>,
+        options: StreamingOptions = {}
+    ): Promise<void> {
+        const writer = new StreamingTextWriter(editor, range, options);
+        await writer.writeStreamingChunks(chunks);
         writer.dispose();
     }
 

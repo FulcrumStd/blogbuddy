@@ -5,6 +5,7 @@ import { BB, BBCmd, StreamingActOptions } from '../core/bb';
 import { StreamingTextUtils } from '../utils/StreamingTextWriter';
 import { ConfigService } from '../services/ConfigService';
 import { lockDocumentRange } from '../utils/DocumentLock';
+import { StatusBarAnimation } from '../utils/StatusBarAnimation';
 
 export function registerBBCommand(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.commands.registerCommand(
@@ -41,7 +42,7 @@ class BBCommand {
         // Check configuration to decide between streaming or non-streaming mode
         const config = ConfigService.getInstance().getAllConfig();
         const useStreaming = config.streaming;
-
+        vscode.window.showInformationMessage('BB: Start woking.');
         if (useStreaming) {
             // Streaming processing mode
             await this.handleStreamingMode(editor, result.range, rp_text, cmd, ps.message);
@@ -61,21 +62,32 @@ class BBCommand {
         cmd: BBCmd,
         message: string
     ): Promise<void> {
+        const animation = StatusBarAnimation.getInstance();
+        
         try {
+            // Start with streaming animation
+            animation.showStatic(`$(loading~spin) BB streaming ${cmd}`);
+            
             const streamingOptions: StreamingActOptions = {
                 onChunk: (chunk: string) => {
                     console.log('BB streaming chunk:', chunk);
                 },
-                onProgress: (current: number, total: number) => {
-                    const percentage = Math.round((current / total) * 100);
-                    vscode.window.setStatusBarMessage(`BB progress: ${percentage}% (${current}/${total} chars)`, 1000);
+                onProgress: (current: number, total?: number) => {
+                    if (total && total > 0) {
+                        const percentage = Math.round((current / total) * 100);
+                        animation.showStatic(`$(loading~spin) BB progress: ${percentage}% (${current}/${total} chars)`);
+                    } else {
+                        animation.showStatic(`$(loading~spin) BB progress: ${current} chars generated`);
+                    }
                 },
                 onComplete: (result) => {
                     console.log('BB processing completed, total length:', result.replaceText.length);
+                    animation.showStatic('BB: Streaming completed!', 3000);
                     vscode.window.showInformationMessage('BB: Streaming completed!');
                 },
                 onError: (error: Error) => {
                     console.error('BB processing error:', error);
+                    animation.showStatic(`BB failed: ${error.message}`, 5000);
                     vscode.window.showErrorMessage(`BB processing failed: ${error.message}`);
                 }
             };
@@ -98,8 +110,12 @@ class BBCommand {
                     cursorChar: '<BB',
                     lockRange: true,
                     lockMessage: `BB is executing ${cmd} command...`,
-                    onProgress: (written: number, total: number) => {
-                        console.log(`Streaming progress: ${written}/${total} chars`);
+                    onProgress: (written: number, total?: number) => {
+                        if (total && total > 0) {
+                            console.log(`Streaming progress: ${written}/${total} chars`);
+                        } else {
+                            console.log(`Streaming progress: ${written} chars written`);
+                        }
                     },
                     onComplete: () => {
                         console.log('Streaming output completed');
@@ -128,7 +144,10 @@ class BBCommand {
         message: string
     ): Promise<void> {
         const lock = lockDocumentRange(editor, range, 'BB is working on this...');
-        const sb = vscode.window.setStatusBarMessage('BB is working');
+        const animation = StatusBarAnimation.getInstance();
+        
+        // Start animation with command-specific message
+        animation.showStatic(`$(loading~spin) BB executing ${cmd}`);
         
         try {
             const response = await BB.i().act({
@@ -144,15 +163,17 @@ class BBCommand {
                 );
             }
             
-            vscode.window.showInformationMessage('BB: DONNNNNNNE!');
+            // Show completion message
+            animation.showStatic('BB: Completed!', 3000);
+            vscode.window.showInformationMessage('BB: Completed!');
             
         } catch (e: unknown) {
             if (e instanceof Error) {
+                animation.showStatic(`BB failed: ${e.message}`, 5000);
                 vscode.window.showErrorMessage(`BB processing failed: ${e.message}`);
             }
         } finally {
             lock.dispose();
-            sb.dispose();
         }
     }
 
