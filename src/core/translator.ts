@@ -129,7 +129,7 @@ User message: "${userMessage}"`;
     }
 
     public translateTag(): string {
-        return '[![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)';
+        return '[![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)';
     }
 
 

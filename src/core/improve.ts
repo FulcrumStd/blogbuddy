@@ -281,7 +281,7 @@ Please incorporate these specific requirements while improving the text.`;
      * 获取 BB Improve 标签文本
      */
     public improveTag(): string {
-        return '[![BB](https://img.shields.io/badge/improved_by-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)';
+        return '[![BB](https://img.shields.io/badge/improved_by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)';
     }
 
 }

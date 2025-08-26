@@ -393,6 +393,6 @@ Please follow the user's request exactly as specified. Process the entire docume
      * 获取 BB Normal 标签文本
      */
     public normalTag(): string {
-        return '[![BB](https://img.shields.io/badge/processed-by-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)';
+        return '[![BB](https://img.shields.io/badge/processed-by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)';
     }
 }

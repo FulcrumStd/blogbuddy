@@ -1,6 +1,6 @@
 # BlogBuddy - AI 驱动的写作助手
-[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)
-[![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)
+[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
+[![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
 BlogBuddy 是一个强大的 VS Code 扩展，通过 AI 驱动的功能增强你的写作工作流。无论你是在编写技术文档、博客文章，还是任何 Markdown 内容，BlogBuddy 都能在编辑器中提供智能文本处理能力。
 
@@ -180,7 +180,7 @@ API 认证流程：
 ```markdown
 <bb-tag>
 ```
-**输出**：`[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)`
+**输出**：`[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)`
 
 #### 8. `<bb:your-instruction>` - 通用 AI 任务 ⚠️
 **目的**：使用自定义指令执行任何 AI 任务  

@@ -1,5 +1,5 @@
 # BlogBuddy - AI-Powered Writing Assistant
-[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)
+[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
 BlogBuddy is a powerful VS Code extension that enhances your writing workflow with AI-powered features. Whether you're writing technical documentation, blog posts, or any markdown content, BlogBuddy provides intelligent text processing capabilities right in your editor.
 
@@ -179,7 +179,7 @@ API Authentication Flow:
 ```markdown
 <bb-tag>
 ```
-**Output**: `[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)`
+**Output**: `[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)`
 
 #### 8. `<bb:your-instruction>` - General AI Tasks ⚠️
 **Purpose**: Execute any AI task with custom instructions

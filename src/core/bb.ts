@@ -10,7 +10,7 @@ import { ProcessRequest, ProcessResponse,BBCmd, ProcessChunk } from './types';
 
 
 export class BB {
-    tagText: string = '[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)';
+    tagText: string = '[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)';
     private static instance: BB = new BB();
     private constructor() { }
     public static i(): BB {

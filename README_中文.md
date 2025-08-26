@@ -6,10 +6,10 @@
 
 **Blog Buddy** 利用 AI 写作辅助，让 Markdown 魔法成真！
 
-[![版本](https://img.shields.io/badge/version-0.0.1-FFD900.svg)](https://github.com/SandyKidYao/blogbuddy)
+[![版本](https://img.shields.io/badge/version-0.0.1-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
 [![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
-[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)
-[![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)
+[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
+[![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 </div>
 
 
@@ -106,7 +106,7 @@ BlogBuddy 需要配置 AI 提供商。在 VS Code 设置中配置：
 
 ## 🐛 问题与反馈
 
-发现 bug 或有功能建议？请在我们的 GitHub 仓库 [提交问题](https://github.com/SandyKidYao/blogbuddy/issues)。
+发现 bug 或有功能建议？请在我们的 GitHub 仓库 [提交问题](https://github.com/FulcrumStd/blogbuddy/issues)。
 
 ---
 

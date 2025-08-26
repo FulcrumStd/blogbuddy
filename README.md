@@ -6,9 +6,9 @@
 
 **Blog Buddy** makes Markdown magic happen with AI-powered writing assistance!
 
-[![Version](https://img.shields.io/badge/version-0.0.1-FFD900.svg)](https://github.com/SandyKidYao/blogbuddy)
+[![Version](https://img.shields.io/badge/version-0.0.1-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
 [![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
-[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/SandyKidYao/blogbuddy)
+[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
 </div>
 
@@ -106,7 +106,7 @@ BlogBuddy requires AI provider configuration. Go to VS Code Settings and configu
 
 ## 🐛 Issues & Feedback
 
-Found a bug or have a feature suggestion? Please [open an issue](https://github.com/SandyKidYao/blogbuddy/issues) on our GitHub repository.
+Found a bug or have a feature suggestion? Please [open an issue](https://github.com/FulcrumStd/blogbuddy/issues) on our GitHub repository.
 
 ---
 
