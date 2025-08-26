@@ -4,6 +4,7 @@
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
   "version": "0.0.1",
   "icon": "images/icon.png",
+  "repository": "https://github.com/SandyKidYao/blogbuddy",
   "engines": {
     "vscode": "^1.102.0"
   },
