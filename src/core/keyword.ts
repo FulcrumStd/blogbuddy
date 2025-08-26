@@ -24,9 +24,9 @@ export class KeywordExtractor implements StreamingProcessor {
         // 调用AI进行关键词提取
         const aiProxy = AIProxy.getInstance();
         const keywordContent = await aiProxy.chat(messages, 'KEYWORD');
-
+        // keyword 的 cmd 保留用户选择的文本
         return {
-            replaceText: keywordContent,
+            replaceText: `${request.selectText}\n ${keywordContent}`,
         };
     }
 
@@ -43,8 +43,10 @@ export class KeywordExtractor implements StreamingProcessor {
 
             const aiProxy = AIProxy.getInstance();
             const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'KEYWORD');
+            // keyword 的 cmd 保留用户选择的文本
+            let fullResponse = request.selectText + '\n';
+            yield {text: fullResponse};
 
-            let fullResponse = '';
             for await (const chunk of streamGenerator) {
                 fullResponse += chunk;
                 yield { text: chunk };

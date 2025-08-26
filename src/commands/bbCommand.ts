@@ -16,45 +16,61 @@ export function registerBBCommand(context: vscode.ExtensionContext) {
 }
 
 class BBCommand {
-    async hiBB(): Promise<void> {
-        const result = TextUtils.getSelectedTextOrParagraph();
-        const editor = vscode.window.activeTextEditor;
-        if (!result) {
-            return;
-        }
-        if (!editor) {
-            return;
-        }
-        const text = result.text;
-        const ps = findAndParse(text);
-        if (!ps) {
-            return;
-        }
-        const cmd = Object.values(BBCmd).find(status => ps.command === status);
-        if (!cmd) {
-            throw new AppError(
-                ErrorCode.UNKNOWN_CMD,
-                "BB don't know cmd: " + ps.command,
-                "BB don't know cmd: " + ps.command,
-            );
-        }
-        const bquest = {
-                filePath: editor.document.uri.fsPath,
-                selectText: text.slice(0, ps.startIndex) + text.slice(ps.endIndex),
-                cmd: cmd,
-                msg: ps.message,
-                cmdText: ps.fullMatch
-        };
+    private static isExecuting = false;
 
-        // Check configuration to decide between streaming or non-streaming mode
-        const config = ConfigService.getInstance().getAllConfig();
-        const useStreaming = config.streaming;
-        if (useStreaming) {
-            // Streaming processing mode
-            await this.handleStreamingMode(editor, result.range, bquest);
-        } else {
-            // Traditional non-streaming processing mode
-            await this.handleNonStreamingMode(editor, result.range, bquest);
+    async hiBB(): Promise<void> {
+        // Prevent concurrent execution
+        if (BBCommand.isExecuting) {
+            vscode.window.showWarningMessage('BB is already executing a command. Please wait...');
+            return;
+        }
+
+        // Set execution flag
+        BBCommand.isExecuting = true;
+
+        try {
+            const result = TextUtils.getSelectedTextOrParagraph();
+            const editor = vscode.window.activeTextEditor;
+            if (!result) {
+                return;
+            }
+            if (!editor) {
+                return;
+            }
+            const text = result.text;
+            const ps = findAndParse(text);
+            if (!ps) {
+                return;
+            }
+            const cmd = Object.values(BBCmd).find(status => ps.command === status);
+            if (!cmd) {
+                throw new AppError(
+                    ErrorCode.UNKNOWN_CMD,
+                    "BB don't know cmd: " + ps.command,
+                    "BB don't know cmd: " + ps.command,
+                );
+            }
+            const bquest = {
+                    filePath: editor.document.uri.fsPath,
+                    selectText: text.slice(0, ps.startIndex) + text.slice(ps.endIndex),
+                    cmd: cmd,
+                    msg: ps.message,
+                    cmdText: ps.fullMatch
+            };
+
+            // Check configuration to decide between streaming or non-streaming mode
+            const config = ConfigService.getInstance().getAllConfig();
+            const useStreaming = config.streaming;
+            if (useStreaming) {
+                // Streaming processing mode
+                await this.handleStreamingMode(editor, result.range, bquest);
+            } else {
+                // Traditional non-streaming processing mode
+                await this.handleNonStreamingMode(editor, result.range, bquest);
+            }
+        } finally {
+            // Always reset execution flag
+            BBCommand.isExecuting = false;
         }
     }
 
@@ -81,8 +97,6 @@ class BBCommand {
                 streamGenerator,
                 {
                     chunkDelay: 1,
-                    showCursor: true,
-                    cursorChar: '<BB',
                     lockRange: true,
                     lockMessage: `BB is executing ${request.cmd} command...`,
                     onProgress: (written: number, total?: number) => {

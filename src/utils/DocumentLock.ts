@@ -73,6 +73,9 @@ export class DocumentLockManager {
 
         this.updateDecorations(editor);
 
+        // 创建锁定时检查当前光标位置，如果在锁定区域内则移动
+        this.selectionGuard!.adjustSelectionsForRange(editor, range);
+
         // 返回自动释放的 Disposable
         return new vscode.Disposable(() => {
             this.unlockRange(editor, lockId);
@@ -205,6 +208,15 @@ export class DocumentLockManager {
     }
 
     /**
+     * 检查锁定区域是否在文件末尾
+     */
+    public isRangeAtEndOfFile(document: vscode.TextDocument, range: vscode.Range): boolean {
+        const lastLine = document.lineCount - 1;
+        const lastLineText = document.lineAt(lastLine).text;
+        return range.end.line === lastLine && range.end.character === lastLineText.length;
+    }
+
+    /**
      * 销毁管理器
      */
     dispose(): void {
@@ -236,44 +248,74 @@ class SelectionGuard implements vscode.Disposable {
                 return;
             }
 
-            let changed = false;
-            const adjustedSelections: vscode.Selection[] = [];
-
-            for (const selection of e.selections) {
-                let adjustedSelection = selection;
-                
-                for (const lockedRange of lockedRanges) {
-                    const selectionRange = new vscode.Range(selection.start, selection.end);
-                    
-                    // 检查选择是否与锁定区域相交或包含在内
-                    if (selectionRange.intersection(lockedRange) || 
-                        lockedRange.contains(selection.active) || 
-                        lockedRange.contains(selection.anchor)) {
-                        
-                        adjustedSelection = this.moveSelectionOutside(selection, lockedRange);
-                        changed = true;
-                    }
+            // 为每个锁定区域调整选择
+            this.adjusting = true;
+            let anyAdjustment = false;
+            const initialSelections = e.textEditor.selections;
+            
+            for (const lockedRange of lockedRanges) {
+                this.adjustSelectionsForRange(e.textEditor, lockedRange, true); // skipReveal = true
+                if (e.textEditor.selections !== initialSelections) {
+                    anyAdjustment = true;
                 }
-                adjustedSelections.push(adjustedSelection);
             }
-
-            if (changed) {
-                this.adjusting = true;
-                e.textEditor.selections = adjustedSelections;
+            
+            // 统一处理reveal，避免多次调用
+            if (anyAdjustment && e.textEditor.selections.length > 0) {
                 e.textEditor.revealRange(
+                    new vscode.Range(e.textEditor.selections[0].active, e.textEditor.selections[0].active),
+                    vscode.TextEditorRevealType.InCenterIfOutsideViewport
+                );
+            }
+            
+            this.adjusting = false;
+        });
+    }
+
+    /**
+     * 为特定锁定区域调整编辑器选择（公共方法，供DocumentLockManager调用）
+     */
+    public adjustSelectionsForRange(editor: vscode.TextEditor, lockedRange: vscode.Range, skipReveal: boolean = false): void {
+        const currentSelections = editor.selections;
+        let needsAdjustment = false;
+        const adjustedSelections: vscode.Selection[] = [];
+        
+        for (const selection of currentSelections) {
+            const selectionRange = new vscode.Range(selection.start, selection.end);
+            
+            // 检查选择是否与锁定区域相交或包含在内
+            if (selectionRange.intersection(lockedRange) || 
+                lockedRange.contains(selection.active) || 
+                lockedRange.contains(selection.anchor)) {
+                
+                const adjustedSelection = this.moveSelectionOutside(selection, lockedRange);
+                adjustedSelections.push(adjustedSelection);
+                needsAdjustment = true;
+            } else {
+                adjustedSelections.push(selection);
+            }
+        }
+        
+        if (needsAdjustment) {
+            editor.selections = adjustedSelections;
+            if (!skipReveal) {
+                editor.revealRange(
                     new vscode.Range(adjustedSelections[0].active, adjustedSelections[0].active),
                     vscode.TextEditorRevealType.InCenterIfOutsideViewport
                 );
-                this.adjusting = false;
             }
-        });
+        }
     }
 
     /**
      * 将选择移动到锁定区域外
      */
-    private moveSelectionOutside(selection: vscode.Selection, lockedRange: vscode.Range): vscode.Selection {
+    public moveSelectionOutside(selection: vscode.Selection, lockedRange: vscode.Range): vscode.Selection {
         const activePosition = selection.active;
+        const document = vscode.window.activeTextEditor?.document;
+        if (!document) {
+            return selection;
+        }
         
         // 判断光标应该移动到锁定区域的哪一边
         const distanceToStart = Math.abs(activePosition.line - lockedRange.start.line) + 
@@ -281,7 +323,31 @@ class SelectionGuard implements vscode.Disposable {
         const distanceToEnd = Math.abs(activePosition.line - lockedRange.end.line) + 
                              Math.abs(activePosition.character - lockedRange.end.character);
         
-        const targetPosition = distanceToStart <= distanceToEnd ? lockedRange.start : lockedRange.end;
+        let targetPosition: vscode.Position;
+        
+        if (distanceToStart <= distanceToEnd) {
+            // 移动到锁定区域开始位置
+            targetPosition = lockedRange.start;
+        } else {
+            // 移动到锁定区域结束位置
+            // BUG 1修复: 检查是否在文件末尾，如果是则移动到锁定区域开始位置
+            if (this.lockManager.isRangeAtEndOfFile(document, lockedRange)) {
+                // 如果锁定区域在文件末尾，移动到锁定区域开始位置避免复杂性
+                targetPosition = lockedRange.start;
+            } else {
+                // 移动到锁定区域外的下一个位置
+                if (lockedRange.end.character === 0) {
+                    targetPosition = lockedRange.end;
+                } else {
+                    const nextLine = lockedRange.end.line + 1;
+                    if (nextLine < document.lineCount) {
+                        targetPosition = new vscode.Position(nextLine, 0);
+                    } else {
+                        targetPosition = lockedRange.start;
+                    }
+                }
+            }
+        }
         
         // 创建新的选择，光标和锚点都在目标位置（折叠选择）
         return new vscode.Selection(targetPosition, targetPosition);
