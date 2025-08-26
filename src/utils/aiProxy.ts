@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { ConfigService } from '../services/ConfigService';
+import { PricingService } from '../services/PricingService';
 import { ChatCompletionCreateParams, ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 
 export interface StreamingChatOptions {
@@ -11,14 +12,17 @@ export interface StreamingChatOptions {
 export interface UsageStats {
     totalRequests: number;
     totalTokensUsed: number;
+    totalCost?: number; // Total cost in USD, only available if pricing data is accessible
     flagStats: Map<string, {
         requests: number;
         tokensUsed: number;
         model: string;
+        cost?: number; // Cost in USD, only available if pricing data is accessible
     }>;
     modelStats: Map<string, {
         requests: number;
         tokensUsed: number;
+        cost?: number; // Cost in USD, only available if pricing data is accessible
     }>;
 }
 
@@ -32,14 +36,17 @@ export class AIProxy {
     private static instance: AIProxy;
     private client: OpenAI | null = null;
     private usageStats: UsageStats;
+    private pricingService: PricingService;
 
     private constructor() {
         this.usageStats = {
             totalRequests: 0,
             totalTokensUsed: 0,
+            totalCost: 0,
             flagStats: new Map(),
             modelStats: new Map()
         };
+        this.pricingService = PricingService.getInstance();
     }
 
     public static getInstance(): AIProxy {
@@ -59,16 +66,31 @@ export class AIProxy {
         }
     }
 
-    private updateUsageStats(flag: string, model: string, tokensUsed: number = 0): void {
+    private updateUsageStats(
+        flag: string, 
+        model: string, 
+        tokensUsed: number = 0,
+        promptTokens: number = 0,
+        completionTokens: number = 0
+    ): void {
         this.usageStats.totalRequests++;
         this.usageStats.totalTokensUsed += tokensUsed;
+
+        // Calculate cost if pricing is available
+        let cost: number | undefined;
+        const costCalculation = this.pricingService.calculateCost(model, promptTokens, completionTokens);
+        if (costCalculation) {
+            cost = costCalculation.totalCost;
+            this.usageStats.totalCost = (this.usageStats.totalCost || 0) + cost;
+        }
 
         // Update flag stats
         if (!this.usageStats.flagStats.has(flag)) {
             this.usageStats.flagStats.set(flag, {
                 requests: 0,
                 tokensUsed: 0,
-                model: model
+                model: model,
+                cost: 0
             });
         }
 
@@ -76,18 +98,25 @@ export class AIProxy {
         flagStat.requests++;
         flagStat.tokensUsed += tokensUsed;
         flagStat.model = model; // Update to latest model used for this flag
+        if (cost !== undefined) {
+            flagStat.cost = (flagStat.cost || 0) + cost;
+        }
 
         // Update model stats
         if (!this.usageStats.modelStats.has(model)) {
             this.usageStats.modelStats.set(model, {
                 requests: 0,
-                tokensUsed: 0
+                tokensUsed: 0,
+                cost: 0
             });
         }
 
         const modelStat = this.usageStats.modelStats.get(model)!;
         modelStat.requests++;
         modelStat.tokensUsed += tokensUsed;
+        if (cost !== undefined) {
+            modelStat.cost = (modelStat.cost || 0) + cost;
+        }
     }
 
     public async chatCompletion(
@@ -103,13 +132,15 @@ export class AIProxy {
             }) as OpenAI.Chat.Completions.ChatCompletion;
             
             const tokensUsed = response.usage?.total_tokens || 0;
+            const promptTokens = response.usage?.prompt_tokens || 0;
+            const completionTokens = response.usage?.completion_tokens || 0;
             const model = response.model || params.model || 'unknown';
-            this.updateUsageStats(flag, model, tokensUsed);
+            this.updateUsageStats(flag, model, tokensUsed, promptTokens, completionTokens);
 
             return response;
         } catch (error) {
             const model = params.model || 'unknown';
-            this.updateUsageStats(flag, model, 0);
+            this.updateUsageStats(flag, model, 0, 0, 0);
             throw error;
         }
     }
@@ -149,6 +180,8 @@ export class AIProxy {
 
         let fullResponse = '';
         let totalTokens = 0;
+        let promptTokens = 0;
+        let completionTokens = 0;
 
         const generator = async function* (this: AIProxy): AsyncGenerator<string, string, unknown> {
             try {
@@ -169,11 +202,13 @@ export class AIProxy {
                     
                     if (chunk.usage) {
                         totalTokens = chunk.usage.total_tokens;
+                        promptTokens = chunk.usage.prompt_tokens || 0;
+                        completionTokens = chunk.usage.completion_tokens || 0;
                     }
                 }
 
                 const model = params.model || 'unknown';
-                this.updateUsageStats(flag, model, totalTokens);
+                this.updateUsageStats(flag, model, totalTokens, promptTokens, completionTokens);
                 
                 if (options.onComplete) {
                     options.onComplete(fullResponse);
@@ -183,7 +218,7 @@ export class AIProxy {
 
             } catch (error) {
                 const model = params.model || 'unknown';
-                this.updateUsageStats(flag, model, 0);
+                this.updateUsageStats(flag, model, 0, 0, 0);
                 
                 if (options.onError) {
                     options.onError(error as Error);
@@ -233,5 +268,21 @@ export class AIProxy {
 
     public resetUsageStatsByModel(model: string): void {
         this.usageStats.modelStats.delete(model);
+    }
+
+    public isPricingAvailable(): boolean {
+        return this.pricingService.isPricingAvailable();
+    }
+
+    public async refreshPricing(): Promise<boolean> {
+        return await this.pricingService.refreshPricing();
+    }
+
+    public getPricingDataAge(): number {
+        return this.pricingService.getPricingDataAge();
+    }
+
+    public getSupportedModels(): string[] {
+        return this.pricingService.getAllAvailableModels();
     }
 }

@@ -44,9 +44,11 @@ export class TldrGenerator implements StreamingProcessor {
             const aiProxy = AIProxy.getInstance();
             const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'TLDR');
             // tldr 的 cmd 保留用户选择的文本
-            let fullResponse = request.selectText + '\n';
-            yield {text: fullResponse};
-
+            let fullResponse = request.selectText;
+            if(fullResponse.length > 0) {
+                yield {text: fullResponse + '\n'};
+            }
+            
             for await (const chunk of streamGenerator) {
                 fullResponse += chunk;
                 yield { text: chunk };
