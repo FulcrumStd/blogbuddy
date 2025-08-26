@@ -1,4 +1,4 @@
-import { Utils} from '../utils/helpers';
+import { Utils } from '../utils/helpers';
 import { AIProxy } from '../utils/aiProxy';
 import { KrokiService } from '../services/KrokiService';
 import { ConfigService, ConfigKey } from '../services/ConfigService';
@@ -23,21 +23,22 @@ export class MermaidGenerator implements StreamingProcessor {
 
         // 获取配置决定输出方式
         const configService = ConfigService.getInstance();
-        const mermaidCodeConfig = configService.get<boolean>(ConfigKey.MERMAID_CODE, false);
+        const mermaidSVGConfig = configService.get<boolean>(ConfigKey.MERMAID_SVG, false);
 
-        if (mermaidCodeConfig) {
-            // 返回代码块形式
-            const codeBlock = `\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
-            return {
-                replaceText: codeBlock
-            };
-        } else {
+        if (mermaidSVGConfig) {
             // 生成 SVG 图片
             const imagePath = await this.generateSVGImage(mermaidCode, request.filePath);
             const markdownImage = `![Mermaid Diagram](${path.basename(imagePath)})`;
 
             return {
                 replaceText: markdownImage
+            };
+
+        } else {
+            // 返回代码块形式
+            const codeBlock = `\`\`\`mermaid\n${mermaidCode}\n\`\`\``;
+            return {
+                replaceText: codeBlock
             };
         }
     }
@@ -51,19 +52,19 @@ export class MermaidGenerator implements StreamingProcessor {
         const generator = async function* (this: MermaidGenerator): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             // 获取配置决定输出方式
             const configService = ConfigService.getInstance();
-            const mermaidCodeConfig = configService.get<boolean>(ConfigKey.MERMAID_CODE, false);
+            const mermaidSVGConfig = configService.get<boolean>(ConfigKey.MERMAID_SVG, false);
 
             // 流式生成 Mermaid 代码
             let mermaidCode = '';
             let hasStarted = false;
-            
+
             for await (const chunk of await this.generateMermaidCodeStreaming(request)) {
                 if (!hasStarted) {
                     // 第一个块时输出代码块开始标记
                     yield { text: '```mermaid\n' };
                     hasStarted = true;
                 }
-                
+
                 mermaidCode += chunk.text;
                 yield chunk;
             }
@@ -71,21 +72,22 @@ export class MermaidGenerator implements StreamingProcessor {
             // 输出代码块结束标记
             yield { text: '\n```' };
 
-            if (mermaidCodeConfig) {
-                // 代码模式：直接返回代码块
-                return {
-                    replaceText: `\`\`\`mermaid\n${mermaidCode}\n\`\`\``
-                };
-            } else {
+            if (mermaidSVGConfig) {
                 // 图片模式：生成 SVG 图片并替换代码块
                 const imagePath = await this.generateSVGImage(mermaidCode, request.filePath);
                 const markdownImage = `![Mermaid Diagram](${path.basename(imagePath)})`;
-                
+
                 // 使用 replace: true 替换之前流式输出的代码
                 yield { text: markdownImage, replace: true };
-                
+
                 return {
                     replaceText: markdownImage
+                };
+
+            } else {
+                // 代码模式：直接返回代码块
+                return {
+                    replaceText: `\`\`\`mermaid\n${mermaidCode}\n\`\`\``
                 };
             }
         }.bind(this);

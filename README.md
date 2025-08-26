@@ -94,8 +94,7 @@ BlogBuddy requires AI provider configuration. Go to VS Code Settings and configu
 
 - **API Key**: Your AI provider API key
 - **Base URL**: AI service endpoint (default: OpenRouter)
-- **Model**: AI model to use (default: GPT-4o-mini)
-- **Mermaid Output**: Choose between code blocks or rendered images
+- **Model**: AI model to use (default: GPT-5-mini)
 
 ## 🎯 Perfect For
 

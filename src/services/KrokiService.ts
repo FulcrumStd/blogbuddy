@@ -2,11 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
 
-export interface KrokiOptions {
-    diagramType: 'mermaid' | 'plantuml' | 'graphviz';
-    outputFormat: 'svg' | 'png' | 'pdf';
-}
-
 export class KrokiService {
     private static instance: KrokiService = new KrokiService();
     private readonly baseUrl = 'https://kroki.io';
@@ -22,10 +17,7 @@ export class KrokiService {
      */
     public async generateMermaidSVG(mermaidCode: string, savePath: string): Promise<string> {
         try {
-            const svgContent = await this.renderDiagram(mermaidCode, {
-                diagramType: 'mermaid',
-                outputFormat: 'svg'
-            });
+            const svgContent = await this.renderMermaidToSVG(mermaidCode);
 
             // 确保目录存在
             const dir = path.dirname(savePath);
@@ -47,23 +39,23 @@ export class KrokiService {
     }
 
     /**
-     * 渲染图表
+     * 渲染 Mermaid 图表为 SVG
      */
-    private async renderDiagram(diagramCode: string, options: KrokiOptions): Promise<string> {
+    private async renderMermaidToSVG(diagramCode: string): Promise<string> {
         try {
-            // 将图表代码编码为 Base64
-            const encodedDiagram = Buffer.from(diagramCode, 'utf-8').toString('base64');
-            
-            // 构建 kroki.io URL
-            const url = `${this.baseUrl}/${options.diagramType}/${options.outputFormat}/${encodedDiagram}`;
-            
-            // 发送请求
-            const response = await fetch(url, {
-                method: 'GET',
+            // 使用 JSON POST 请求到根路径
+            const response = await fetch(this.baseUrl, {
+                method: 'POST',
                 headers: {
-                    'Accept': options.outputFormat === 'svg' ? 'image/svg+xml' : `image/${options.outputFormat}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'image/svg+xml',
                     'User-Agent': 'BlogBuddy/1.0'
-                }
+                },
+                body: JSON.stringify({
+                    diagram_source: diagramCode,
+                    diagram_type: 'mermaid',
+                    output_format: 'svg'
+                })
             });
 
             if (!response.ok) {
@@ -74,7 +66,7 @@ export class KrokiService {
         } catch (error) {
             throw new AppError(
                 ErrorCode.SERVER_ERROR,
-                `Failed to render diagram: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                `Failed to render Mermaid diagram: ${error instanceof Error ? error.message : 'Unknown error'}`,
                 'Kroki API request failed'
             );
         }
