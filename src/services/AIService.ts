@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import { ConfigService } from '../services/ConfigService';
-import { PricingService } from '../services/PricingService';
+import { ConfigService } from './ConfigService';
+import { PricingService } from './PricingService';
 import { ChatCompletionCreateParams, ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 
 export interface StreamingChatOptions {
@@ -26,14 +26,14 @@ export interface UsageStats {
     }>;
 }
 
-export interface AIProxyConfig {
+export interface AIServiceConfig {
     apiKey: string;
     baseURL?: string;
     model: string;
 }
 
-export class AIProxy {
-    private static instance: AIProxy;
+export class AIService {
+    private static instance: AIService;
     private client: OpenAI | null = null;
     private usageStats: UsageStats;
     private pricingService: PricingService;
@@ -49,11 +49,11 @@ export class AIProxy {
         this.pricingService = PricingService.getInstance();
     }
 
-    public static getInstance(): AIProxy {
-        if (!AIProxy.instance) {
-            AIProxy.instance = new AIProxy();
+    public static getInstance(): AIService {
+        if (!AIService.instance) {
+            AIService.instance = new AIService();
         }
-        return AIProxy.instance;
+        return AIService.instance;
     }
 
     private initializeClient(): void {
@@ -183,7 +183,7 @@ export class AIProxy {
         let promptTokens = 0;
         let completionTokens = 0;
 
-        const generator = async function* (this: AIProxy): AsyncGenerator<string, string, unknown> {
+        const generator = async function* (this: AIService): AsyncGenerator<string, string, unknown> {
             try {
                 const stream = await this.client!.chat.completions.create(params);
                 

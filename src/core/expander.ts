@@ -1,5 +1,5 @@
 import { Utils, FileUtils } from '../utils/helpers';
-import { AIProxy } from '../utils/aiProxy';
+import { AIService } from '../services/AIService';
 import { ProcessChunk, ProcessRequest, ProcessResponse, StreamingProcessor } from './types';
 
 
@@ -25,8 +25,8 @@ export class Expander implements StreamingProcessor {
         messages.push({ role: 'user', content: completePrompt });
 
         // 调用AI进行扩写
-        const aiProxy = AIProxy.getInstance();
-        const expandedContent = await aiProxy.chat(messages, 'EXPAND');
+        const aiService = AIService.getInstance();
+        const expandedContent = await aiService.chat(messages, 'EXPAND');
 
         return {
             replaceText: expandedContent
@@ -45,8 +45,8 @@ export class Expander implements StreamingProcessor {
             const messages: Array<any> = [];
             messages.push({ role: 'user', content: completePrompt });
 
-            const aiProxy = AIProxy.getInstance();
-            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'EXPAND');
+            const aiService = AIService.getInstance();
+            const streamGenerator = await aiService.chatStreamingSimple(messages, 'EXPAND');
 
             let fullResponse = '';
             for await (const chunk of streamGenerator) {

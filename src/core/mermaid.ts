@@ -1,5 +1,5 @@
 import { Utils } from '../utils/helpers';
-import { AIProxy } from '../utils/aiProxy';
+import { AIService } from '../services/AIService';
 import { KrokiService } from '../services/KrokiService';
 import { ConfigService, ConfigKey } from '../services/ConfigService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
@@ -106,8 +106,8 @@ export class MermaidGenerator implements StreamingProcessor {
         messages.push({ role: 'user', content: completePrompt });
 
         // 调用AI生成Mermaid代码
-        const aiProxy = AIProxy.getInstance();
-        const response = await aiProxy.chat(messages, 'MERMAID');
+        const aiService = AIService.getInstance();
+        const response = await aiService.chat(messages, 'MERMAID');
 
         // 提取 Mermaid 代码（移除可能的代码块标记）
         const mermaidCode = this.extractMermaidCode(response);
@@ -138,8 +138,8 @@ export class MermaidGenerator implements StreamingProcessor {
             messages.push({ role: 'user', content: completePrompt });
 
             // 调用AI流式生成Mermaid代码
-            const aiProxy = AIProxy.getInstance();
-            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'MERMAID');
+            const aiService = AIService.getInstance();
+            const streamGenerator = await aiService.chatStreamingSimple(messages, 'MERMAID');
 
             let fullResponse = '';
             for await (const chunk of streamGenerator) {

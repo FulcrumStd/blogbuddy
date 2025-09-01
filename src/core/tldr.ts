@@ -1,5 +1,5 @@
 import { Utils, FileUtils } from '../utils/helpers';
-import { AIProxy } from '../utils/aiProxy';
+import { AIService } from '../services/AIService';
 import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
 
 
@@ -22,8 +22,8 @@ export class TldrGenerator implements StreamingProcessor {
             messages.push({ role: 'user', content: completePrompt });
 
             // 调用AI进行TLDR生成
-            const aiProxy = AIProxy.getInstance();
-            const tldrContent = await aiProxy.chat(messages, 'TLDR');
+            const aiService = AIService.getInstance();
+            const tldrContent = await aiService.chat(messages, 'TLDR');
             // tldr 的 cmd 保留用户选择的文本
             return {
                 replaceText: `${request.selectText}\n${tldrContent}`,
@@ -41,8 +41,8 @@ export class TldrGenerator implements StreamingProcessor {
             const messages: Array<any> = [];
             messages.push({ role: 'user', content: completePrompt });
 
-            const aiProxy = AIProxy.getInstance();
-            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'TLDR');
+            const aiService = AIService.getInstance();
+            const streamGenerator = await aiService.chatStreamingSimple(messages, 'TLDR');
             // tldr 的 cmd 保留用户选择的文本
             let fullResponse = request.selectText;
             if(fullResponse.length > 0) {

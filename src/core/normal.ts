@@ -1,5 +1,5 @@
 import { Utils, FileUtils } from '../utils/helpers';
-import { AIProxy } from '../utils/aiProxy';
+import { AIService } from '../services/AIService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
 import * as fs from 'fs';
@@ -77,8 +77,8 @@ export class NormalProcessor implements StreamingProcessor {
         messages.push({ role: 'user', content: taskPrompt });
 
         // 调用AI处理文本
-        const aiProxy = AIProxy.getInstance();
-        const processedContent = await aiProxy.chat(messages, 'NORMAL');
+        const aiService = AIService.getInstance();
+        const processedContent = await aiService.chat(messages, 'NORMAL');
 
         return {
             replaceText: processedContent
@@ -99,8 +99,8 @@ export class NormalProcessor implements StreamingProcessor {
             messages.push({ role: 'system', content: this.getCoreSystemPrompt() });
             messages.push({ role: 'user', content: taskPrompt });
 
-            const aiProxy = AIProxy.getInstance();
-            const streamGenerator = await aiProxy.chatStreamingSimple(messages, 'NORMAL');
+            const aiService = AIService.getInstance();
+            const streamGenerator = await aiService.chatStreamingSimple(messages, 'NORMAL');
 
             let fullResponse = '';
             for await (const chunk of streamGenerator) {
@@ -149,8 +149,8 @@ export class NormalProcessor implements StreamingProcessor {
         messages.push({ role: 'user', content: taskPrompt });
 
         // 调用AI处理全文
-        const aiProxy = AIProxy.getInstance();
-        const processedContent = await aiProxy.chat(messages, 'NORMAL');
+        const aiService = AIService.getInstance();
+        const processedContent = await aiService.chat(messages, 'NORMAL');
 
         // 生成新文件名
         const parsedPath = path.parse(request.filePath!);

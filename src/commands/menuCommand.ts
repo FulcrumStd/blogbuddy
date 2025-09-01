@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import { UIUtils, FileUtils } from '../utils/helpers';
 import { ErrorHandler } from '../utils/ErrorHandler';
-import { AIProxy } from '../utils/aiProxy';
+import { AIService } from '../services/AIService';
 
 
 export function registerMenuCommand(context: vscode.ExtensionContext){
@@ -56,9 +56,9 @@ export class MenuCommand {
      * Show usage statistics
      */
     async showUsageStats(): Promise<void> {
-        const aiProxy = AIProxy.getInstance();
-        const stats = aiProxy.getUsageStats();
-        const isPricingAvailable = aiProxy.isPricingAvailable();
+        const aiService = AIService.getInstance();
+        const stats = aiService.getUsageStats();
+        const isPricingAvailable = aiService.isPricingAvailable();
         
         let statsText = '# AI Usage Statistics\n\n';
         
@@ -139,12 +139,12 @@ export class MenuCommand {
                 'Cancel'
             );
             if (confirm === 'Confirm') {
-                aiProxy.resetUsageStats();
+                aiService.resetUsageStats();
                 vscode.window.showInformationMessage('Usage statistics have been reset');
             }
         } else if (choice === 'Refresh Pricing') {
             vscode.window.showInformationMessage('Refreshing pricing data...');
-            const success = await aiProxy.refreshPricing();
+            const success = await aiService.refreshPricing();
             if (success) {
                 vscode.window.showInformationMessage('Pricing data refreshed successfully');
                 // Show updated stats
