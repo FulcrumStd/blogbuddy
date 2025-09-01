@@ -26,7 +26,7 @@ export class KeywordExtractor implements StreamingProcessor {
         const keywordContent = await aiProxy.chat(messages, 'KEYWORD');
         // keyword 的 cmd 保留用户选择的文本
         return {
-            replaceText: `${request.selectText}\n ${keywordContent}`,
+            replaceText: `${request.selectText}\n${keywordContent}`,
         };
     }
 

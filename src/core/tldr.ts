@@ -26,7 +26,7 @@ export class TldrGenerator implements StreamingProcessor {
             const tldrContent = await aiProxy.chat(messages, 'TLDR');
             // tldr 的 cmd 保留用户选择的文本
             return {
-                replaceText: `${request.selectText}\n ${tldrContent}`,
+                replaceText: `${request.selectText}\n${tldrContent}`,
             };
     }
 

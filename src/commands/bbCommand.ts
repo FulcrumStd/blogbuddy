@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
 import { TextUtils } from '../utils/helpers';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { StreamingTextUtils } from '../utils/StreamingTextWriter';
+import { TextBlockProcessor } from '../utils/TextBlockProcessor';
 import { ConfigService } from '../services/ConfigService';
-import { lockDocumentRange } from '../utils/DocumentLock';
 import { StatusBarAnimation } from '../utils/StatusBarAnimation';
 import { BBCmd, ProcessRequest } from '../core/types';
 import { BB } from '../core/bb';
@@ -51,23 +50,18 @@ class BBCommand {
                 );
             }
             const bquest = {
-                    filePath: editor.document.uri.fsPath,
-                    selectText: text.slice(0, ps.startIndex) + text.slice(ps.endIndex),
-                    cmd: cmd,
-                    msg: ps.message,
-                    cmdText: ps.fullMatch
+                filePath: editor.document.uri.fsPath,
+                selectText: text.slice(0, ps.startIndex) + text.slice(ps.endIndex),
+                cmd: cmd,
+                msg: ps.message,
+                cmdText: ps.fullMatch
             };
 
-            // Check configuration to decide between streaming or non-streaming mode
+            // Use unified TextBlockProcessor for both streaming and non-streaming
             const config = ConfigService.getInstance().getAllConfig();
             const useStreaming = config.streaming;
-            if (useStreaming) {
-                // Streaming processing mode
-                await this.handleStreamingMode(editor, result.range, bquest);
-            } else {
-                // Traditional non-streaming processing mode
-                await this.handleNonStreamingMode(editor, result.range, bquest);
-            }
+
+            await this.handleUnifiedProcessing(editor, result.range, bquest, useStreaming);
         } finally {
             // Always reset execution flag
             BBCommand.isExecuting = false;
@@ -75,83 +69,51 @@ class BBCommand {
     }
 
     /**
-     * Handle streaming mode
+     * Handle unified processing using TextBlockProcessor
      */
-    private async handleStreamingMode(
+    private async handleUnifiedProcessing(
         editor: vscode.TextEditor,
         range: vscode.Range,
-        request: ProcessRequest
+        request: ProcessRequest,
+        useStreaming: boolean
     ): Promise<void> {
         const animation = StatusBarAnimation.getInstance();
+        // 保存原始数据用于异常恢复
+        const originalText = editor.document.getText(range);
+
+        // 初始化处理器并显示装饰
+        const displayText = ` BB is working on ${request.cmd}`;
+        const processor = new TextBlockProcessor(editor, range, displayText);
 
         try {
-            // Start with streaming animation
-            animation.showStatic(`$(loading~spin) BB streaming ${request.cmd}`);
+            // Start animation
+            animation.showStatic(`$(loading~spin) BB executing ${request.cmd}`);
 
-            const streamGenerator = await BB.i().actStreaming(request);
-
-            // Use StreamingTextUtils for streaming output and locking
-            await StreamingTextUtils.streamChunksToRange(
-                editor,
-                range,
-                streamGenerator,
-                {
-                    chunkDelay: 1,
-                    lockRange: true,
-                    lockMessage: `BB is executing ${request.cmd} command...`,
-                    onProgress: (written: number, total?: number) => {
-                        animation.showStatic(`$(loading~spin) BB progress: ${written} chars generated`);
-                        console.log(`Streaming progress: ${written} chars written`);
-                    },
-                    onComplete: (result: string) => {
-                        console.log('BB processing completed, total length:', result.length);
-                        animation.showStatic('BB: Streaming completed!', 3000);
-                    },
-                    onError: (error: Error) => {
-                        console.error('Streaming output error:', error);
-                        animation.showStatic(`BB failed: ${error.message}`, 5000);
-                        vscode.window.showErrorMessage(`BB processing failed: ${error.message}`);
-                    }
-                }
-            );
-        } catch (e: unknown) {
-            if (e instanceof Error) {
-                vscode.window.showErrorMessage(`BB streaming failed: ${e.message}`);
+            if (useStreaming) {
+                // 流式处理
+                const streamGenerator = await BB.i().actStreaming(request);
+                await processor.writeStream(streamGenerator, { delay: 20 });
+            } else {
+                // 非流式处理
+                const response = await BB.i().act(request);
+                await processor.writeText(response.replaceText);
             }
-        }
-    }
 
-    /**
-     * Handle non-streaming mode (traditional mode)
-     */
-    private async handleNonStreamingMode(
-        editor: vscode.TextEditor,
-        range: vscode.Range,
-        request: ProcessRequest
-    ): Promise<void> {
-        const lock = lockDocumentRange(editor, range, 'BB is working on this...');
-        const animation = StatusBarAnimation.getInstance();
-
-        // Start animation with command-specific message
-        animation.showStatic(`$(loading~spin) BB executing ${request.cmd}`);
-
-        try {
-            const response = await BB.i().act(request);
-
-            if (editor && response.replaceText.length > 0) {
-                await editor.edit(
-                    editBuilder => editBuilder.replace(range, response.replaceText)
-                );
-            }
-            // Show completion message
+            // 成功完成
+            console.log('BB processing completed successfully');
             animation.showStatic('BB: Completed!', 3000);
+
         } catch (e: unknown) {
-            if (e instanceof Error) {
-                animation.showStatic(`BB failed: ${e.message}`, 5000);
-                vscode.window.showErrorMessage(`BB processing failed: ${e.message}`);
-            }
+            const error = e as Error;
+            console.error('BB processing failed:', error);
+            animation.showStatic(`BB failed: ${error.message}`, 5000);
+            vscode.window.showErrorMessage(`BB processing failed: ${error.message}`);
+            // 恢复原文到锁定区域
+            await processor.writeText(originalText);
+
         } finally {
-            lock.dispose();
+            // 清理资源
+            processor.dispose();
         }
     }
 }
@@ -184,8 +146,6 @@ function findAndParse(text: string): ParseResult | null {
             endIndex
         };
     }
-
     return null;
 }
-
 

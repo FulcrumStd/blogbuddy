@@ -1,4 +1,4 @@
-import { StreamChunk } from '../utils/StreamingTextWriter';
+import { TextBlockChunk } from '../utils/TextBlockProcessor';
 
 export enum BBCmd {
     NORMAL = 'bb',          // 直接给 Bgent 指令
@@ -31,7 +31,7 @@ export interface ProcessResponse {
     replaceText: string;     // 替换掉用户选择文本的内容
 }
 
-export type ProcessChunk=StreamChunk;
+export type ProcessChunk=TextBlockChunk;
 
 /**
  * 处理器统一接口

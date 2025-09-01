@@ -35,7 +35,7 @@ export class BB {
                 case BBCmd.NORMAL:
                     return await NormalProcessor.getInstance().process(request);
                 case BBCmd.TAG:
-                    return { replaceText: this.tagText };
+                    return { replaceText: `${request.selectText}\n${this.tagText}` };
                 default:
                     throw new AppError(
                         ErrorCode.UNKNOWN_ERROR,
@@ -73,8 +73,8 @@ export class BB {
                 case BBCmd.TRANSLATE:
                     return yield* await Translator.getInstance().processStreaming(request);
                 case BBCmd.TAG:
-                    yield {text: this.tagText};
-                    return { replaceText: this.tagText };
+                    yield {text: `${request.selectText}\n${this.tagText}`};
+                    return { replaceText:`${request.selectText}\n${this.tagText}` };
                 default:
                     throw new AppError(
                         ErrorCode.UNKNOWN_ERROR,
