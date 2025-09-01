@@ -6,4 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+
+## [0.0.2] - 2025-09-01
+
+### Fixed
+- Editor block lose locking
