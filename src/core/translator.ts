@@ -2,7 +2,8 @@ import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { Utils, FileUtils } from '../utils/helpers';
 import { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 import { AIService } from '../services/AIService';
-import { ProcessChunk, ProcessRequest, ProcessResponse, Processor, StreamingProcessor } from './types';
+import { ConfigService } from '../services/ConfigService';
+import { ProcessChunk, ProcessRequest, ProcessResponse, StreamingProcessor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -73,7 +74,8 @@ export class Translator implements StreamingProcessor {
 
             // 调用AI进行翻译
             const aiService = AIService.getInstance();
-            const translatedContent = await aiService.chat(messages, 'TRANSLATE');
+            const config = ConfigService.getInstance().getAllConfig();
+            const translatedContent = await aiService.chat(messages, 'TRANSLATE', config.smallModel);
 
             // 生成新文件名，使用推断的语言
             const parsedPath = path.parse(request.filePath!);
@@ -123,7 +125,8 @@ User message: "${userMessage}"`;
         messages.push({ role: 'user', content: inferPrompt });
 
         const aiService = AIService.getInstance();
-        const inferredLanguage = await aiService.chat(messages, 'TRANSLATE');
+        const config = ConfigService.getInstance().getAllConfig();
+        const inferredLanguage = await aiService.chat(messages, 'TRANSLATE', config.smallModel);
 
         return inferredLanguage.trim();
     }

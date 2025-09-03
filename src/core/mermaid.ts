@@ -1,9 +1,9 @@
 import { Utils } from '../utils/helpers';
 import { AIService } from '../services/AIService';
 import { KrokiService } from '../services/KrokiService';
-import { ConfigService, ConfigKey } from '../services/ConfigService';
+import { ConfigService } from '../services/ConfigService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, StreamingProcessor } from './types';
 import * as path from 'path';
 
 export class MermaidGenerator implements StreamingProcessor {
@@ -22,8 +22,8 @@ export class MermaidGenerator implements StreamingProcessor {
         const mermaidCode = await this.generateMermaidCode(request);
 
         // 获取配置决定输出方式
-        const configService = ConfigService.getInstance();
-        const mermaidSVGConfig = configService.get<boolean>(ConfigKey.MERMAID_SVG, false);
+        const config = ConfigService.getInstance().getAllConfig();
+        const mermaidSVGConfig = config.mermaidSVG;
 
         if (mermaidSVGConfig) {
             // 生成 SVG 图片
@@ -51,8 +51,8 @@ export class MermaidGenerator implements StreamingProcessor {
     ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
         const generator = async function* (this: MermaidGenerator): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             // 获取配置决定输出方式
-            const configService = ConfigService.getInstance();
-            const mermaidSVGConfig = configService.get<boolean>(ConfigKey.MERMAID_SVG, false);
+            const config = ConfigService.getInstance().getAllConfig();
+            const mermaidSVGConfig = config.mermaidSVG;
 
             // 流式生成 Mermaid 代码
             let mermaidCode = '';
@@ -107,7 +107,8 @@ export class MermaidGenerator implements StreamingProcessor {
 
         // 调用AI生成Mermaid代码
         const aiService = AIService.getInstance();
-        const response = await aiService.chat(messages, 'MERMAID');
+        const config = ConfigService.getInstance().getAllConfig();
+        const response = await aiService.chat(messages, 'MERMAID', config.smallModel);
 
         // 提取 Mermaid 代码（移除可能的代码块标记）
         const mermaidCode = this.extractMermaidCode(response);
@@ -139,7 +140,8 @@ export class MermaidGenerator implements StreamingProcessor {
 
             // 调用AI流式生成Mermaid代码
             const aiService = AIService.getInstance();
-            const streamGenerator = await aiService.chatStreamingSimple(messages, 'MERMAID');
+            const config = ConfigService.getInstance().getAllConfig();
+            const streamGenerator = await aiService.chatStreaming(messages, 'MERMAID', config.smallModel);
 
             let fullResponse = '';
             for await (const chunk of streamGenerator) {

@@ -1,7 +1,7 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIService } from '../services/AIService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, StreamingProcessor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -100,7 +100,7 @@ export class NormalProcessor implements StreamingProcessor {
             messages.push({ role: 'user', content: taskPrompt });
 
             const aiService = AIService.getInstance();
-            const streamGenerator = await aiService.chatStreamingSimple(messages, 'NORMAL');
+            const streamGenerator = await aiService.chatStreaming(messages, 'NORMAL');
 
             let fullResponse = '';
             for await (const chunk of streamGenerator) {

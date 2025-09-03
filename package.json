@@ -67,6 +67,12 @@
           "description": "Model name",
           "order": 3
         },
+        "blogbuddy.smallModel": {
+          "type": "string",
+          "default": "",
+          "description": "Small model for simple tasks (uses main model if not set)",
+          "order": 4
+        },
         "blogbuddy.streaming": {
           "type": "boolean",
           "default": true,

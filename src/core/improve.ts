@@ -1,7 +1,8 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIService } from '../services/AIService';
+import { ConfigService } from '../services/ConfigService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, StreamingProcessor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -63,7 +64,8 @@ export class TextImprover implements StreamingProcessor {
 
         // 调用AI进行文本润色
         const aiService = AIService.getInstance();
-        const improvedContent = await aiService.chat(messages, 'IMPROVE');
+        const config = ConfigService.getInstance().getAllConfig();
+        const improvedContent = await aiService.chat(messages, 'IMPROVE', config.smallModel);
 
         return {
             replaceText: improvedContent
@@ -85,7 +87,8 @@ export class TextImprover implements StreamingProcessor {
             messages.push({ role: 'user', content: completePrompt });
 
             const aiService = AIService.getInstance();
-            const streamGenerator = await aiService.chatStreamingSimple(messages, 'IMPROVE');
+            const config = ConfigService.getInstance().getAllConfig();
+            const streamGenerator = await aiService.chatStreaming(messages, 'IMPROVE', config.smallModel);
 
             let fullResponse = '';
             for await (const chunk of streamGenerator) {
@@ -134,7 +137,8 @@ export class TextImprover implements StreamingProcessor {
 
         // 调用AI进行全文润色
         const aiService = AIService.getInstance();
-        const improvedContent = await aiService.chat(messages, 'IMPROVE');
+        const config = ConfigService.getInstance().getAllConfig();
+        const improvedContent = await aiService.chat(messages, 'IMPROVE', config.smallModel);
 
         // 生成新文件名
         const parsedPath = path.parse(request.filePath!);

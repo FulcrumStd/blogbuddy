@@ -3,11 +3,6 @@ import { ConfigService } from './ConfigService';
 import { PricingService } from './PricingService';
 import { ChatCompletionCreateParams, ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 
-export interface StreamingChatOptions {
-    onChunk?: (chunk: string) => void;
-    onComplete?: (fullResponse: string) => void;
-    onError?: (error: Error) => void;
-}
 
 export interface UsageStats {
     totalRequests: number;
@@ -119,61 +114,51 @@ export class AIService {
         }
     }
 
-    public async chatCompletion(
-        params: ChatCompletionCreateParams,
-        flag: string
-    ): Promise<OpenAI.Chat.Completions.ChatCompletion> {
+    public async chat(
+        messages: ChatCompletionMessageParam[], 
+        flag: string,
+        model?: string
+    ): Promise<string> {
         this.initializeClient();
+        const config = ConfigService.getInstance().getAllConfig();
+        
+        const selectedModel = model || config.model;
 
         try {
             const response = await this.client!.chat.completions.create({
-                ...params,
+                model: selectedModel,
+                messages: messages,
                 stream: false
             }) as OpenAI.Chat.Completions.ChatCompletion;
             
             const tokensUsed = response.usage?.total_tokens || 0;
             const promptTokens = response.usage?.prompt_tokens || 0;
             const completionTokens = response.usage?.completion_tokens || 0;
-            const model = response.model || params.model || 'unknown';
-            this.updateUsageStats(flag, model, tokensUsed, promptTokens, completionTokens);
+            const responseModel = response.model || selectedModel || 'unknown';
+            this.updateUsageStats(flag, responseModel, tokensUsed, promptTokens, completionTokens);
 
-            return response;
+            const content = response.choices[0]?.message?.content;
+            if (!content) {
+                throw new Error('No response content received from AI');
+            }
+            
+            return content;
         } catch (error) {
-            const model = params.model || 'unknown';
-            this.updateUsageStats(flag, model, 0, 0, 0);
+            this.updateUsageStats(flag, selectedModel || 'unknown', 0, 0, 0);
             throw error;
         }
-    }
-
-    public async chat(
-        messages: ChatCompletionMessageParam[], 
-        flag: string
-    ): Promise<string> {
-        const config = ConfigService.getInstance().getAllConfig();
-        
-        const response = await this.chatCompletion({
-            model: config.model,
-            messages: messages
-        }, flag);
-
-        const content = response.choices[0]?.message?.content;
-        if (!content) {
-            throw new Error('No response content received from AI');
-        }
-        
-        return content;
     }
 
     public async chatStreaming(
         messages: ChatCompletionMessageParam[],
         flag: string,
-        options: StreamingChatOptions = {}
+        model?: string
     ): Promise<AsyncGenerator<string, string, unknown>> {
         this.initializeClient();
         const config = ConfigService.getInstance().getAllConfig();
 
         const params: ChatCompletionCreateParams = {
-            model: config.model,
+            model: model || config.model,
             messages: messages,
             stream: true
         };
@@ -192,11 +177,6 @@ export class AIService {
                     
                     if (delta) {
                         fullResponse += delta;
-                        
-                        if (options.onChunk) {
-                            options.onChunk(delta);
-                        }
-                        
                         yield delta;
                     }
                     
@@ -210,32 +190,16 @@ export class AIService {
                 const model = params.model || 'unknown';
                 this.updateUsageStats(flag, model, totalTokens, promptTokens, completionTokens);
                 
-                if (options.onComplete) {
-                    options.onComplete(fullResponse);
-                }
-                
                 return fullResponse;
 
             } catch (error) {
                 const model = params.model || 'unknown';
                 this.updateUsageStats(flag, model, 0, 0, 0);
-                
-                if (options.onError) {
-                    options.onError(error as Error);
-                }
-                
                 throw error;
             }
         }.bind(this);
 
         return generator();
-    }
-
-    public async chatStreamingSimple(
-        messages: ChatCompletionMessageParam[],
-        flag: string
-    ): Promise<AsyncGenerator<string, string, unknown>> {
-        return this.chatStreaming(messages, flag);
     }
 
     public getUsageStats(): UsageStats {

@@ -1,6 +1,7 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIService } from '../services/AIService';
-import { ProcessRequest, ProcessResponse, ProcessChunk, Processor, StreamingProcessor } from './types';
+import { ConfigService } from '../services/ConfigService';
+import { ProcessRequest, ProcessResponse, ProcessChunk, StreamingProcessor } from './types';
 
 
 export class KeywordExtractor implements StreamingProcessor {
@@ -23,7 +24,8 @@ export class KeywordExtractor implements StreamingProcessor {
 
         // 调用AI进行关键词提取
         const aiService = AIService.getInstance();
-        const keywordContent = await aiService.chat(messages, 'KEYWORD');
+        const config = ConfigService.getInstance().getAllConfig();
+        const keywordContent = await aiService.chat(messages, 'KEYWORD', config.smallModel);
         // keyword 的 cmd 保留用户选择的文本
         return {
             replaceText: `${request.selectText}\n${keywordContent}`,
@@ -42,7 +44,8 @@ export class KeywordExtractor implements StreamingProcessor {
             messages.push({ role: 'user', content: completePrompt });
 
             const aiService = AIService.getInstance();
-            const streamGenerator = await aiService.chatStreamingSimple(messages, 'KEYWORD');
+            const config = ConfigService.getInstance().getAllConfig();
+            const streamGenerator = await aiService.chatStreaming(messages, 'KEYWORD', config.smallModel);
             // keyword 的 cmd 保留用户选择的文本
             let fullResponse = request.selectText;
             if(fullResponse.length > 0) {

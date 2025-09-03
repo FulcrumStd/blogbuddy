@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 export enum ConfigKey {
     API_KEY = 'apiKey',
     MODEL = 'model',
+    SMALL_MODEL = 'smallModel',
     BASE_URL = 'baseURL',
     MERMAID_SVG = 'mermaidSVG',
     STREAMING = 'streaming'
@@ -25,7 +26,7 @@ export class ConfigService {
     /**
      * 获取配置项的值
      */
-    public get<T>(key: ConfigKey, defaultValue?: T): T {
+    private get<T>(key: ConfigKey, defaultValue?: T): T {
         const config = vscode.workspace.getConfiguration(this.configSection);
         return config.get<T>(key, defaultValue as T);
     }
@@ -34,9 +35,13 @@ export class ConfigService {
      * 获取所有配置
      */
     public getAllConfig() {
+        const model = this.get<string>(ConfigKey.MODEL, '');
+        const smallModel = this.get<string>(ConfigKey.SMALL_MODEL, '');
+        
         return {
             apiKey: this.get<string>(ConfigKey.API_KEY, ''),
-            model: this.get<string>(ConfigKey.MODEL, ''),
+            model: model,
+            smallModel: (!smallModel || smallModel.trim() === '') ? model : smallModel,
             baseURL: this.get<string>(ConfigKey.BASE_URL, ''),
             mermaidSVG: this.get<boolean>(ConfigKey.MERMAID_SVG, false),
             streaming: this.get<boolean>(ConfigKey.STREAMING, true),
