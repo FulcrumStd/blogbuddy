@@ -5,6 +5,12 @@ All notable changes to the "blogbuddy" extension will be documented in this file
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
 ## [Unreleased]
+- BB in agent mode.
+- Auto execute all BB commands in a opened file. 
+- Generate svg images from mermaid codes.
+- Working between multiple files within one workspace.
+
+---
 
 ## [0.0.3] - 2025-09-03
 
