@@ -6,7 +6,8 @@ import { KeywordExtractor } from './keyword';
 import { MermaidGenerator } from './mermaid';
 import { TextImprover } from './improve';
 import { NormalProcessor } from './normal';
-import { ProcessRequest, ProcessResponse,BBCmd, ProcessChunk } from './types';
+import { ProcessRequest, ProcessResponse, BBCmd, ProcessChunk } from './types';
+import { Utils } from '../utils/helpers';
 
 
 export class BB {
@@ -35,7 +36,7 @@ export class BB {
                 case BBCmd.NORMAL:
                     return await NormalProcessor.getInstance().process(request);
                 case BBCmd.TAG:
-                    return { replaceText: `${request.selectText}\n${this.tagText}` };
+                    return { replaceText: this.generateTag(request) };
                 default:
                     throw new AppError(
                         ErrorCode.UNKNOWN_ERROR,
@@ -73,8 +74,8 @@ export class BB {
                 case BBCmd.TRANSLATE:
                     return yield* await Translator.getInstance().processStreaming(request);
                 case BBCmd.TAG:
-                    yield {text: `${request.selectText}\n${this.tagText}`};
-                    return { replaceText:`${request.selectText}\n${this.tagText}` };
+                    yield { text: this.generateTag(request) };
+                    return { replaceText: this.generateTag(request) };
                 default:
                     throw new AppError(
                         ErrorCode.UNKNOWN_ERROR,
@@ -85,6 +86,13 @@ export class BB {
         }.bind(this);
 
         return generator();
+    }
+
+    private generateTag(request: ProcessRequest) {
+        if (Utils.isEmpty(request.selectText)) {
+            return this.tagText;
+        }
+        return `${request.selectText}\n${this.tagText}`;
     }
 
 }

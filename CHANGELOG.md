@@ -9,8 +9,17 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Auto execute all BB commands in a opened file. 
 - Generate svg images from mermaid codes.
 - Working between multiple files within one workspace.
-
 ---
+## [0.0.4] - 2025-09-08
+
+### Added
+
+- bb-tslt translation command now supports text block mode
+
+### Fixed
+
+- bb-tag command generated the wrong location
+
 
 ## [0.0.3] - 2025-09-03
 
