@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![BlogBuddy Logo](images/logo.png)
+<img src="images/logo.png" alt="BlogBuddy 徽标" width="200">
 
 **Blog Buddy** makes Markdown magic happen with AI-powered writing assistance!
 

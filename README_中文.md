@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![BlogBuddy 徽标](images/logo.png)
+<img src="images/logo.png" alt="BlogBuddy 徽标" width="200">
 
 **BlogBuddy** 通过 AI 驱动的写作助手让 Markdown 变得神奇！
 
