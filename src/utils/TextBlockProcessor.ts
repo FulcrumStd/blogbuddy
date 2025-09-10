@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { Colors } from './GlobalColors';
 
 /**
  * 文本块数据接口
@@ -47,9 +48,9 @@ export class TextBlockProcessor implements vscode.Disposable {
         this.document = editor.document;
         this.lockedRange = range;
         
-        // 创建视觉装饰
+        // 创建视觉装饰 - 使用全局配色
         this.lockedDecoration = vscode.window.createTextEditorDecorationType({
-            borderColor: '#FFD900',
+            borderColor: Colors.warning,
             borderStyle: 'dashed',
             borderWidth: '1px',
             isWholeLine: true
@@ -58,7 +59,7 @@ export class TextBlockProcessor implements vscode.Disposable {
         this.processingDecoration = vscode.window.createTextEditorDecorationType({
             before: {
                 contentText: displayPrefix,
-                color: '#FFD900',
+                color: Colors.warning,
                 margin: '0 4px 0 0'
             }
         });

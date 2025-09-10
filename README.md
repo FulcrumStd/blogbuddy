@@ -27,7 +27,9 @@ Blog Buddy (BB) is a VS Code extension designed to enhance your blog writing wor
 ## 🚀 Key Features
 
 ### Smart Command Tags
+
 Use intuitive command tags anywhere in your blog posts (all tags support `<bb-xxx:custom instructions>` format):
+
 - `<bb:task description>` - Direct AI agent mode - give BB any task to complete
 - `<bb-expd:expansion requirements>` - Expand and elaborate on surrounding text content
 - `<bb-impv:improvement focus>` - Polish text quality (inline for local text, standalone for full document)
@@ -38,13 +40,16 @@ Use intuitive command tags anywhere in your blog posts (all tags support `<bb-xx
 - `<bb-tag>` - Add BlogBuddy attribution badge
 
 ### Seamless Workflow Integration
+
 - **Non-intrusive**: Commands are embedded directly in your content
 - **Keyboard-driven**: Activate with simple key combinations
 - **Context-aware**: AI understands your full document context
 - **Instant results**: Commands execute and replace content in-place
 
 ### AI-Powered Assistance
+
 BlogBuddy leverages advanced AI models to help you:
+
 - **Expand** brief ideas into full paragraphs
 - **Improve** text clarity, grammar, and flow
 - **Translate** content to different languages
@@ -52,9 +57,19 @@ BlogBuddy leverages advanced AI models to help you:
 - **Create** visual diagrams with Mermaid syntax
 - **Extract** relevant keywords for SEO
 
+### Document Statistics
+
+Keep track of your writing progress with real-time word count display:
+
+- **Smart counting**: Automatically detects Chinese characters and English words
+- **Status bar display**: Unobtrusive word count in the VS Code status bar
+- **Markdown-only**: Only shows statistics for Markdown files
+- **Toggle control**: Enable/disable with keyboard shortcut or click status bar item
+
 ## 📖 How to Use
 
 ### Quick Start
+
 1. Install BlogBuddy from the VS Code marketplace
 2. Configure your AI provider settings (API key, base URL, model)
 3. Start writing your blog post in Markdown
@@ -62,7 +77,9 @@ BlogBuddy leverages advanced AI models to help you:
 5. Use keyboard shortcuts to activate commands
 
 ### Basic Usage
+
 1. **Insert a command tag** in your text:
+
    ```markdown
    Here's a brief overview of machine learning.
    <bb-expd:focus on practical applications>
@@ -75,9 +92,11 @@ BlogBuddy leverages advanced AI models to help you:
 4. **Watch BB work its magic** - the command tag and surrounding text will be processed and replaced with AI-generated content
 
 ### Menu Access
+
 Alternatively, use `Cmd+Shift+B` (Mac) or `Ctrl+Shift+B` (Windows/Linux) to open the BB menu for additional options.
 
 ### 📚 Detailed Documentation
+
 For comprehensive feature documentation, examples, and advanced usage tips, see our detailed guide:
 **➡️ [Complete User Guide](docs/help.md)**
 
@@ -87,6 +106,7 @@ For comprehensive feature documentation, examples, and advanced usage tips, see 
 |----------|--------|
 | `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | Execute BB command on selected text |
 | `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | Open BB menu |
+| `Cmd+Shift+D` (Mac)<br>`Ctrl+Shift+D` (Win/Linux) | Toggle document statistics display |
 
 ## ⚙️ Configuration
 
@@ -111,3 +131,4 @@ Found a bug or have a feature suggestion? Please [open an issue](https://github.
 ---
 
 **Happy Blogging with BB! 🎉**
+

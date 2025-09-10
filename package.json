@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
@@ -28,6 +28,10 @@
       {
         "command": "blogbuddy.bb",
         "title": "Hi BB"
+      },
+      {
+        "command": "blogbuddy.toggleDocumentInfo",
+        "title": "Toggle Document Info Display"
       }
     ],
     "keybindings": [
@@ -38,10 +42,14 @@
       },
       {
         "command": "blogbuddy.bb",
-        "key": "cmd+b cmd+b",
+        "key": "ctrl+b ctrl+b",
         "mac": "cmd+b cmd+b",
-        "win": "ctrl+b cmd+b",
-        "linux": "ctrl+b cmd+b",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "blogbuddy.toggleDocumentInfo",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
         "when": "editorTextFocus"
       }
     ],
@@ -78,6 +86,12 @@
           "default": true,
           "description": "BB generate content using streaming.",
           "order": 5
+        },
+        "blogbuddy.documentInfoDisplay": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show document information (word count) next to cursor",
+          "order": 6
         }
       }
     }

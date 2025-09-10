@@ -6,7 +6,8 @@ export enum ConfigKey {
     SMALL_MODEL = 'smallModel',
     BASE_URL = 'baseURL',
     MERMAID_SVG = 'mermaidSVG',
-    STREAMING = 'streaming'
+    STREAMING = 'streaming',
+    DOCUMENT_INFO_DISPLAY = 'documentInfoDisplay'
 }
 
 
@@ -45,6 +46,7 @@ export class ConfigService {
             baseURL: this.get<string>(ConfigKey.BASE_URL, ''),
             mermaidSVG: this.get<boolean>(ConfigKey.MERMAID_SVG, false),
             streaming: this.get<boolean>(ConfigKey.STREAMING, true),
+            documentInfoDisplay: this.get<boolean>(ConfigKey.DOCUMENT_INFO_DISPLAY, false),
         };
     }
 
