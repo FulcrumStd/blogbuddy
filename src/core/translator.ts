@@ -325,7 +325,7 @@ ${text}
 </text>
 
 ## Output Requirements:
-Return only the translated content without explanations or prefixes. The translation should maintain all original formatting structure while translating all readable content.`;
+Return ONLY the translated content without any explanations, prefixes, suffixes, or wrapper tags like <text></text>. Do not include any meta-commentary, XML tags, HTML tags, or additional formatting beyond the original markdown structure. The translation should maintain all original formatting structure while translating all readable content.`;
         } else {
             const contextSection = fileContext ? `
 ## Full Document Context:
@@ -358,7 +358,7 @@ ${text}
 </text>
 
 ## Output Requirements:
-Return only the translated text block without explanations or meta-commentary. The result should be a natural, well-translated version that integrates seamlessly within the full document context.`;
+Return ONLY the translated text block without any explanations, prefixes, suffixes, or wrapper tags like <text></text>. Do not include any meta-commentary, XML tags, HTML tags, or additional formatting beyond the original markdown structure. The result should be a natural, well-translated version that integrates seamlessly within the full document context.`;
         }
     }
 }

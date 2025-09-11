@@ -14,6 +14,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.6] - 2025-09-11
+
+### Fixed
+
+- Fixed an issue where the translation command would occasionally output formatting markers or tags
+
 ## [0.0.5] - 2025-09-10
 
 ### Added
