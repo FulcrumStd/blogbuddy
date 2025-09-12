@@ -6,11 +6,17 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- BB in agent mode.
-- Auto execute all BB commands in a opened file.
-- Generate svg images from mermaid codes.
-- Working between multiple files within one workspace.
-- The document processing lock feature becomes disabled when switching files
+### 0.0.7
+
+- Fixed a bug where the text-processing lock would disappear after switching files
+- Improved the display of locked text content
+
+### backlog
+
+- Add the bb-srch command to support internet searches based on user requests
+- Agent mode: Make bb commands agentic, allowing them to reference other files in the workspace to complete tasks
+- Auto execute mode: Execute all BB commands in a file with one click
+- Add support for generating SVG images with the bb-mmd command
 
 ---
 
