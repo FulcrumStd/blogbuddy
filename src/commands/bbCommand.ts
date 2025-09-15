@@ -8,39 +8,110 @@ import { BBCmd, ProcessRequest } from '../core/types';
 import { BB } from '../core/bb';
 
 export function registerBBCommand(context: vscode.ExtensionContext) {
+    const bbCommand = new BBCommand(context);
     context.subscriptions.push(vscode.commands.registerCommand(
         'blogbuddy.bb',
-        () => new BBCommand().hiBB()
+        () => bbCommand.hiBB()
     ));
 }
 
-class BBCommand {
+class BBCommand implements vscode.Disposable {
     private static isExecuting = false;
+    private static isInterrupted = false;
+
+    private disposables: vscode.Disposable[] = [];
+    private currentProcessor: TextBlockProcessor | null = null;
+    private currentEditor: vscode.TextEditor | null = null;
+    private originalText: string = '';
+
+    constructor(private context: vscode.ExtensionContext) {
+        // 设置全局监听器
+        this.setupEventListeners();
+    }
+
+    private setupEventListeners(): void {
+        // 编辑器切换监听
+        const editorChangeListener = vscode.window.onDidChangeActiveTextEditor(async (activeEditor) => {
+            if (BBCommand.isExecuting && !BBCommand.isInterrupted && this.currentEditor) {
+                if (!activeEditor || activeEditor.document.uri.toString() !== this.currentEditor.document.uri.toString()) {
+                    await this.interruptProcessing('switched to another file');
+                }
+            }
+        });
+
+        // 文档关闭监听
+        const documentCloseListener = vscode.workspace.onDidCloseTextDocument(async (doc) => {
+            if (BBCommand.isExecuting && !BBCommand.isInterrupted && this.currentEditor) {
+                if (doc.uri.toString() === this.currentEditor.document.uri.toString()) {
+                    await this.interruptProcessing('closed the file');
+                }
+            }
+        });
+
+        this.disposables.push(editorChangeListener, documentCloseListener);
+        this.context.subscriptions.push(...this.disposables);
+    }
+
+    private async interruptProcessing(reason: string): Promise<void> {
+        if (BBCommand.isInterrupted) {
+            return;
+        }
+
+        console.log(`BB interrupted: ${reason}`);
+        BBCommand.isInterrupted = true;
+        BBCommand.isExecuting = false; // 立即释放执行锁
+
+        // 恢复原始文本
+        if (this.currentProcessor && this.originalText) {
+            await this.currentProcessor.writeText(this.originalText);
+        }
+
+        // 清理当前处理器
+        if (this.currentProcessor) {
+            this.currentProcessor.dispose();
+            this.currentProcessor = null;
+        }
+
+        // 显示提示
+        const animation = StatusBarAnimation.getInstance();
+        animation.showStatic('🔄 BB processing interrupted', 3000);
+        vscode.window.showWarningMessage(
+            `BB processing was interrupted because you ${reason}. Original content has been restored.`
+        );
+    }
 
     async hiBB(): Promise<void> {
-        // Prevent concurrent execution
+        // 防止并发执行
         if (BBCommand.isExecuting) {
             vscode.window.showWarningMessage('BB is already executing a command. Please wait...');
             return;
         }
 
-        // Set execution flag
+        // 重置状态
         BBCommand.isExecuting = true;
+        BBCommand.isInterrupted = false;
+        this.currentProcessor = null;
+        this.currentEditor = null;
+        this.originalText = '';
 
         try {
             const result = TextUtils.getSelectedTextOrParagraph();
             const editor = vscode.window.activeTextEditor;
-            if (!result) {
+
+            if (!result || !editor) {
                 return;
             }
-            if (!editor) {
-                return;
-            }
+
+            // 保存当前上下文
+            this.currentEditor = editor;
+            this.originalText = editor.document.getText(result.range);
+
             const text = result.text;
             const ps = findAndParse(text);
             if (!ps) {
                 return;
             }
+
             const cmd = Object.values(BBCmd).find(status => ps.command === status);
             if (!cmd) {
                 throw new AppError(
@@ -49,7 +120,8 @@ class BBCommand {
                     "BB don't know cmd: " + ps.command,
                 );
             }
-            const bquest = {
+
+            const request = {
                 filePath: editor.document.uri.fsPath,
                 selectText: text.slice(0, ps.startIndex) + text.slice(ps.endIndex),
                 cmd: cmd,
@@ -57,70 +129,90 @@ class BBCommand {
                 cmdText: ps.fullMatch
             };
 
-            // Use unified TextBlockProcessor for both streaming and non-streaming
-            const config = ConfigService.getInstance().getAllConfig();
-            const useStreaming = config.streaming;
+            // 处理请求
+            await this.handleProcessing(result.range, request);
 
-            await this.handleUnifiedProcessing(editor, result.range, bquest, useStreaming);
         } finally {
-            // Always reset execution flag
-            BBCommand.isExecuting = false;
+            // 清理状态
+            this.cleanup();
         }
     }
 
-    /**
-     * Handle unified processing using TextBlockProcessor
-     */
-    private async handleUnifiedProcessing(
-        editor: vscode.TextEditor,
-        range: vscode.Range,
-        request: ProcessRequest,
-        useStreaming: boolean
-    ): Promise<void> {
+    private async handleProcessing(range: vscode.Range, request: ProcessRequest): Promise<void> {
+        if (!this.currentEditor || BBCommand.isInterrupted) {
+            return;
+        }
+
+        const config = ConfigService.getInstance().getAllConfig();
         const animation = StatusBarAnimation.getInstance();
-        // 保存原始数据用于异常恢复
-        const originalText = editor.document.getText(range);
 
-       
-
-
-        // 初始化处理器并显示装饰
+        // 初始化处理器
         const displayText = ` BB is working on ${request.cmd}`;
-        const processor = new TextBlockProcessor(editor, range, displayText);
-        // 先把原始文本替换成用户的纯文本，删除本次处理的 bb-cmd 信息（优化显示体验）
-        await processor.writeText(request.selectText);
+        this.currentProcessor = new TextBlockProcessor(this.currentEditor, range, displayText);
 
         try {
-            // Start animation
+            // 写入初始文本
+            await this.currentProcessor.writeText(request.selectText);
+            if (BBCommand.isInterrupted) {
+                return;
+            }
+
+            // 开始处理
             animation.showStatic(`$(loading~spin) BB executing ${request.cmd}`);
 
-            if (useStreaming) {
-                // 流式处理
+            if (config.streaming) {
                 const streamGenerator = await BB.i().actStreaming(request);
-                await processor.writeStream(streamGenerator, { delay: 20 });
+                await this.currentProcessor.writeStream(streamGenerator, { delay: 20 });
             } else {
-                // 非流式处理
                 const response = await BB.i().act(request);
-                await processor.writeText(response.replaceText);
+                if (!BBCommand.isInterrupted) {
+                    await this.currentProcessor.writeText(response.replaceText);
+                }
             }
 
             // 成功完成
-            console.log('BB processing completed successfully');
-            animation.showStatic('BB: Completed!', 3000);
+            if (!BBCommand.isInterrupted) {
+                console.log('BB processing completed successfully');
+                animation.showStatic('BB: Completed!', 3000);
+            }
 
-        } catch (e: unknown) {
-            const error = e as Error;
-            console.error('BB processing failed:', error);
-            animation.showStatic(`BB failed: ${error.message}`, 5000);
-            vscode.window.showErrorMessage(`BB processing failed: ${error.message}`);
-            // 恢复原文到锁定区域
-            await processor.writeText(originalText);
+        } catch (error) {
+            if (!BBCommand.isInterrupted) {
+                const err = error as Error;
+                console.error('BB processing failed:', err);
+                animation.showStatic(`BB failed: ${err.message}`, 5000);
+                vscode.window.showErrorMessage(`BB processing failed: ${err.message}`);
 
-        } finally {
-            // 清理资源
-            processor.dispose();
+                // 恢复原文
+                if (this.currentProcessor && this.originalText) {
+                    await this.currentProcessor.writeText(this.originalText);
+                }
+            }
         }
     }
+
+    private cleanup(): void {
+        if (this.currentProcessor) {
+            this.currentProcessor.dispose();
+            this.currentProcessor = null;
+        }
+
+        this.currentEditor = null;
+        this.originalText = '';
+
+        // 只有在没有被中断时才重置执行标志（中断时已经重置过了）
+        if (!BBCommand.isInterrupted) {
+            BBCommand.isExecuting = false;
+        }
+        BBCommand.isInterrupted = false; // 总是重置中断标志
+    }
+
+    dispose(): void {
+        this.cleanup();
+        this.disposables.forEach(d => d.dispose());
+        this.disposables = [];
+    }
+
 }
 
 interface ParseResult {
