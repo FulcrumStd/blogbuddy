@@ -160,15 +160,17 @@ export class TextBlockProcessor implements vscode.Disposable {
     private handleSelectionChange(event: vscode.TextEditorSelectionChangeEvent): void {
         for (const selection of event.selections) {
             // 检查光标或选择是否在锁定区域内
-            if (this.lockedRange.contains(selection.active) || 
-                (!selection.isEmpty && !selection.intersection(this.lockedRange)?.isEmpty)) {
-                
-                // 移出光标并显示提示
-                this.repositionCursor();
-                vscode.window.setStatusBarMessage(
-                    `${this.displayPrefix} This area is locked during processing`,
-                    2000
+            const intersection = selection.intersection(this.lockedRange);
+            if (this.lockedRange.contains(selection.active) ||
+                (!selection.isEmpty && intersection && !intersection.isEmpty)) {
+
+                // 显示提示
+                vscode.window.showInformationMessage(
+                    `${this.displayPrefix} This area is locked during processing`
                 );
+
+                // 移出光标
+                this.repositionCursor();
                 break;
             }
         }
