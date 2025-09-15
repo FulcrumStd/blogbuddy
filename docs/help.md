@@ -33,13 +33,19 @@ Real-time word count display in the status bar for Markdown files.
 
 ## 🏷️ BB Command System
 
-The BB command system allows you to embed AI instructions directly in your text using special tags. You can place commands on the same line as your content or on separate lines. Place your cursor anywhere in the text block (or select specific text) and press `Cmd+B Cmd+B` (Mac) or `Ctrl+B Ctrl+B` (Win/Linux) to execute.
+The BB command system allows you to embed AI instructions directly in your text using special tags. The system intelligently determines the processing scope based on where your cursor is positioned and whether you've selected text. Press `Cmd+B Cmd+B` (Mac) or `Ctrl+B Ctrl+B` (Win/Linux) to execute.
 
-**How it works:**
+**Smart Scope Detection:**
+
+- **Manual Selection**: When you select text manually, processes only the selected content
+- **Current Line Processing**: When cursor is on a line that contains both a BB tag and other content, processes only that line
+- **Paragraph Processing**: When cursor is on a line with only a BB tag (or no BB tag), searches the surrounding paragraph (text block separated by blank lines) for BB commands and processes the entire paragraph
+- **Full Document Mode**: Some commands (like `bb-tslt`, `bb-impv` when isolated) can process the entire document
+
+**Processing Modes:**
 
 - **Text Block Mode**: When BB command is in the same text block (separated by blank lines) with other content, processes only that text block
 - **Full Document Mode**: When BB command is alone on its own line with blank lines above and below (no other content in the text block), processes the entire document
-- **Manual Selection**: When you manually select text, processes only the selected text regardless of mode
 
 ### Command Syntax
 
@@ -354,16 +360,21 @@ Access organized features through an interactive menu:
 
 ### Best Practices
 
-1. **Master Blank Line Control**: Blank lines determine processing scope
+1. **Leverage Smart Detection**: The system automatically determines scope based on cursor position
+   - **Line-level edits**: Place cursor on line with BB tag and content for single-line processing
+   - **Paragraph-level edits**: Place cursor anywhere in a paragraph containing BB tags
+   - **Manual control**: Select specific text to override automatic detection
+2. **Master Blank Line Control**: Blank lines still determine document-level processing
    - **Same text block** (no blank lines): Processes only that content
    - **Isolated by blank lines**: Processes entire document
-2. **Choose Your Mode**:
-   - For local edits: Place commands with content in the same text block (no blank lines between)
+3. **Choose Your Mode**:
+   - For quick line edits: Put BB tag and content on the same line
+   - For paragraph improvements: Place BB tag anywhere in the paragraph
    - For full document processing: Isolate commands with blank lines above and below
-3. **Context Matters**: BB commands read your entire document for better context
-4. **Be Specific**: Provide clear instructions in command messages
-5. **File Types**: Works best with Markdown (.md) files
-6. **Backup Important Work**: BB creates new files for document-level operations
+4. **Context Matters**: BB commands read your entire document for better context
+5. **Be Specific**: Provide clear instructions in command messages
+6. **File Types**: Works best with Markdown (.md) files
+7. **Backup Important Work**: BB creates new files for document-level operations
 
 ### Workflow Integration
 
@@ -374,7 +385,15 @@ Access organized features through an interactive menu:
 
 ### Command Combinations
 
-**Text Block Mode (local processing):**
+**Line-level Processing (single line with content and BB tag):**
+
+```markdown
+Machine learning is a subset of AI. <bb-expd:add practical examples>
+
+This feature improves user experience. <bb-impv:make more technical>
+```
+
+**Text Block Mode (paragraph processing):**
 
 ```markdown
 Your initial paragraph here.

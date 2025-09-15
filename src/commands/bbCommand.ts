@@ -95,22 +95,63 @@ class BBCommand implements vscode.Disposable {
         this.originalText = '';
 
         try {
-            const result = TextUtils.getSelectedTextOrParagraph();
             const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                return;
+            }
 
-            if (!result || !editor) {
+            let result: { text: string; range: vscode.Range } | null = null;
+            let ps: ParseResult | null = null;
+
+            // 1. 如果用户主动选择了内容，则保持当前逻辑不变
+            const selectedText = TextUtils.getSelectedText();
+            if (selectedText) {
+                ps = findAndParse(selectedText.text);
+                if (ps) {
+                    result = selectedText;
+                }
+            } else {
+                // 2. 如果用户没有主动选择，则根据光标位置进行推断
+                const currentLineText = TextUtils.getCurrentLineText();
+
+                if (currentLineText) {
+                    // 检查当前行是否包含BB命令标签且有其他内容
+                    const currentLinePs = findAndParse(currentLineText.text);
+                    if (currentLinePs) {
+                        // 检查除了BB标签外是否还有其他内容
+                        const textWithoutBBTag = currentLineText.text.slice(0, currentLinePs.startIndex) +
+                                               currentLineText.text.slice(currentLinePs.endIndex);
+
+                        if (textWithoutBBTag.trim().length > 0) {
+                            // 当前行有BB标签且有其他内容，处理当前行
+                            result = currentLineText;
+                            ps = currentLinePs;
+                        }
+                    }
+                }
+
+                // 如果当前行没有BB标签或只有BB标签没有其他文本，则获取段落
+                if (!result) {
+                    const paragraphText = TextUtils.getCurrentParagraphText();
+                    if (paragraphText) {
+                        const paragraphPs = findAndParse(paragraphText.text);
+                        if (paragraphPs) {
+                            result = paragraphText;
+                            ps = paragraphPs;
+                        }
+                    }
+                }
+            }
+
+            // 如果所有搜索都没找到BB命令标签，则提示用户
+            if (!result || !ps) {
+                vscode.window.showInformationMessage('No BB command tag found in the current context.');
                 return;
             }
 
             // 保存当前上下文
             this.currentEditor = editor;
             this.originalText = editor.document.getText(result.range);
-
-            const text = result.text;
-            const ps = findAndParse(text);
-            if (!ps) {
-                return;
-            }
 
             const cmd = Object.values(BBCmd).find(status => ps.command === status);
             if (!cmd) {
@@ -123,7 +164,7 @@ class BBCommand implements vscode.Disposable {
 
             const request = {
                 filePath: editor.document.uri.fsPath,
-                selectText: text.slice(0, ps.startIndex) + text.slice(ps.endIndex),
+                selectText: result.text.slice(0, ps.startIndex) + result.text.slice(ps.endIndex),
                 cmd: cmd,
                 msg: ps.message,
                 cmdText: ps.fullMatch

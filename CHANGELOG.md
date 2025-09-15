@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### 0.0.7
 
+- Improved BB command scope detection: automatically determines whether to process current line or entire paragraph based on BB tag location and content
 - Switching files or closing a file while a BB command is running will automatically terminate the command and display a notification
 - Improved the display of locked text content
 

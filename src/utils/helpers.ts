@@ -8,14 +8,55 @@ import * as path from 'path';
  */
 export class TextUtils {
     /**
-     * 获取当前选中的文本，如果没有选中则获取当前段落（空行分隔的文本块）
-     * 
-     * 逻辑：
-     * 1. 如果用户有选择文本，则返回选择的文本
-     * 2. 如果用户没有选择文本，并且光标所在位置不是空行，则向上向下查找空行边界，
-     *    将两个空行之间的所有文字作为选择范围
+     * 获取用户选中的文本
      */
-    static getSelectedTextOrParagraph(): { text: string; range: vscode.Range } | null {
+    static getSelectedText(): { text: string; range: vscode.Range } | null {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return null;
+        }
+
+        const selection = editor.selection;
+        if (selection.isEmpty) {
+            return null;
+        }
+
+        const text = editor.document.getText(selection);
+        const range = new vscode.Range(selection.start, selection.end);
+
+        return { text, range };
+    }
+
+    /**
+     * 获取光标所在行的文本
+     */
+    static getCurrentLineText(): { text: string; range: vscode.Range } | null {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+            return null;
+        }
+
+        const selection = editor.selection;
+        const currentLine = selection.active.line;
+        const lineText = editor.document.lineAt(currentLine).text;
+
+        // 如果当前行为空，返回null
+        if (lineText.trim() === '') {
+            return null;
+        }
+
+        const range = new vscode.Range(
+            new vscode.Position(currentLine, 0),
+            new vscode.Position(currentLine, lineText.length)
+        );
+
+        return { text: lineText, range };
+    }
+
+    /**
+     * 获取光标所在段落的文本（空行分隔的文本块）
+     */
+    static getCurrentParagraphText(): { text: string; range: vscode.Range } | null {
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
             return null;
@@ -23,54 +64,58 @@ export class TextUtils {
 
         const selection = editor.selection;
         const document = editor.document;
-        let text = '';
-        let range: vscode.Range;
+        const currentLine = selection.active.line;
+        const currentLineText = document.lineAt(currentLine).text;
 
-        if (!selection.isEmpty) {
-            // 1. 如果用户有选择文本，则返回选择的文本
-            text = document.getText(selection);
-            range = new vscode.Range(selection.start, selection.end);
-        } else {
-            // 2. 如果用户没有选择文本，获取段落范围（空行分隔的文本块）
-            const currentLine = selection.active.line;
-            const currentLineText = document.lineAt(currentLine).text;
-
-            // 如果光标在空行上，返回null
-            if (currentLineText.trim() === '') {
-                return null;
-            }
-
-            // 向上查找段落开始（找到空行或文档开始）
-            let startLine = currentLine;
-            while (startLine > 0) {
-                const prevLine = startLine - 1;
-                const prevLineText = document.lineAt(prevLine).text;
-                if (prevLineText.trim() === '') {
-                    break; // 找到空行，停止
-                }
-                startLine = prevLine;
-            }
-
-            // 向下查找段落结束（找到空行或文档结束）
-            let endLine = currentLine;
-            const lastLineIndex = document.lineCount - 1;
-            while (endLine < lastLineIndex) {
-                const nextLine = endLine + 1;
-                const nextLineText = document.lineAt(nextLine).text;
-                if (nextLineText.trim() === '') {
-                    break; // 找到空行，停止
-                }
-                endLine = nextLine;
-            }
-
-            // 构建范围和文本
-            const startPos = new vscode.Position(startLine, 0);
-            const endPos = new vscode.Position(endLine, document.lineAt(endLine).text.length);
-            range = new vscode.Range(startPos, endPos);
-            text = document.getText(range);
+        // 如果光标在空行上，返回null
+        if (currentLineText.trim() === '') {
+            return null;
         }
 
+        // 向上查找段落开始（找到空行或文档开始）
+        let startLine = currentLine;
+        while (startLine > 0) {
+            const prevLine = startLine - 1;
+            const prevLineText = document.lineAt(prevLine).text;
+            if (prevLineText.trim() === '') {
+                break; // 找到空行，停止
+            }
+            startLine = prevLine;
+        }
+
+        // 向下查找段落结束（找到空行或文档结束）
+        let endLine = currentLine;
+        const lastLineIndex = document.lineCount - 1;
+        while (endLine < lastLineIndex) {
+            const nextLine = endLine + 1;
+            const nextLineText = document.lineAt(nextLine).text;
+            if (nextLineText.trim() === '') {
+                break; // 找到空行，停止
+            }
+            endLine = nextLine;
+        }
+
+        // 构建范围和文本
+        const startPos = new vscode.Position(startLine, 0);
+        const endPos = new vscode.Position(endLine, document.lineAt(endLine).text.length);
+        const range = new vscode.Range(startPos, endPos);
+        const text = document.getText(range);
+
         return { text, range };
+    }
+
+    /**
+     * 获取当前选中的文本，如果没有选中则获取当前段落（空行分隔的文本块）
+     * @deprecated 请使用 getSelectedText, getCurrentLineText, getCurrentParagraphText 等独立函数
+     */
+    static getSelectedTextOrParagraph(): { text: string; range: vscode.Range } | null {
+        // 保持向后兼容，但建议使用新的独立函数
+        const selectedText = this.getSelectedText();
+        if (selectedText) {
+            return selectedText;
+        }
+
+        return this.getCurrentParagraphText();
     }
 
     /**
