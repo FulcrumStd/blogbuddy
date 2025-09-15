@@ -6,23 +6,31 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-### 0.0.7
-
-- Improved BB command scope detection: automatically determines whether to process current line or entire paragraph based on BB tag location and content
-- Switching files or closing a file while a BB command is running will automatically terminate the command and display a notification
-- Improved the display of locked text content
-- Fixed TextBlockProcessor selection handling logic bug where all text selections were being blocked when locked areas existed
-- Changed locked area warning from status bar message to information popup for better visibility
-
 ### backlog
 
 - Add the bb-srch command to support internet searches based on user requests
 - Agent mode: Make bb commands agentic, allowing them to reference other files in the workspace to complete tasks
 - Auto execute mode: Execute all BB commands in a file with one click
 - Add support for generating SVG images with the bb-mmd command
-- [known issue] Warning popup may not show consistently when text selection overlaps with locked areas
+- **Issue:** Warning popup may not show consistently when text selection overlaps with working area
 
 ---
+
+## [0.0.7] - 2025-09-15
+
+### Added
+
+- Switching files or closing a file while a BB command is running will automatically terminate the command and display a notification
+
+### Improved
+
+- Improved BB command scope detection: automatically determines whether to process current line or entire paragraph based on BB tag location and content
+- Changed locked area warning from status bar message to information popup for better visibility
+- Improved the display of locked text content
+
+### Fixed
+
+- Fixed TextBlockProcessor selection handling logic bug where all text selections were being blocked when locked areas existed
 
 ## [0.0.6] - 2025-09-11
 
