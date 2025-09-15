@@ -8,7 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### 0.0.7
 
-- Fixed a bug where the text-processing lock would disappear after switching files
+- Switching files or closing a file while a BB command is running will automatically terminate the command and display a notification
 - Improved the display of locked text content
 
 ### backlog
