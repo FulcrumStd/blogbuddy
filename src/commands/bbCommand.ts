@@ -81,9 +81,14 @@ class BBCommand {
         // 保存原始数据用于异常恢复
         const originalText = editor.document.getText(range);
 
+       
+
+
         // 初始化处理器并显示装饰
         const displayText = ` BB is working on ${request.cmd}`;
         const processor = new TextBlockProcessor(editor, range, displayText);
+        // 先把原始文本替换成用户的纯文本，删除本次处理的 bb-cmd 信息（优化显示体验）
+        await processor.writeText(request.selectText);
 
         try {
             // Start animation
