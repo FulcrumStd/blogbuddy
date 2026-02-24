@@ -16,6 +16,23 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.8] - 2026-02-24
+
+### Added
+
+- **BB Editor**: New WYSIWYG Markdown editor powered by Milkdown
+  - Rich-text editing with real-time preview (commonmark, history, block plugins)
+  - BB slash commands via `/` menu and `Cmd+B Cmd+B` chord shortcut
+  - AI streaming block: inline display of AI processing results
+  - Image/attachment paste & drag-drop: saves files to document directory, inserts as relative path
+  - Frontmatter preservation: YAML (`---`) and TOML (`+++`) metadata is stripped on load and reattached on save
+  - Auto-save with debounce and external file change detection
+  - Theme sync with VS Code color theme
+  - Open from file explorer context menu, active editor, or file picker
+- CSP now allows external HTTPS images (e.g. shields.io badges) in BB Editor
+
+---
+
 ## [0.0.7] - 2025-09-15
 
 ### Added

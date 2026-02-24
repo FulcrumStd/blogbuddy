@@ -26,15 +26,58 @@ This is a VS Code extension that provides seamless AI assistance through embedde
 ```
 src/
 ├── commands/          # View Layer: Platform integration & UI
+│   ├── editorCommand.ts   # BB Editor webview panel lifecycle & HTML
+│   └── ...
 ├── core/             # Business Layer: Feature processors
 ├── services/         # Foundation Layer: Infrastructure
+│   ├── WebviewBridge.ts     # Webview ↔ Extension Host message routing
+│   └── webviewProtocol.ts   # Typed message protocol definitions
 └── utils/            # Foundation Layer: Utilities
+
+media/webview/         # Webview frontend (browser, bundled separately)
+├── index.ts              # Milkdown editor init, message handling, URI conversion
+├── ai-block-plugin.ts    # ProseMirror node for AI streaming blocks
+├── bb-slash-plugin.ts    # Slash menu for BB commands
+└── styles.css            # Editor styles
 ```
 
 ### Layer Interaction Rules
 - **Commands**: Can call Core and Services, handles UI concerns only
 - **Core**: Can use Services/Utils, contains business logic and AI prompts
 - **Services/Utils**: Pure technical services, no business logic
+
+### BB Editor (Webview) Architecture
+
+The BB Editor is a WYSIWYG Markdown editor running inside a VS Code webview panel.
+
+**Dual build system** (`esbuild.js`):
+
+- Extension host: Node.js CJS → `dist/extension.js`
+- Webview: Browser IIFE → `dist/webview.js` + `dist/webview.css`
+
+**Message flow** (typed in `webviewProtocol.ts`):
+
+```text
+Webview (browser)              Extension Host (Node.js)
+  index.ts                       WebviewBridge.ts
+    │                                │
+    │── bb-request ────────────────→ │ → BB.act() / actStreaming()
+    │← chunk / done / error ───────│
+    │                                │
+    │── file-upload (base64) ──────→ │ → fs.writeFile() → webviewUri
+    │← file-uploaded ──────────────│
+    │                                │
+    │── save / auto-save ──────────→ │ → reattach frontmatter → fs.writeFile()
+    │← saved ──────────────────────│
+    │                                │
+    │← load (content + baseUri) ───│   (frontmatter stripped)
+```
+
+**Key patterns**:
+
+- **Frontmatter handling**: `extractFrontmatter()` strips YAML/TOML on load, `storedFrontmatter` is reattached on save/auto-save
+- **Image/file upload**: Files sent as base64 to host, saved to disk, webview URI returned; `preprocessMarkdown`/`postprocessMarkdown` convert between relative paths and webview URIs
+- **AI blocks**: Custom ProseMirror node (`ai_block`) displays streaming AI responses inline
 
 ## Development Principles
 
