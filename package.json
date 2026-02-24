@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
@@ -32,8 +32,22 @@
       {
         "command": "blogbuddy.toggleDocumentInfo",
         "title": "Toggle Document Info Display"
+      },
+      {
+        "command": "blogbuddy.openEditor",
+        "title": "Open BB Editor",
+        "icon": "$(edit)"
       }
     ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "blogbuddy.openEditor",
+          "when": "resourceExtname == .md",
+          "group": "blogbuddy"
+        }
+      ]
+    },
     "keybindings": [
       {
         "command": "blogbuddy.menu",
@@ -51,6 +65,12 @@
         "key": "ctrl+shift+d",
         "mac": "cmd+shift+d",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "blogbuddy.openEditor",
+        "key": "ctrl+b",
+        "mac": "cmd+b",
+        "when": "filesExplorerFocus && resourceExtname == .md"
       }
     ],
     "configuration": {
@@ -124,6 +144,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@milkdown/kit": "^7.18.0",
     "openai": "^5.12.2"
   }
 }

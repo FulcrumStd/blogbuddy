@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"module": "ES2022",
+		"target": "ES2022",
+		"moduleResolution": "bundler",
+		"lib": [
+			"ES2022",
+			"DOM",
+			"DOM.Iterable"
+		],
+		"sourceMap": true,
+		"rootDir": "media/webview",
+		"strict": true
+	},
+	"include": [
+		"media/webview/**/*.ts"
+	]
+}
