@@ -42,7 +42,9 @@ function preprocessMarkdown(md: string): string {
 
 function postprocessMarkdown(md: string): string {
     if (!baseUri) { return md; }
-    return md.replaceAll(baseUri + '/', '');
+    // Also strip URL-encoded variant (Milkdown may encode + as %2B)
+    const encodedBaseUri = baseUri.replace(/\+/g, '%2B');
+    return md.replaceAll(baseUri + '/', '').replaceAll(encodedBaseUri + '/', '');
 }
 
 // ---- File Upload ----

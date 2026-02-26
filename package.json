@@ -110,8 +110,14 @@
         "blogbuddy.documentInfoDisplay": {
           "type": "boolean",
           "default": false,
-          "description": "Show document information (word count) next to cursor",
+          "description": "Show document word count in the status bar",
           "order": 6
+        },
+        "blogbuddy.assetDir": {
+          "type": "string",
+          "default": "",
+          "description": "Relative subdirectory for uploaded assets (e.g. \"assets\" or \"images/uploads\"). Resolved from the document directory. Leave empty to save alongside the document.",
+          "order": 7
         }
       }
     }

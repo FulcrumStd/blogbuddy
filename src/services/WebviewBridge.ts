@@ -243,6 +243,31 @@ export class WebviewBridge implements vscode.Disposable {
         }
     }
 
+    private async resolveAssetDir(): Promise<string> {
+        const docDir = path.dirname(this.filePath!);
+        const config = ConfigService.getInstance().getAllConfig();
+        const assetDir = config.assetDir?.trim();
+
+        if (!assetDir) { return docDir; }
+
+        // Only allow relative paths (resolved from document directory)
+        if (path.isAbsolute(assetDir)) {
+            vscode.window.showWarningMessage('assetDir must be a relative path. Saving to document directory.');
+            return docDir;
+        }
+
+        const resolved = path.resolve(docDir, assetDir);
+
+        // Ensure resolved path is within docDir (prevent ../ escaping)
+        if (!resolved.startsWith(docDir)) {
+            vscode.window.showWarningMessage('assetDir must be within the document directory. Saving to document directory.');
+            return docDir;
+        }
+
+        await fs.mkdir(resolved, { recursive: true });
+        return resolved;
+    }
+
     private async handleFileUpload(msg: WebviewFileUploadMessage): Promise<void> {
         if (!this.filePath) {
             vscode.window.showWarningMessage('Please save the document first before uploading files.');
@@ -250,7 +275,8 @@ export class WebviewBridge implements vscode.Disposable {
         }
 
         try {
-            const dir = path.dirname(this.filePath);
+            const docDir = path.dirname(this.filePath);
+            const dir = await this.resolveAssetDir();
             const finalName = await getUniqueFileName(dir, msg.fileName);
             const fullPath = path.join(dir, finalName);
 
@@ -260,11 +286,14 @@ export class WebviewBridge implements vscode.Disposable {
             const webviewUri = this.webview.asWebviewUri(vscode.Uri.file(fullPath)).toString();
             const isImage = msg.mimeType.startsWith('image/');
 
+            // relativePath must be relative to docDir for correct markdown links
+            const relativePath = path.relative(docDir, fullPath);
+
             this.post({
                 type: 'file-uploaded',
                 uploadId: msg.uploadId,
                 webviewUri,
-                relativePath: finalName,
+                relativePath,
                 isImage,
                 fileName: finalName,
             });
