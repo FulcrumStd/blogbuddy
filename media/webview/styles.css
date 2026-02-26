@@ -111,6 +111,23 @@ body {
     padding: 0;
 }
 
+.milkdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5em 0;
+}
+
+.milkdown th, .milkdown td {
+    border: 1px solid var(--vscode-panel-border, #444);
+    padding: 6px 12px;
+    text-align: left;
+}
+
+.milkdown th {
+    background: var(--vscode-textCodeBlock-background, rgba(255, 255, 255, 0.06));
+    font-weight: 600;
+}
+
 .milkdown hr {
     margin: 1.5em 0;
     border: none;

@@ -1,6 +1,7 @@
 import { Editor } from '@milkdown/kit/core';
 import { rootCtx, defaultValueCtx, editorViewCtx, commandsCtx } from '@milkdown/kit/core';
 import { commonmark, toggleStrongCommand } from '@milkdown/kit/preset/commonmark';
+import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { block } from '@milkdown/kit/plugin/block';
@@ -150,6 +151,7 @@ async function initEditor(): Promise<void> {
             }));
         })
         .use(commonmark)
+        .use(gfm)
         .use(history)
         .use(listener)
         .use(block)
