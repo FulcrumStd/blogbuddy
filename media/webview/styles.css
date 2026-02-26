@@ -236,7 +236,6 @@ body {
     transition: background 0.1s ease;
 }
 
-.bb-slash-item:hover,
 .bb-slash-item--active {
     background: var(--vscode-menu-selectionBackground, #094771);
 }

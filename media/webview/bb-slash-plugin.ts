@@ -34,13 +34,13 @@ interface BBCmdDef {
 // ---- BB Command Definitions ----
 
 const BB_COMMANDS: BBCmdDef[] = [
-    { command: 'bb',      label: 'BB 指令',   desc: 'Give BB a direct instruction',   tag: '<bb:$1>' },
-    { command: 'bb-expd', label: 'BB 扩写',   desc: 'Expand and elaborate content',    tag: '<bb-expd>' },
-    { command: 'bb-impv', label: 'BB 润色',   desc: 'Polish and improve writing',      tag: '<bb-impv>' },
-    { command: 'bb-tslt', label: 'BB 翻译',   desc: 'Translate to specified language',  tag: '<bb-tslt:$1>' },
-    { command: 'bb-kwd',  label: 'BB 关键词', desc: 'Extract keywords',                 tag: '<bb-kwd>' },
-    { command: 'bb-tldr', label: 'BB 省流',   desc: 'Generate a TL;DR summary',         tag: '<bb-tldr>' },
-    { command: 'bb-mmd',  label: 'BB 图表',   desc: 'Generate a Mermaid diagram',       tag: '<bb-mmd>' },
+    { command: 'bb',      label: 'BB',            desc: 'Give BB a direct instruction',   tag: '<bb:$1>' },
+    { command: 'bb-expd', label: 'BB Expand',     desc: 'Expand and elaborate content',    tag: '<bb-expd>' },
+    { command: 'bb-impv', label: 'BB Improve',    desc: 'Polish and improve writing',      tag: '<bb-impv>' },
+    { command: 'bb-tslt', label: 'BB Translate',  desc: 'Translate to specified language',  tag: '<bb-tslt:$1>' },
+    { command: 'bb-kwd',  label: 'BB Keywords',   desc: 'Extract keywords',                tag: '<bb-kwd>' },
+    { command: 'bb-tldr', label: 'BB TL;DR',      desc: 'Generate a TL;DR summary',        tag: '<bb-tldr>' },
+    { command: 'bb-mmd',  label: 'BB Mermaid',    desc: 'Generate a Mermaid diagram',      tag: '<bb-mmd>' },
 ];
 
 // ---- Helpers ----
@@ -88,6 +88,20 @@ function insertBBTag(view: EditorView, tag: string): void {
 function buildSlashItems(commands: CommandManager): SlashItem[] {
     const items: SlashItem[] = [];
 
+    // BB tag items first — insert tag text only
+    for (const cmd of BB_COMMANDS) {
+        items.push({
+            label: cmd.label,
+            desc: cmd.desc,
+            group: 'bb',
+            onSelect: (view, sp) => {
+                sp.hide();
+                removeSlashText(view);
+                insertBBTag(view, cmd.tag);
+            },
+        });
+    }
+
     // Formatting items
     const fmtAction = (fn: () => void) => (view: EditorView, sp: SlashProvider) => {
         sp.hide();
@@ -111,20 +125,6 @@ function buildSlashItems(commands: CommandManager): SlashItem[] {
         onSelect: fmtAction(() => commands.call(wrapInBlockquoteCommand.key)) });
     items.push({ label: 'Divider', desc: 'Horizontal rule', group: 'format',
         onSelect: fmtAction(() => commands.call(insertHrCommand.key)) });
-
-    // BB tag items — insert tag text only
-    for (const cmd of BB_COMMANDS) {
-        items.push({
-            label: cmd.label,
-            desc: cmd.desc,
-            group: 'bb',
-            onSelect: (view, sp) => {
-                sp.hide();
-                removeSlashText(view);
-                insertBBTag(view, cmd.tag);
-            },
-        });
-    }
 
     return items;
 }
