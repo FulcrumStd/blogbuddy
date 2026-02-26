@@ -20,8 +20,10 @@ export class WebviewBridge implements vscode.Disposable {
     private onDirtyChange?: (isDirty: boolean) => void;
     private onReady?: () => void;
     private lastWrittenContent?: string;
+    private lastBodyContent = '';
     private fileWatcher?: vscode.FileSystemWatcher;
     private storedFrontmatter = '';
+    private frontmatterAutoSaveTimer?: ReturnType<typeof setTimeout>;
 
     constructor(
         private panel: vscode.WebviewPanel,
@@ -56,7 +58,8 @@ export class WebviewBridge implements vscode.Disposable {
     sendLoad(content: string, filePath?: string): void {
         const { frontmatter, body } = extractFrontmatter(content);
         this.storedFrontmatter = frontmatter;
-        this.post({ type: 'load', content: body, filePath, baseUri: this.getBaseUri() });
+        this.lastBodyContent = body;
+        this.post({ type: 'load', content: body, frontmatter, filePath, baseUri: this.getBaseUri() });
     }
 
     private getBaseUri(): string | undefined {
@@ -88,6 +91,9 @@ export class WebviewBridge implements vscode.Disposable {
                 break;
             case 'auto-save':
                 await this.handleAutoSave(msg.content);
+                break;
+            case 'frontmatter-update':
+                this.handleFrontmatterUpdate(msg.frontmatter);
                 break;
             case 'file-upload':
                 await this.handleFileUpload(msg);
@@ -165,6 +171,7 @@ export class WebviewBridge implements vscode.Disposable {
 
     private async handleAutoSave(content: string): Promise<void> {
         if (!this.filePath) { return; }
+        this.lastBodyContent = content;
         try {
             const fullContent = this.storedFrontmatter + content;
             this.lastWrittenContent = fullContent;
@@ -173,6 +180,24 @@ export class WebviewBridge implements vscode.Disposable {
         } catch {
             // Auto-save failures are silent
         }
+    }
+
+    private handleFrontmatterUpdate(frontmatter: string): void {
+        this.storedFrontmatter = frontmatter;
+        this.onDirtyChange?.(true);
+        // Debounced auto-save for frontmatter changes
+        if (this.frontmatterAutoSaveTimer) { clearTimeout(this.frontmatterAutoSaveTimer); }
+        this.frontmatterAutoSaveTimer = setTimeout(async () => {
+            if (!this.filePath) { return; }
+            try {
+                const fullContent = this.storedFrontmatter + this.lastBodyContent;
+                this.lastWrittenContent = fullContent;
+                await fs.writeFile(this.filePath, fullContent, 'utf-8');
+                this.onDirtyChange?.(false);
+            } catch {
+                // Auto-save failures are silent
+            }
+        }, 500);
     }
 
     private async handleSave(msg: WebviewSaveMessage): Promise<void> {
@@ -306,10 +331,12 @@ export class WebviewBridge implements vscode.Disposable {
     private handleNewFile(): void {
         this.filePath = undefined;
         this.storedFrontmatter = '';
-        this.post({ type: 'load', content: '' });
+        this.lastBodyContent = '';
+        this.post({ type: 'load', content: '', frontmatter: '' });
     }
 
     dispose(): void {
+        if (this.frontmatterAutoSaveTimer) { clearTimeout(this.frontmatterAutoSaveTimer); }
         for (const [, state] of this.activeRequests) {
             state.cancelled = true;
         }

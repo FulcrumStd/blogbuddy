@@ -162,6 +162,19 @@ class EditorPanel implements vscode.Disposable {
     <title>BB Editor</title>
 </head>
 <body>
+    <div id="frontmatter-panel" class="frontmatter-panel frontmatter-hidden">
+        <div class="frontmatter-header">
+            <button id="frontmatter-toggle" class="frontmatter-toggle" title="Toggle frontmatter">
+                <span class="frontmatter-icon">&#9654;</span>
+                <span>Frontmatter</span>
+            </button>
+        </div>
+        <div class="frontmatter-body">
+            <textarea id="frontmatter-editor" class="frontmatter-textarea"
+                      spellcheck="false"
+                      placeholder="---&#10;title: &#10;date: &#10;---"></textarea>
+        </div>
+    </div>
     <div id="editor"></div>
     <script nonce="${nonce}" src="${scriptUri}"></script>
 </body>

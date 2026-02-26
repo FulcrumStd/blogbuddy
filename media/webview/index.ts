@@ -29,6 +29,7 @@ const vscode = acquireVsCodeApi();
 
 let editor: Editor;
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let frontmatterUpdateTimer: ReturnType<typeof setTimeout> | null = null;
 let baseUri = '';
 
 // ---- URI Conversion ----
@@ -126,6 +127,49 @@ function scheduleAutoSave(): void {
     }, 500);
 }
 
+// ---- Frontmatter Panel ----
+
+function initFrontmatterPanel(): void {
+    const panel = document.getElementById('frontmatter-panel');
+    const toggle = document.getElementById('frontmatter-toggle');
+    const textarea = document.getElementById('frontmatter-editor') as HTMLTextAreaElement | null;
+    if (!panel || !toggle || !textarea) { return; }
+
+    toggle.addEventListener('click', () => {
+        panel.classList.toggle('frontmatter-collapsed');
+    });
+
+    textarea.addEventListener('input', () => {
+        // Auto-resize height
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+        // Debounce frontmatter update to host
+        if (frontmatterUpdateTimer) { clearTimeout(frontmatterUpdateTimer); }
+        frontmatterUpdateTimer = setTimeout(() => {
+            vscode.postMessage({ type: 'frontmatter-update', frontmatter: textarea.value });
+            vscode.postMessage({ type: 'dirty', isDirty: true });
+        }, 500);
+    });
+}
+
+function updateFrontmatterPanel(frontmatter: string): void {
+    const panel = document.getElementById('frontmatter-panel');
+    const textarea = document.getElementById('frontmatter-editor') as HTMLTextAreaElement | null;
+    if (!panel || !textarea) { return; }
+
+    if (frontmatter) {
+        panel.classList.remove('frontmatter-hidden');
+        panel.classList.remove('frontmatter-collapsed');
+        textarea.value = frontmatter;
+        // Trigger auto-resize
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    } else {
+        panel.classList.add('frontmatter-hidden');
+        textarea.value = '';
+    }
+}
+
 // ---- Editor Init ----
 
 async function initEditor(): Promise<void> {
@@ -170,6 +214,7 @@ window.addEventListener('message', (event) => {
             if (editor) {
                 editor.action(replaceAll(preprocessMarkdown(msg.content || '')));
             }
+            updateFrontmatterPanel(msg.frontmatter || '');
             setTimeout(() => {
                 vscode.postMessage({ type: 'dirty', isDirty: false });
             }, 100);
@@ -344,6 +389,7 @@ document.getElementById('editor')?.addEventListener('mousedown', (e) => {
 });
 
 // Init
+initFrontmatterPanel();
 initEditor().then(() => {
     vscode.postMessage({ type: 'ready' });
 });

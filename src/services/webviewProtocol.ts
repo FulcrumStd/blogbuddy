@@ -52,6 +52,11 @@ export interface WebviewFileUploadMessage {
     dataBase64: string;
 }
 
+export interface WebviewFrontmatterUpdateMessage {
+    type: 'frontmatter-update';
+    frontmatter: string;
+}
+
 export type WebviewMessage =
     | WebviewReadyMessage
     | WebviewBBRequestMessage
@@ -61,13 +66,15 @@ export type WebviewMessage =
     | WebviewNewFileMessage
     | WebviewDirtyMessage
     | WebviewAutoSaveMessage
-    | WebviewFileUploadMessage;
+    | WebviewFileUploadMessage
+    | WebviewFrontmatterUpdateMessage;
 
 // ===== Extension Host → Webview =====
 
 export interface HostLoadMessage {
     type: 'load';
     content: string;
+    frontmatter?: string;
     filePath?: string;
     baseUri?: string;
 }
