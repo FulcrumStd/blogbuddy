@@ -329,6 +329,16 @@ function updateStatus(text: string): void {
     if (el) { el.textContent = text; }
 }
 
+// Click on #editor padding area delegates focus to the editor
+document.getElementById('editor')?.addEventListener('mousedown', (e) => {
+    if (e.target === e.currentTarget && editor) {
+        e.preventDefault();
+        editor.action((ctx) => {
+            ctx.get(editorViewCtx).focus();
+        });
+    }
+});
+
 // Init
 initEditor().then(() => {
     vscode.postMessage({ type: 'ready' });
