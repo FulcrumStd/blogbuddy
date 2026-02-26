@@ -6,7 +6,7 @@
 
 **BlogBuddy** 通过 AI 驱动的写作助手让 Markdown 变得神奇！
 
-[![版本](https://img.shields.io/badge/version-0.0.8-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
+[![版本](https://img.shields.io/badge/version-0.0.9-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
 [![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 [![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
@@ -61,9 +61,10 @@ BlogBuddy 利用先进的 AI 模型帮助你：
 内置基于 [Milkdown](https://milkdown.dev) 的富文本 Markdown 编辑器，专为沉浸式写作体验设计：
 
 - **富文本编辑**：所见即所得，实时预览，无需分屏
+- **GFM 支持**：表格、删除线、任务列表和自动链接均可正确渲染
 - **内置 BB 命令**：通过 `/` 斜杠菜单或 `Cmd+B Cmd+B` 触发任意 BB 命令
 - **AI 流式输出**：AI 处理结果以内联块的形式实时显示
-- **图片与附件粘贴**：粘贴或拖入图片/附件，文件保存到文档所在目录，以相对路径插入
+- **图片与附件粘贴**：粘贴或拖入图片/附件，文件保存到文档所在目录（或通过 `blogbuddy.assetDir` 配置的子目录），以相对路径插入
 - **Frontmatter 支持**：透明保留 YAML (`---`) 和 TOML (`+++`) 元数据
 - **自动保存**：防抖自动保存；检测外部文件变更并重新加载
 - **主题同步**：编辑器主题跟随 VS Code 配色方案

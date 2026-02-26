@@ -6,7 +6,7 @@
 
 **Blog Buddy** makes Markdown magic happen with AI-powered writing assistance!
 
-[![Version](https://img.shields.io/badge/version-0.0.8-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
+[![Version](https://img.shields.io/badge/version-0.0.9-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
 [![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
@@ -62,9 +62,10 @@ BlogBuddy leverages advanced AI models to help you:
 A built-in rich-text Markdown editor powered by [Milkdown](https://milkdown.dev), designed for a distraction-free writing experience:
 
 - **Rich-text editing**: WYSIWYG with real-time preview — no split panes needed
+- **GFM support**: Tables, strikethrough, task lists, and autolinks render correctly
 - **BB commands built-in**: Use `/` slash menu or `Cmd+B Cmd+B` to trigger any BB command inline
 - **AI streaming**: See AI results appear in real-time as an inline block
-- **Image & file paste**: Paste or drag-drop images/attachments — files are saved to the document directory and inserted as relative paths
+- **Image & file paste**: Paste or drag-drop images/attachments — files are saved to the document directory (or a configurable subdirectory via `blogbuddy.assetDir`) and inserted as relative paths
 - **Frontmatter support**: YAML (`---`) and TOML (`+++`) metadata is preserved transparently
 - **Auto-save**: Changes are auto-saved with debounce; external file changes are detected and reloaded
 - **Theme sync**: Editor theme follows your VS Code color theme

@@ -76,8 +76,9 @@ Webview (browser)              Extension Host (Node.js)
 **Key patterns**:
 
 - **Frontmatter handling**: `extractFrontmatter()` strips YAML/TOML on load, `storedFrontmatter` is reattached on save/auto-save
-- **Image/file upload**: Files sent as base64 to host, saved to disk, webview URI returned; `preprocessMarkdown`/`postprocessMarkdown` convert between relative paths and webview URIs
+- **Image/file upload**: Files sent as base64 to host, saved to disk via `handleFileUpload()`, webview URI returned; `preprocessMarkdown`/`postprocessMarkdown` convert between relative paths and webview URIs (handles `%2B` encoding). Save directory resolved by `resolveAssetDir()` — defaults to document directory, configurable via `blogbuddy.assetDir` (relative paths only, must stay within document directory)
 - **AI blocks**: Custom ProseMirror node (`ai_block`) displays streaming AI responses inline
+- **Milkdown presets**: Uses both `commonmark` and `gfm` presets — GFM adds tables, strikethrough, task lists, autolinks
 
 ## Development Principles
 

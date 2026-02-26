@@ -16,6 +16,26 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.9] - 2026-02-26
+
+### Added
+
+- **GFM support**: BB Editor now supports GitHub Flavored Markdown — tables, strikethrough, task lists, and autolinks render correctly
+- **Configurable asset directory**: New `blogbuddy.assetDir` setting to specify a relative subdirectory for uploaded images/attachments (e.g. `assets` or `images/uploads`)
+
+### Improved
+
+- **Editor empty state UX**: Editing area now fills the full viewport height — clicking anywhere in the editor focuses the cursor; added placeholder text ("Start writing, or type / for BB commands...")
+- **Page-style visual**: Editor content area has subtle side borders with differentiated background, giving a "page" feel
+- **Slash menu**: BB commands now appear first in the menu with English labels; fixed a bug where hover and keyboard selection could highlight two items simultaneously
+- **URI encoding fix**: Fixed image display issue when `baseUri` contained `+` characters (encoded as `%2B` by Milkdown)
+
+### Fixed
+
+- Fixed `documentInfoDisplay` setting description — was incorrectly referencing cursor position instead of status bar
+
+---
+
 ## [0.0.8] - 2026-02-24
 
 ### Added

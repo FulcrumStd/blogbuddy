@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
