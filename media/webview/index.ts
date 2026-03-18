@@ -9,6 +9,7 @@ import { upload, uploadConfig } from '@milkdown/kit/plugin/upload';
 import { getMarkdown, replaceAll } from '@milkdown/kit/utils';
 import { updateAIBlock, finalizeAIBlock, setAIBlockError, aiBlockPlugin } from './ai-block-plugin';
 import { bbSlashPlugin } from './bb-slash-plugin';
+import { headingKeymapPlugin } from './heading-keymap-plugin';
 import './styles.css';
 
 import type { Node } from '@milkdown/kit/prose/model';
@@ -201,6 +202,7 @@ async function initEditor(): Promise<void> {
         .use(block)
         .use(upload)
         .use(bbSlashPlugin)
+        .use(headingKeymapPlugin)
         .use(aiBlockPlugin)
         .create();
 }
