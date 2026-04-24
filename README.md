@@ -6,7 +6,7 @@
 
 **Blog Buddy** makes Markdown magic happen with AI-powered writing assistance!
 
-[![Version](https://img.shields.io/badge/version-0.0.9-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
+[![Version](https://img.shields.io/badge/version-0.0.12-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
 [![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
@@ -35,7 +35,7 @@ Use intuitive command tags anywhere in your blog posts (all tags support `<bb-xx
 - `<bb-impv:improvement focus>` - Polish text quality (inline for local text, standalone for full document)
 - `<bb-tslt:target language>` - Translate content (must specify target language)
 - `<bb-tldr:summary style>` - Generate TL;DR summaries
-- `<bb-mmd:diagram description>` - Generate Mermaid diagrams
+- `<bb-mmd:diagram description>` - Generate Mermaid diagrams (fenced code block)
 - `<bb-kwd:keyword focus>` - Extract keywords
 - `<bb-tag>` - Add BlogBuddy attribution badge
 
@@ -44,55 +44,56 @@ Use intuitive command tags anywhere in your blog posts (all tags support `<bb-xx
 - **Non-intrusive**: Commands are embedded directly in your content
 - **Keyboard-driven**: Activate with simple key combinations
 - **Context-aware**: AI understands your full document context
+- **Streaming by default**: Output appears token-by-token as the AI generates it
 - **Instant results**: Commands execute and replace content in-place
-
-### AI-Powered Assistance
-
-BlogBuddy leverages advanced AI models to help you:
-
-- **Expand** brief ideas into full paragraphs
-- **Improve** text clarity, grammar, and flow
-- **Translate** content to different languages
-- **Summarize** long content with TL;DR sections
-- **Create** visual diagrams with Mermaid syntax
-- **Extract** relevant keywords for SEO
 
 ### BB Editor (WYSIWYG)
 
 A built-in rich-text Markdown editor powered by [Milkdown](https://milkdown.dev), designed for a distraction-free writing experience:
 
 - **Rich-text editing**: WYSIWYG with real-time preview — no split panes needed
-- **GFM support**: Tables, strikethrough, task lists, and autolinks render correctly
+- **GFM support**: Tables, strikethrough, task lists, and autolinks
 - **BB commands built-in**: Use `/` slash menu or `Cmd+B Cmd+B` to trigger any BB command inline
 - **AI streaming**: See AI results appear in real-time as an inline block
-- **Image & file paste**: Paste or drag-drop images/attachments — files are saved to the document directory (or a configurable subdirectory via `blogbuddy.assetDir`) and inserted as relative paths
-- **Frontmatter support**: YAML (`---`) and TOML (`+++`) metadata is preserved transparently
-- **Auto-save**: Changes are auto-saved with debounce; external file changes are detected and reloaded
-- **Theme sync**: Editor theme follows your VS Code color theme
+- **Syntax-highlighted code blocks**: Fenced blocks render colored tokens via Prism (20+ languages, palette adapts to VS Code light/dark themes)
+- **Typed Properties panel for frontmatter**: YAML fields (`title`, `date`, `tags`, `categories`, `author`, `slug`, `draft`, `description`) render as typed controls — date picker, chip input, toggle, etc. Raw YAML remains available as a collapsible fallback
+- **IME-friendly**: Composition events (CJK input) are guarded so auto-save and BB commands never fire on half-composed text
+- **Arrow ligatures**: `->` auto-converts to `→`, `=>` to `⇒`; skipped inside code blocks and during IME composition
+- **Compact Markdown on save**: bullets normalized to `-`, tight lists, HTML entities decoded, multiple blank lines collapsed — reduces Git diff noise
+- **External file conflict detection**: if the file changes on disk while you have unsaved edits, a banner offers Reload or Keep my version instead of silently overwriting
+- **View source button**: open the raw `.md` in a side VS Code editor any time
+- **Image & file paste**: paste or drag-drop — files saved to the document directory (or configurable via `blogbuddy.assetDir`), inserted as relative paths
+- **Auto-save**: debounced saves; `Cmd+S` to flush immediately
+- **Theme sync**: editor theme follows your VS Code color theme
 
 Open the BB Editor via:
 
-- Right-click a `.md` file in the explorer → **Open with BB Editor**
-- Or use `Cmd+B` (Mac) / `Ctrl+B` (Win/Linux) when a `.md` file is active
+- Right-click a `.md` file in the explorer → **BlogBuddy: Open BB Editor**
+- Or use `Cmd+B` (Mac) / `Ctrl+B` (Win/Linux) when a `.md` file is selected in the explorer
 
 ### Document Statistics
 
-Keep track of your writing progress with real-time word count display:
+Word count for the active Markdown file is always shown in the VS Code status bar:
 
-- **Smart counting**: Automatically detects Chinese characters and English words
-- **Status bar display**: Unobtrusive word count in the VS Code status bar
-- **Markdown-only**: Only shows statistics for Markdown files
-- **Toggle control**: Enable/disable with keyboard shortcut or click status bar item
+- **Smart counting**: Chinese characters + English words counted separately
+- **Status bar display**: Small, unobtrusive item on the right
+- **Markdown-only**: Hidden for non-Markdown files
+
+### Config Source Indicator
+
+A small BlogBuddy item in the status bar shows which source your `apiKey` is currently resolving from (`cfg` / `env` / `default`). Hover to see per-field sources; click to open full diagnostics.
 
 ## 📖 How to Use
 
 ### Quick Start
 
 1. Install BlogBuddy from the VS Code marketplace
-2. Configure your AI provider settings (API key, base URL, model)
-3. Start writing your blog post in Markdown
-4. Insert BB commands where you need AI assistance
-5. Use keyboard shortcuts to activate commands
+2. Set your API key — either:
+   - Set `blogbuddy.apiKey` in VS Code settings, **or**
+   - Export `BLOGBUDDY_API_KEY` / `OPENAI_API_KEY` as an environment variable
+3. Optionally set `blogbuddy.baseURL` if you're using a non-OpenAI provider (e.g. OpenRouter, DeepSeek, your own proxy). The extension falls back to `https://api.openai.com/v1` by default
+4. Run **BlogBuddy: Select Model** from the command palette — the command fetches the provider's `/v1/models` list and lets you pick one (or enter a custom id)
+5. Start writing and insert BB commands where you want AI assistance
 
 ### Basic Usage
 
@@ -103,15 +104,15 @@ Keep track of your writing progress with real-time word count display:
    <bb-expd:focus on practical applications>
    ```
 
-2. **Select the text** containing the command tag (and surrounding content for context)
+2. **Position your cursor** in the paragraph containing the tag (or select text manually for precise scoping)
 
 3. **Press the activation key**: `Cmd+B Cmd+B` (Mac) or `Ctrl+B Ctrl+B` (Windows/Linux)
 
-4. **Watch BB work its magic** - the command tag and surrounding text will be processed and replaced with AI-generated content
+4. **Watch BB work its magic** — the command tag and surrounding text are replaced with AI-generated content (streaming in real time)
 
 ### Menu Access
 
-Alternatively, use `Cmd+Shift+B` (Mac) or `Ctrl+Shift+B` (Windows/Linux) to open the BB menu for additional options.
+Use `Cmd+Shift+B` (Mac) or `Ctrl+Shift+B` (Windows/Linux) to open the BB menu (usage statistics, help, etc.).
 
 ### 📚 Detailed Documentation
 
@@ -122,17 +123,50 @@ For comprehensive feature documentation, examples, and advanced usage tips, see 
 
 | Shortcut | Action |
 |----------|--------|
-| `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | Execute BB command on selected text |
+| `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | Execute BB command on the current block / selection |
 | `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | Open BB menu |
-| `Cmd+Shift+D` (Mac)<br>`Ctrl+Shift+D` (Win/Linux) | Toggle document statistics display |
+| `Cmd+B` (Mac)<br>`Ctrl+B` (Win/Linux) | Open BB Editor for the selected `.md` file (in Explorer) |
+
+Inside the BB Editor:
+
+| Shortcut | Action |
+|----------|--------|
+| `/` | Open the slash menu (BB commands + block types) |
+| `Cmd+B Cmd+B` | Trigger a `<bb-*>` tag inline |
+| `Cmd+S` | Save immediately |
+| `Backspace` (at start of heading) | Convert heading to paragraph |
 
 ## ⚙️ Configuration
 
-BlogBuddy requires AI provider configuration. Go to VS Code Settings and configure:
+BlogBuddy needs an API key and a model. Everything else has a sensible default.
 
-- **API Key**: Your AI provider API key
-- **Base URL**: AI service endpoint (default: OpenRouter)
-- **Model**: AI model to use (default: GPT-5-mini)
+### Settings
+
+| Key | Description |
+|-----|-------------|
+| `blogbuddy.apiKey` | API key. Falls back to `BLOGBUDDY_API_KEY` → `OPENAI_API_KEY` env vars if empty |
+| `blogbuddy.baseURL` | OpenAI-compatible base URL. Falls back to `BLOGBUDDY_BASE_URL` → `OPENAI_BASE_URL` env vars, then `https://api.openai.com/v1` |
+| `blogbuddy.model` | Model id. Recommended: run **BlogBuddy: Select Model** to pick from the provider's list |
+| `blogbuddy.assetDir` | Relative subdirectory for BB Editor asset uploads (e.g. `assets`). Empty = alongside the document |
+
+### Commands
+
+| Command | What it does |
+|---------|--------------|
+| `BlogBuddy: Select Model` | Fetches `/v1/models` from the configured base URL and opens a picker. Also offers "Enter custom model…" if the list is empty or missing your model |
+| `BlogBuddy: Show Config Diagnostics` | Opens a masked report showing what the extension actually resolves for each field (settings vs env vs default) — useful for debugging "I set the env var but it doesn't work" on macOS |
+| `BlogBuddy: Show Menu` | Usage stats, help, etc. |
+| `BlogBuddy: Hi BB` | Execute BB command on current text |
+| `BlogBuddy: Open BB Editor` | Open the current `.md` in BB Editor |
+
+### macOS env var gotcha
+
+If you set `OPENAI_API_KEY` in `~/.zshrc` but VS Code launched from Dock doesn't pick it up, the problem is that Dock-launched apps don't read your shell config. Either:
+
+- **Launch VS Code from terminal** with `code .` after `source ~/.zshrc`, or
+- Run `launchctl setenv OPENAI_API_KEY 'sk-...'` in Terminal, then fully quit (⌘Q) and restart VS Code
+
+Run **BlogBuddy: Show Config Diagnostics** to verify what the extension actually sees.
 
 ## 🎯 Perfect For
 
@@ -149,4 +183,3 @@ Found a bug or have a feature suggestion? Please [open an issue](https://github.
 ---
 
 **Happy Blogging with BB! 🎉**
-

@@ -4,50 +4,42 @@
 
 [中文 Version](help_中文.md)
 
-BlogBuddy is a powerful VS Code extension that enhances your writing workflow with AI-powered features. Whether you're writing technical documentation, blog posts, or any markdown content, BlogBuddy provides intelligent text processing capabilities right in your editor.
+BlogBuddy is a VS Code extension that enhances your Markdown writing workflow with AI. Embed commands directly in your text, run them with a keystroke, and watch the output stream in. This guide covers everything from setup to the BB Editor, inline commands, and troubleshooting.
 
 ## 🚀 Quick Start
 
-1. **Install and Configure**: Set up your API key in VS Code settings
-2. **Open a Markdown file**: BlogBuddy works best with `.md` files
-3. **Use Commands**: Access features through the command palette or shortcuts
-4. **Use BB Tags**: Embed special commands directly in your text
+1. **Install** BlogBuddy from the VS Code Marketplace
+2. **Configure credentials** — either:
+   - Set `blogbuddy.apiKey` in VS Code settings, **or**
+   - Export `BLOGBUDDY_API_KEY` (or `OPENAI_API_KEY`) as an environment variable
+3. **Pick a model** — run **BlogBuddy: Select Model** from the command palette. The command fetches the provider's `/v1/models` list; pick one or enter a custom id
+4. **Open a Markdown file** and start writing
+5. **Insert BB tags** where you want AI help, then press `Cmd+B Cmd+B` (Mac) / `Ctrl+B Ctrl+B` (Win/Linux)
 
-## 📋 Main Features Overview
+## 📋 Three ways to use BlogBuddy
 
-BlogBuddy provides three main ways to enhance your writing:
+1. **Inline BB commands** — embed tags in your text, press the hotkey (`Cmd+B Cmd+B`)
+2. **BB Editor** — a built-in WYSIWYG Markdown editor with frontmatter Properties panel, syntax highlighting, and slash menu (`Cmd+B` on a `.md` file in the Explorer)
+3. **Menu** — `Cmd+Shift+B` opens a palette for usage stats, help, etc.
 
-### 1. Menu-Based Commands (Ctrl+Shift+B)
-
-Access organized features through an interactive menu interface.
-
-### 2. Inline BB Commands
-
-Embed special tags directly in your text for instant AI processing.
-
-### 3. Document Statistics (Ctrl+Shift+D)
-
-Real-time word count display in the status bar for Markdown files.
+Word count for Markdown files is always shown in the status bar (no toggle — it's on for every `.md` file).
 
 ---
 
-## 🏷️ BB Command System
+## 🏷️ Inline BB Commands
 
-The BB command system allows you to embed AI instructions directly in your text using special tags. The system intelligently determines the processing scope based on where your cursor is positioned and whether you've selected text. Press `Cmd+B Cmd+B` (Mac) or `Ctrl+B Ctrl+B` (Win/Linux) to execute.
+Embed AI instructions in your text using tags, then press `Cmd+B Cmd+B` (Mac) / `Ctrl+B Ctrl+B` (Win/Linux) to execute.
 
-**Smart Scope Detection:**
+### Smart scope detection
 
-- **Manual Selection**: When you select text manually, processes only the selected content
-- **Current Line Processing**: When cursor is on a line that contains both a BB tag and other content, processes only that line
-- **Paragraph Processing**: When cursor is on a line with only a BB tag (or no BB tag), searches the surrounding paragraph (text block separated by blank lines) for BB commands and processes the entire paragraph
-- **Full Document Mode**: Some commands (like `bb-tslt`, `bb-impv` when isolated) can process the entire document
+The extension picks the scope based on your cursor / selection:
 
-**Processing Modes:**
+- **Manual selection**: processes only the selected text
+- **Current line**: if the line contains the BB tag **and** other content, processes just that line
+- **Paragraph (text block)**: if the BB tag is alone on a line (or you're anywhere in a block that has one), processes the whole block (text separated by blank lines)
+- **Full document**: when the BB tag stands alone in its own text block (surrounded by blank lines) and the command supports it (`bb-impv`, `bb-tslt`, `bb`), processes the entire document into a new file
 
-- **Text Block Mode**: When BB command is in the same text block (separated by blank lines) with other content, processes only that text block
-- **Full Document Mode**: When BB command is alone on its own line with blank lines above and below (no other content in the text block), processes the entire document
-
-### Command Syntax
+### Command syntax
 
 ```
 <command:optional-message>
@@ -55,44 +47,29 @@ The BB command system allows you to embed AI instructions directly in your text 
 
 ### Available BB Commands
 
-#### 1. `<bb-expd:additional-context>` - Text Expansion
+#### 1. `<bb-expd:additional-context>` — Text Expansion
 
-**Purpose**: Expand and elaborate on existing content while preserving meaning
-**Usage**: Place command in the same text block as content you want to expand
-**Examples**:
+**Purpose**: expand and elaborate on existing content while preserving meaning.
 
 ```markdown
 Machine learning is changing software development.
 <bb-expd:make this suitable for a technical blog>
-
-API design is important for scalability.
-<bb-expd:add practical examples and use cases>
 ```
 
-**Features**:
+**Features**: reads full document context; maintains tone and style; adds concrete examples; ensures natural integration.
 
-- Reads full document context for coherent expansion
-- Maintains original tone and style
-- Adds concrete examples and elaborative details
-- Ensures natural integration with surrounding content
+#### 2. `<bb-impv:style-instructions>` — Text Improvement
 
-#### 2. `<bb-impv:style-instructions>` - Text Improvement
+**Purpose**: enhance clarity, grammar, and overall quality.
 
-**Purpose**: Enhance clarity, grammar, and overall quality of text
-**Usage**: Two distinct modes based on content selection
-**Examples**:
-
-**Text Block Mode (has content):**
+**Text Block Mode** (tag shares a paragraph with content) — improves that paragraph in place:
 
 ```markdown
-This paragraph has some repetitive content that says the same thing multiple times in different ways.
+This paragraph has some repetitive content that says the same thing multiple times.
 <bb-impv:make more concise and remove redundancy>
-
-The API endpoint kinda works but sometimes it's slow.
-<bb-impv:improve professional tone>
 ```
 
-**Full Document Mode (command isolated by blank lines):**
+**Full Document Mode** (tag isolated by blank lines) — improves the whole document into a new `*_improved.md` file:
 
 ```markdown
 Some content above...
@@ -100,54 +77,23 @@ Some content above...
 <bb-impv:improve the entire document's professional tone>
 
 Some content below...
-
----
-
-Other content above...
-
-<bb-impv:enhance grammar and readability throughout the document>
-
-Other content below...
 ```
 
-**Behavior**:
+#### 3. `<bb-tslt:target-language>` — Translation
 
-- **Text Block Mode**: When BB command shares a text block with other content, improves only that text block in-place with document context
-- **Full Document Mode**: When BB command is isolated by blank lines (alone in its text block), processes the entire document and creates a new file with `_improved` suffix
-
-**Features**:
-
-- Fixes grammar, spelling, and punctuation
-- Enhances sentence structure and flow  
-- Maintains author's voice and style
-- Uses full document context for consistency
-
-#### 3. `<bb-tslt:target-language>` - Translation
-
-**Purpose**: Translate entire documents to specified languages
-**Usage**: Requires target language specification
-**Examples**:
+**Purpose**: translate the entire document to the specified language.
 
 ```markdown
 <bb-tslt:中文>
 <bb-tslt:Japanese>
 <bb-tslt:Français>
-<bb-tslt:translate to Spanish>
 ```
 
-**Features**:
+**Features**: creates a new file with a language suffix (e.g. `myblog_日本語.md`); preserves Markdown structure and code blocks; generates a Markdown link to the translated file.
 
-- Translates entire document (not just selected text)
-- Creates new file with language suffix
-- Preserves markdown formatting and structure
-- Handles code blocks appropriately
-- Generates markdown link to translated version
+#### 4. `<bb-mmd:diagram-instructions>` — Mermaid Diagrams
 
-#### 4. `<bb-mmd:diagram-instructions>` - Mermaid Diagrams
-
-**Purpose**: Generate Mermaid diagrams by analyzing text content and converting it to visual representations
-**Usage**: Place command in a text block that describes a process, workflow, or system structure
-**Examples**:
+**Purpose**: generate a Mermaid diagram from a description.
 
 ```markdown
 User registration process:
@@ -155,255 +101,206 @@ User registration process:
 2. System validates credentials
 3. If valid, create account
 4. Send confirmation email
-5. User confirms email
-6. Account activated
 <bb-mmd:create a flowchart>
-
-API Authentication Flow:
-- Client sends credentials to /auth endpoint
-- Server validates credentials
-- Server returns JWT token
-- Client includes token in subsequent requests
-- Server validates token on each request
-<bb-mmd:make this a sequence diagram>
 ```
 
-**Features**:
+**Output**: a fenced ` ```mermaid ` code block. Automatically picks the appropriate diagram type (flowchart / sequence / class / state / ER / gantt / pie). The Mermaid code is validated for a recognized diagram prefix; VS Code renders it natively in Markdown preview.
 
-- Analyzes text content to understand structure and relationships
-- Automatically chooses appropriate diagram type (flowchart, sequence, class, state, ER, gantt, pie)
-- Can output as code block or SVG image (configurable in settings)
-- Validates generated Mermaid syntax using Kroki service
-- Creates properly formatted, syntactically correct diagrams
+#### 5. `<bb-kwd:keyword-focus>` — Keyword Extraction
 
-#### 5. `<bb-kwd:keyword-focus>` - Keyword Extraction
-
-**Purpose**: Extract SEO-friendly keywords from content
-**Usage**: Analyzes document content to generate relevant keywords
-**Examples**:
+**Purpose**: extract 8–12 SEO-friendly keywords from the document.
 
 ```markdown
 <bb-kwd:focus on technical terms>
-<bb-kwd:emphasize business keywords>
-<bb-kwd:>  <!-- Uses default extraction -->
+<bb-kwd:>
 ```
 
-**Features**:
+#### 6. `<bb-tldr:summary-style>` — TL;DR Generation
 
-- Extracts 8-12 relevant keywords/phrases
-- Includes primary keywords, long-tail phrases, and supporting terms
-- Formats as organized, SEO-friendly list
-- Analyzes full document context
-
-#### 6. `<bb-tldr:summary-style>` - TL;DR Generation
-
-**Purpose**: Generate concise summaries of content
-**Usage**: Creates "too long; didn't read" summaries
-**Examples**:
+**Purpose**: generate a concise "too long; didn't read" summary.
 
 ```markdown
 <bb-tldr:focus on actionable insights>
-<bb-tldr:technical summary>
-<bb-tldr:>  <!-- Standard summary -->
+<bb-tldr:>
 ```
 
-**Features**:
+#### 7. `<bb-tag>` — BB Badge
 
-- Generates 2-4 bullet points or 2-3 sentences maximum
-- Focuses on essential points and key insights
-- Creates self-contained, scannable summaries
-- Analyzes full document content
-
-#### 7. `<bb-tag>` - BB Badge
-
-**Purpose**: Add BlogBuddy attribution badge
-**Usage**: Simple tag insertion
-**Example**:
-
-```markdown
-<bb-tag>
-```
+**Purpose**: insert a BlogBuddy attribution badge.
 
 **Output**: `[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)`
 
-#### 8. `<bb:your-instruction>` - General AI Tasks ⚠️
+#### 8. `<bb:your-instruction>` — General AI Tasks ⚠️
 
-**Purpose**: Execute any AI task with custom instructions
-**Usage**: Two distinct modes based on content selection
+**Purpose**: execute an arbitrary instruction against your text.
 
-> **⚠️ Important Notice**: This is the most powerful and flexible command. Due to the complexity and open-ended nature of tasks, it may require higher-performance AI models and could result in significantly higher token usage and costs compared to other specialized commands. Use judiciously for tasks that cannot be accomplished with the specific commands above.
+> **⚠️**: this is the most flexible command but also the most expensive. It can consume significantly more tokens than specialized commands. Prefer the specialized ones when possible.
 
-**Examples**:
-
-**Text Block Mode (has content):**
+**Text Block Mode** — processes the paragraph:
 
 ```markdown
-This is some casual text that needs improvement.
-<bb:rewrite this in a more professional tone>
-
-AI is useful for many tasks.
-<bb:add examples and make it more detailed>
-
 - Feature 1: Description
 - Feature 2: Description
 <bb:convert this list to a table format>
 ```
 
-**Full Document Mode (command isolated by blank lines):**
+**Full Document Mode** — processes the whole doc into a `*_processed.md` file:
 
 ```markdown
 Some previous content here.
 
-<bb:rewrite the entire document in a more professional tone>
-
-Some following content here.
-
----
-
-Other content above...
-
 <bb:convert all lists in this document to table format>
 
-Other content below...
+Some following content here.
 ```
 
-**Behavior**:
+---
 
-- **Text Block Mode**: When BB command shares a text block with other content, processes only that text block in-place
-- **Full Document Mode**: When BB command is isolated by blank lines (alone in its text block), processes the entire document and creates a new file with `_processed` suffix
+## 📝 BB Editor
 
-**Performance Considerations**:
+A WYSIWYG Markdown editor built into the extension. Open it from the Explorer context menu (right-click a `.md` file → **BlogBuddy: Open BB Editor**) or press `Cmd+B` with the file selected.
 
-- May require more powerful AI models for complex instructions
-- Can consume significantly more tokens than specialized commands
-- Processing time may be longer for complex tasks
-- Consider using specific commands (expd, impv, tslt, etc.) when possible for better efficiency
+### Core editing
+
+- **WYSIWYG with GFM**: tables, strikethrough, task lists, autolinks, blockquotes, code blocks
+- **Slash menu (`/`)**: insert block types or BB commands inline
+- **Cmd+B Cmd+B chord**: trigger any `<bb-*>` tag without leaving the editor
+- **Streaming AI blocks**: AI results appear inline, token by token
+- **Image & file paste**: paste or drag-drop files — saved to the document directory or a configurable subdirectory via `blogbuddy.assetDir`, inserted as relative paths
+- **Syntax-highlighted code blocks**: Prism-based, 20+ languages including ts/js/python/bash/yaml/rust/go/sql; palette adapts to VS Code light / dark / high-contrast themes
+- **Arrow ligatures**: `->` → `→`, `=>` → `⇒`; skipped inside code blocks and during IME composition
+- **Heading-to-paragraph**: press `Backspace` at the start of a heading to convert it directly to a paragraph (no step-down through `h2 → h1 → p`)
+
+### Frontmatter Properties panel
+
+YAML frontmatter is exposed as a typed panel at the top of the editor:
+
+- **Typed fields**: `title` (text), `date` (date picker), `tags` / `categories` (chip input), `author` / `slug` (text), `draft` (toggle), `description` (textarea)
+- **Add field**: dropdown to add a known field not yet in the YAML
+- **Raw YAML fallback**: collapsible `<details>` at the bottom for direct editing (useful for custom fields or comments)
+- Changes round-trip to disk on auto-save alongside the body content
+
+### Saving & reliability
+
+- **Auto-save**: debounced writes (~500ms of quiescence)
+- **Cmd+S**: flush immediately
+- **IME composition guard**: CJK input (Chinese / Japanese / Korean Pinyin etc.) suspends auto-save and BB triggers until composition commits — no more half-composed pinyin leaking into saves
+- **Compact Markdown normalization** on save: bullets normalized to `-`, tight lists, HTML entities decoded, bold-marker whitespace moved outside, 3+ consecutive blank lines collapsed to 2 — keeps Git diffs clean. Fenced code block contents are left untouched
+- **External file conflict detection**: if the file changes on disk while you have unsaved edits in BB Editor, a yellow banner offers **Reload** or **Keep my version** — no silent overwrite
+- **View source button**: in the Frontmatter panel header, opens the raw `.md` in a side VS Code editor
 
 ---
 
-## 📊 Document Statistics System (Ctrl+Shift+D)
+## 📊 Document Statistics
 
-Keep track of your writing progress with real-time word count display:
+Word count for the active Markdown file is always shown in the status bar on the right:
 
-### Features
+- **Counting**: Chinese characters and English words counted separately and summed
+- **Markdown-only**: hidden for non-Markdown files
+- **Always on**: no toggle — the status bar item appears whenever a Markdown file is active
 
-- **Smart Word Counting**: Automatically detects and counts Chinese characters and English words separately
-- **Status Bar Display**: Unobtrusive word count displayed in the VS Code status bar
-- **Click to Toggle**: Click the status bar item to quickly enable/disable the feature
-- **Markdown Only**: Statistics are only shown for Markdown (.md) files
-- **Real-time Updates**: Word count updates automatically as you type or edit content
+## 🎛️ Status Bar — Config Source Indicator
 
-### Usage
+A second status bar item shows where your `apiKey` is resolving from:
 
-1. Open a Markdown file
-2. Press `Ctrl+Shift+D` (Windows/Linux) or `Cmd+Shift+D` (Mac) to enable
-3. Word count appears in the status bar on the right
-4. Click the status bar item to toggle on/off
-5. Press the keyboard shortcut again to disable
+- `$(key) BB · cfg` — using `blogbuddy.apiKey` from settings
+- `$(key) BB · env` — using `BLOGBUDDY_API_KEY` or `OPENAI_API_KEY` env var
+- `$(key) BB · default` — using the default base URL (`https://api.openai.com/v1`)
+- `$(warning) BB: no key` / `$(warning) BB: no model` — missing required config, in yellow
 
-### Configuration
-
-The feature can be permanently enabled/disabled in VS Code settings:
-
-- Setting: `blogbuddy.documentInfoDisplay`
-- Default: `false` (disabled)
-- The setting is automatically updated when you use the toggle command
+Hover the item for a per-field source table (apiKey, baseURL, model) and quick links to Diagnostics / Select Model / Settings. Click to open the full **Show Config Diagnostics** report.
 
 ---
 
-## 🎛️ Menu System (Ctrl+Shift+B)
+## 🎛️ Menu (Ctrl+Shift+B)
 
-Access organized features through an interactive menu:
+Opens an interactive menu:
 
-### Usage Statistics
-
-- View AI usage metrics by feature
-- Track token consumption and request counts
-- Reset statistics when needed
-- Export detailed usage reports
-
-### Help Information
-
-- Access this comprehensive help documentation
-- View in editor or as notification
-- Always up-to-date feature reference
+- **Usage Statistics** — request counts, token usage, per-flag / per-model breakdown; cost estimate when pricing data is available
+- **Help Information** — opens this document
 
 ---
 
 ## ⚙️ Configuration
 
-### Required Settings
+### Required settings
 
-1. **API Key** (`blogbuddy.apiKey`): Your AI service API key
-2. **Base URL** (`blogbuddy.baseURL`): AI service endpoint (default: `https://openrouter.ai/api/v1`)
-3. **Model** (`blogbuddy.model`): AI model to use (default: `openai/gpt-5-mini`)
+Only **API key** and **model** are strictly required. `baseURL` has a sensible default.
 
-### Optional Settings
+| Setting | Description |
+|---------|-------------|
+| `blogbuddy.apiKey` | API key. Resolution order: this setting → `$BLOGBUDDY_API_KEY` → `$OPENAI_API_KEY` |
+| `blogbuddy.baseURL` | OpenAI-compatible base URL. Resolution order: this setting → `$BLOGBUDDY_BASE_URL` → `$OPENAI_BASE_URL` → `https://api.openai.com/v1` |
+| `blogbuddy.model` | Model id (e.g. `gpt-4o-mini`, `openai/gpt-4o-mini`). **Recommended**: use the **BlogBuddy: Select Model** command |
 
-- **Mermaid Code** (`blogbuddy.mermaidCode`): Choose output format for Mermaid diagrams
-  - `false` (default): Creates SVG image files with ![image](file.svg) references
-  - `true`: Generates code blocks (```mermaid```) that render inline in Markdown viewers
+### Optional settings
 
-### Configuration Access
+| Setting | Description |
+|---------|-------------|
+| `blogbuddy.assetDir` | Relative subdirectory for BB Editor asset uploads (e.g. `assets` or `images/uploads`). Resolved from the document directory. Empty = alongside the document. Paths must stay within the document directory |
 
-- Open VS Code Settings (`Ctrl+,` / `Cmd+,`)
-- Search for "Blog Buddy" or "blogbuddy"
-- Configure the four available settings:
-  - `blogbuddy.apiKey`
-  - `blogbuddy.baseURL`
-  - `blogbuddy.model`
-  - `blogbuddy.mermaidCode`
+### Commands
+
+Open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and type `BlogBuddy:`
+
+| Command | Purpose |
+|---------|---------|
+| `BlogBuddy: Select Model` | Fetch the provider's `/v1/models` list and pick (or enter) a model id. Surfaces auth / network errors directly if the fetch fails |
+| `BlogBuddy: Show Config Diagnostics` | Open a masked report showing what the extension actually resolves for `apiKey`, `baseURL`, `model` — settings value, env var source, or default. Great for debugging "my env var isn't picked up" |
+| `BlogBuddy: Show Menu` | Usage stats and help |
+| `BlogBuddy: Hi BB` | Execute the BB command on current cursor / selection (same as `Cmd+B Cmd+B`) |
+| `BlogBuddy: Open BB Editor` | Open the current `.md` in the BB Editor |
+
+### macOS env var gotcha
+
+On macOS, apps launched from Dock / Spotlight don't inherit shell environment variables. If you set `OPENAI_API_KEY` in `~/.zshrc` and it's "not picked up" by BlogBuddy:
+
+1. **Easy fix**: launch VS Code from Terminal after `source ~/.zshrc`:
+
+   ```bash
+   code .
+   ```
+
+2. **Persistent fix**: inject into the launchd session:
+
+   ```bash
+   launchctl setenv OPENAI_API_KEY 'sk-...'
+   ```
+
+   Then fully quit (⌘Q) and restart VS Code. This persists until reboot; for a permanent solution, create a LaunchAgent plist.
+
+Run **BlogBuddy: Show Config Diagnostics** to verify what the extension host actually sees.
 
 ---
 
 ## 💡 Pro Tips
 
-### Best Practices
+### Best practices
 
-1. **Leverage Smart Detection**: The system automatically determines scope based on cursor position
-   - **Line-level edits**: Place cursor on line with BB tag and content for single-line processing
-   - **Paragraph-level edits**: Place cursor anywhere in a paragraph containing BB tags
-   - **Manual control**: Select specific text to override automatic detection
-2. **Master Blank Line Control**: Blank lines still determine document-level processing
-   - **Same text block** (no blank lines): Processes only that content
-   - **Isolated by blank lines**: Processes entire document
-3. **Choose Your Mode**:
-   - For quick line edits: Put BB tag and content on the same line
-   - For paragraph improvements: Place BB tag anywhere in the paragraph
-   - For full document processing: Isolate commands with blank lines above and below
-4. **Context Matters**: BB commands read your entire document for better context
-5. **Be Specific**: Provide clear instructions in command messages
-6. **File Types**: Works best with Markdown (.md) files
-7. **Backup Important Work**: BB creates new files for document-level operations
+1. **Leverage smart scope detection**: cursor position implies the scope
+   - Same line with BB tag + content → processes just that line
+   - Anywhere in a paragraph with a BB tag → processes the paragraph
+   - BB tag alone between blank lines → full document (for supported commands)
+2. **Be specific**: clear instructions in the tag message produce better output
+3. **Review AI output**: always review before shipping — AI can be wrong
+4. **Combine commands**: expand → improve → translate is a common flow
 
-### Workflow Integration
+### Command combinations
 
-1. **Draft First**: Write your initial content, then enhance with BB commands
-2. **Iterative Improvement**: Use multiple commands for progressive enhancement
-3. **Review Output**: Always review AI-generated content before finalizing
-4. **Combine Features**: Use expansion → improvement → translation workflows
-
-### Command Combinations
-
-**Line-level Processing (single line with content and BB tag):**
+**Line-level** (tag + content on one line):
 
 ```markdown
 Machine learning is a subset of AI. <bb-expd:add practical examples>
-
-This feature improves user experience. <bb-impv:make more technical>
 ```
 
-**Text Block Mode (paragraph processing):**
+**Paragraph**:
 
 ```markdown
 Your initial paragraph here.
 <bb-expd:add technical details>
-
-After expansion, this content needs polishing.
-<bb-impv:make more professional>
 ```
 
-**Full Document Mode (document-wide processing):**
+**Full document** (tag alone between blank lines):
 
 ```markdown
 Some content here...
@@ -411,76 +308,66 @@ Some content here...
 <bb-impv:improve grammar and readability throughout the entire document>
 
 More content here...
-
-<bb-kwd:focus on technical SEO terms>
-
-Final content here...
 ```
 
 ---
 
-## 🔧 Shortcuts & Commands
+## 🔧 Shortcuts & Commands (quick reference)
 
 | Action | Shortcut | Command |
 |--------|----------|---------|
-| Execute BB Command | `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | `blogbuddy.bb` |
-| Open Main Menu | `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | `blogbuddy.menu` |
-| Toggle Document Stats | `Cmd+Shift+D` (Mac)<br>`Ctrl+Shift+D` (Win/Linux) | `blogbuddy.toggleDocumentInfo` |
-| View Usage Stats | Menu → Usage Statistics | N/A |
-| Open Help | Menu → Help Information | N/A |
+| Execute BB command | `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | `blogbuddy.bb` |
+| Open main menu | `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | `blogbuddy.menu` |
+| Open BB Editor | `Cmd+B` (Mac)<br>`Ctrl+B` (Win/Linux) — Explorer focus on `.md` | `blogbuddy.openEditor` |
+| Select model | Command palette | `blogbuddy.selectModel` |
+| Show diagnostics | Command palette | `blogbuddy.showDiagnostics` |
 
 ---
 
 ## ❓ Troubleshooting
 
-### Common Issues
+### "API Key not set" warning
 
-**🔴 "API Key not configured"**
+- Check `blogbuddy.apiKey` in settings, **or** export `BLOGBUDDY_API_KEY` / `OPENAI_API_KEY`
+- Run **BlogBuddy: Show Config Diagnostics** to see what the extension actually resolves
+- On macOS, see the env var gotcha above if you set the env var but it's not picked up
 
-- Solution: Set API key in VS Code settings under BlogBuddy section
+### "BlogBuddy: Select Model" fails
 
-**🔴 "BB don't know cmd: [command]"**
+- Check the error message — common cases:
+  - `401 Unauthorized`: wrong API key or insufficient permissions for the provider
+  - `404 / ENOTFOUND`: wrong base URL (e.g. missing `/v1` path)
+  - `fetch failed` / `ECONNREFUSED`: network / proxy issue
+  - Cert errors: enterprise proxy / TLS interception
+- "Enter Manually" in the error dialog lets you type a model id even when the list fetch fails
 
-- Solution: Check command syntax, ensure using supported BB commands
+### Translation requires a target language
 
-**🔴 "Translation requires target language"**
+- Add the language to the tag, e.g. `<bb-tslt:Spanish>` or `<bb-tslt:日本語>`
 
-- Solution: Specify target language in translation command (e.g., `<bb-tslt:Spanish>`)
+### Mermaid code seems off
 
-**🔴 "File reading failed"**
+- BB validates that the output starts with a recognized diagram prefix (e.g. `flowchart`, `sequenceDiagram`). If the AI generates unusable output, try a more specific instruction or a different model
 
-- Solution: Ensure file is saved and is a supported type (.md, .txt)
+### Generated content seems off-topic
 
-**🔴 Generated content seems off-topic**
+- Provide more specific instructions in the tag message
+- BB reads full document context; if your document is huge, context may be truncated — narrow the scope by selecting text
 
-- Solution: Be more specific in command instructions, check document context
+### Getting support
 
-### Performance Tips
-
-- Save files before processing for better context
-- Use specific instructions rather than generic commands
-- For large documents, consider processing sections individually
-- Monitor token usage through the statistics menu
-
-### Getting Support
-
-- Check VS Code developer console for detailed error messages
-- Review extension logs in Output panel
-- Ensure stable internet connection for AI services
-- Verify file permissions for document-level operations
+- Check the VS Code Output panel for extension logs
+- Open [an issue](https://github.com/FulcrumStd/blogbuddy/issues) with diagnostics output attached
 
 ---
 
-## 🔄 Version History & Updates
+## 🔄 Version history
 
-BlogBuddy is actively developed with regular updates. New features and improvements are added based on user feedback and AI technology advances.
+See the [CHANGELOG](../CHANGELOG.md) for a full per-version breakdown. Highlights of recent releases:
 
-### Recent Enhancements
-
-- Enhanced context awareness for better AI responses
-- Improved error handling and user feedback
-- Expanded Mermaid diagram support
-- Better translation quality with language inference
+- **0.0.12** — Config simplified (one model, always-on streaming, always-on word count); env var fallback for API key and base URL; `BlogBuddy: Select Model` and `BlogBuddy: Show Config Diagnostics` commands; status bar config source indicator; Mermaid output always fenced
+- **0.0.11** — BB Editor polish: IME guard for CJK input, Prism syntax highlighting, external file conflict detection, typed Properties panel for frontmatter, arrow ligatures, compact Markdown normalization, View Source button
+- **0.0.10** — Frontmatter preview and editing panel in BB Editor
 
 ---
 

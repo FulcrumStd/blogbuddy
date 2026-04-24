@@ -2,97 +2,72 @@
 
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
-[![BB](https://img.shields.io/badge/translated_by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
-
-BlogBuddy 是一个功能强大的 VS Code 扩展，通过 AI 驱动的功能增强你的写作工作流。无论你是在撰写技术文档、博客文章，还是任何 Markdown 内容，BlogBuddy 都能在编辑器中提供智能文本处理能力。
+BlogBuddy 是一个 VS Code 扩展，用 AI 增强你的 Markdown 写作流。命令直接嵌在文本里，一个快捷键触发，输出流式实时显示。本文档覆盖从配置到 BB 编辑器、内联命令、常见问题的所有内容。
 
 ## 🚀 快速开始
 
-1. **安装并配置**：在 VS Code 设置中设置你的 API 密钥
-2. **打开一个 Markdown 文件**：BlogBuddy 在 `.md` 文件中效果最佳
-3. **使用命令**：通过命令面板或快捷键访问功能
-4. **使用 BB 标签**：将特殊命令直接嵌入文本中
+1. **安装** BlogBuddy（VS Code Marketplace）
+2. **配置凭证** — 两种方式之一：
+   - 在 VS Code 设置里配置 `blogbuddy.apiKey`，**或**
+   - 导出环境变量 `BLOGBUDDY_API_KEY`（或 `OPENAI_API_KEY`）
+3. **选个模型** — 在命令面板跑 **BlogBuddy: Select Model**。命令会从 provider 的 `/v1/models` 拉列表，你挑一个或输入自定义 id
+4. **打开一个 Markdown 文件** 开始写
+5. **插入 BB 标签**，按 `Cmd+B Cmd+B` (Mac) / `Ctrl+B Ctrl+B` (Win/Linux) 触发
 
-## 📋 主要功能概览
+## 📋 三种使用方式
 
-BlogBuddy 提供三种主要方式来增强你的写作：
+1. **内联 BB 命令** — 文本里嵌标签，快捷键（`Cmd+B Cmd+B`）触发
+2. **BB 编辑器** — 内置 WYSIWYG Markdown 编辑器，带 frontmatter 类型化面板、语法高亮、斜杠菜单（在 Explorer 里 `.md` 上按 `Cmd+B`）
+3. **菜单** — `Cmd+Shift+B` 打开菜单（使用统计、帮助等）
 
-### 1. 基于菜单的命令 (Ctrl+Shift+B)
-
-通过交互式菜单界面访问组织良好的功能。
-
-### 2. 内联 BB 命令
-
-将特殊标签直接嵌入文本以进行即时 AI 处理。
-
-### 3. 文档统计 (Ctrl+Shift+D)
-
-在 Markdown 文件的状态栏中实时显示词数。
+当前 Markdown 文件的字数会一直显示在状态栏（没有开关，打开 `.md` 就显示）。
 
 ---
 
-## 🏷️ BB 命令系统
+## 🏷️ 内联 BB 命令
 
-BB 命令系统允许你使用特殊标签将 AI 指令直接嵌入文本中。系统会智能判断处理范围，基于光标位置以及是否选择了文本。按 `Cmd+B Cmd+B`（Mac）或 `Ctrl+B Ctrl+B`（Win/Linux）执行。
+在文本里嵌指令标签，按 `Cmd+B Cmd+B` (Mac) / `Ctrl+B Ctrl+B` (Win/Linux) 执行。
 
-**智能范围检测：**
+### 智能范围检测
 
-- **手动选择**：当你手动选择文本时，仅处理所选内容
-- **当前行处理**：当光标位于包含 BB 标签和其他内容的行时，仅处理该行
-- **段落处理**：当光标位于仅包含 BB 标签的行（或没有 BB 标签）的行时，系统会在周围段落（由空行分隔的文本块）中搜索 BB 命令并处理整个段落
-- **全文模式**：某些命令（例如 `bb-tslt`、`bb-impv` 在独立时）可以处理整个文档
+扩展根据你的光标/选区自动判断处理范围：
 
-**处理模式：**
-
-- **文本块模式**：当 BB 命令与其他内容在同一文本块（由空行分隔）时，仅处理该文本块
-- **全文模式**：当 BB 命令单独占据一行且上下两侧为空行（文本块中没有其他内容）时，处理整个文档
+- **手动选中**：仅处理选中文本
+- **当前行**：光标所在行同时包含 BB 标签和其他内容时，仅处理该行
+- **段落（文本块）**：BB 标签单独一行（或光标位于带 BB 标签的段落里）时，处理整个段落（由空行分隔的文本块）
+- **全文**：BB 标签单独占据文本块（上下空行隔开）且命令支持全文模式（`bb-impv`、`bb-tslt`、`bb`）时，处理整个文档并生成新文件
 
 ### 命令语法
 
 ```
-<command:optional-message>
+<command:可选消息>
 ```
 
 ### 可用的 BB 命令
 
-#### 1. `<bb-expd:additional-context>` - 文本扩展
+#### 1. `<bb-expd:扩展要求>` — 文本扩展
 
-**目的**：在保留原意的同时扩展并阐述现有内容  
-**用法**：将命令放置在你想扩展的内容所在的同一文本块中  
-**示例**：
+**用途**：在保留原意的前提下扩展并阐述已有内容。
 
 ```markdown
 Machine learning is changing software development.
 <bb-expd:make this suitable for a technical blog>
-
-API design is important for scalability.
-<bb-expd:add practical examples and use cases>
 ```
 
-**功能**：
+**功能**：读取完整文档上下文；保持原语气和风格；添加具体示例；确保与周围内容自然融合。
 
-- 读取完整文档上下文以进行连贯扩展
-- 保持原有语气和风格
-- 添加具体示例和阐述性细节
-- 确保与周围内容自然整合
+#### 2. `<bb-impv:风格指令>` — 文本改进
 
-#### 2. `<bb-impv:style-instructions>` - 文本改进
+**用途**：提升文本的清晰度、语法和整体质量。
 
-**目的**：增强文本的清晰度、语法和整体质量  
-**用法**：基于内容选择有两种不同模式  
-**示例**：
-
-**文本块模式（有内容）：**
+**文本块模式**（标签与内容在同一段落） — 原位改进该段落：
 
 ```markdown
-This paragraph has some repetitive content that says the same thing multiple times in different ways.
+This paragraph has some repetitive content that says the same thing multiple times.
 <bb-impv:make more concise and remove redundancy>
-
-The API endpoint kinda works but sometimes it's slow.
-<bb-impv:improve professional tone>
 ```
 
-**全文模式（命令被空行隔离）：**
+**全文模式**（标签被空行隔离） — 改进整个文档并生成 `*_improved.md` 新文件：
 
 ```markdown
 Some content above...
@@ -100,54 +75,23 @@ Some content above...
 <bb-impv:improve the entire document's professional tone>
 
 Some content below...
-
----
-
-Other content above...
-
-<bb-impv:enhance grammar and readability throughout the document>
-
-Other content below...
 ```
 
-**行为**：
+#### 3. `<bb-tslt:目标语言>` — 翻译
 
-- **文本块模式**：当 BB 命令与其他内容共享文本块时，仅在原位改进该文本块并利用文档上下文
-- **全文模式**：当 BB 命令被空行隔离（单独占据其文本块）时，处理整个文档并创建带有 `_improved` 后缀的新文件
-
-**功能**：
-
-- 修复语法、拼写和标点
-- 改善句子结构和流畅度  
-- 保持作者的声音和写作风格
-- 使用完整文档上下文以确保一致性
-
-#### 3. `<bb-tslt:target-language>` - 翻译
-
-**目的**：将整篇文档翻译成指定语言  
-**用法**：需要指定目标语言  
-**示例**：
+**用途**：把整篇文档翻译成指定语言。
 
 ```markdown
 <bb-tslt:中文>
 <bb-tslt:Japanese>
 <bb-tslt:Français>
-<bb-tslt:translate to Spanish>
 ```
 
-**功能**：
+**功能**：创建带语言后缀的新文件（如 `myblog_中文.md`）；保留 Markdown 结构和代码块；生成指向翻译版本的 Markdown 链接。
 
-- 翻译整篇文档（而非仅选中文本）
-- 创建带有语言后缀的新文件
-- 保留 Markdown 格式和结构
-- 适当处理代码块
-- 生成指向翻译版本的 Markdown 链接
+#### 4. `<bb-mmd:图表描述>` — Mermaid 图表
 
-#### 4. `<bb-mmd:diagram-instructions>` - Mermaid 图表
-
-**目的**：通过分析文本内容生成 Mermaid 图表并将其转换为可视化表示  
-**用法**：将命令放在描述流程、工作流或系统结构的文本块中  
-**示例**：
+**用途**：根据描述生成 Mermaid 图表。
 
 ```markdown
 User registration process:
@@ -155,204 +99,175 @@ User registration process:
 2. System validates credentials
 3. If valid, create account
 4. Send confirmation email
-5. User confirms email
-6. Account activated
 <bb-mmd:create a flowchart>
-
-API Authentication Flow:
-- Client sends credentials to /auth endpoint
-- Server validates credentials
-- Server returns JWT token
-- Client includes token in subsequent requests
-- Server validates token on each request
-<bb-mmd:make this a sequence diagram>
 ```
 
-**功能**：
+**输出**：围栏 ` ```mermaid ` 代码块。自动选合适的图表类型（flowchart / sequence / class / state / ER / gantt / pie）。Mermaid 代码会校验合法的图表前缀；VS Code 原生 Markdown 预览即可渲染。
 
-- 分析文本内容以理解结构和关系
-- 自动选择适当的图表类型（流程图、时序图、类图、状态图、ER、甘特图、饼图）
-- 可输出为代码块或 SVG 图像（可在设置中配置）
-- 使用 Kroki 服务验证生成的 Mermaid 语法
-- 生成格式正确、语法正确的图表
+#### 5. `<bb-kwd:关键词重点>` — 关键词提取
 
-#### 5. `<bb-kwd:keyword-focus>` - 关键词提取
-
-**目的**：从内容中提取符合 SEO 的关键词  
-**用法**：分析文档内容以生成相关关键词  
-**示例**：
+**用途**：从文档中提取 8–12 个适合 SEO 的关键词。
 
 ```markdown
 <bb-kwd:focus on technical terms>
-<bb-kwd:emphasize business keywords>
-<bb-kwd:>  <!-- Uses default extraction -->
+<bb-kwd:>
 ```
 
-**功能**：
+#### 6. `<bb-tldr:摘要风格>` — TL;DR 生成
 
-- 提取 8-12 个相关关键词/短语
-- 包含主要关键词、长尾词组和辅助术语
-- 以有组织、对 SEO 友好的列表格式输出
-- 分析完整文档上下文
-
-#### 6. `<bb-tldr:summary-style>` - TL;DR 生成
-
-**目的**：生成内容的简明摘要  
-**用法**：创建“太长没看”类型的摘要  
-**示例**：
+**用途**：生成一段简洁的"太长不看"摘要。
 
 ```markdown
 <bb-tldr:focus on actionable insights>
-<bb-tldr:technical summary>
-<bb-tldr:>  <!-- Standard summary -->
+<bb-tldr:>
 ```
 
-**功能**：
+#### 7. `<bb-tag>` — BB 徽章
 
-- 生成最多 2-4 个要点或 2-3 句简短陈述
-- 聚焦于要点和关键洞见
-- 创建自包含、易于扫描的摘要
-- 分析完整文档内容
-
-#### 7. `<bb-tag>` - BB 徽章
-
-**目的**：添加 BlogBuddy 署名徽章  
-**用法**：简单的标签插入  
-**示例**：
-
-```markdown
-<bb-tag>
-```
+**用途**：插入 BlogBuddy 署名徽章。
 
 **输出**：`[![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)`
 
-#### 8. `<bb:your-instruction>` - 通用 AI 任务 ⚠️
+#### 8. `<bb:你的指令>` — 通用 AI 任务 ⚠️
 
-**目的**：执行任何具有自定义指令的 AI 任务  
-**用法**：根据内容选择有两种不同模式
+**用途**：用任意指令处理文本。
 
-> **⚠️ 重要提示**：这是最强大且最灵活的命令。由于任务的复杂性和开放性，可能需要更高性能的 AI 模型，并且与其他专用命令相比，可能导致显著更高的 token 使用量和费用。对于无法使用上述专用命令完成的任务，请谨慎使用。
+> **⚠️**：最灵活但也最贵的命令。比专用命令更耗 token。能用专用的就别用这个。
 
-**示例**：
-
-**文本块模式（有内容）：**
+**文本块模式** — 处理段落：
 
 ```markdown
-This is some casual text that needs improvement.
-<bb:rewrite this in a more professional tone>
-
-AI is useful for many tasks.
-<bb:add examples and make it more detailed>
-
 - Feature 1: Description
 - Feature 2: Description
 <bb:convert this list to a table format>
 ```
 
-**全文模式（命令被空行隔离）：**
+**全文模式** — 处理整个文档并生成 `*_processed.md`：
 
 ```markdown
 Some previous content here.
 
-<bb:rewrite the entire document in a more professional tone>
-
-Some following content here.
-
----
-
-Other content above...
-
 <bb:convert all lists in this document to table format>
 
-Other content below...
+Some following content here.
 ```
 
-**行为**：
+---
 
-- **文本块模式**：当 BB 命令与其他内容共享文本块时，仅在原位处理该文本块
-- **全文模式**：当 BB 命令被空行隔离（单独占据其文本块）时，处理整个文档并创建带有 `_processed` 后缀的新文件
+## 📝 BB 编辑器
 
-**性能注意事项**：
+扩展内置的所见即所得 Markdown 编辑器。打开方式：Explorer 里右键 `.md` 文件 → **BlogBuddy: Open BB Editor**，或选中文件后按 `Cmd+B`。
 
-- 对于复杂指令，可能需要更强大的 AI 模型
-- 可能比专用命令消耗更多 token
-- 复杂任务的处理时间可能更长
-- 如有可能，考虑使用专用命令（expd、impv、tslt 等）以提高效率
+### 核心编辑
+
+- **WYSIWYG + GFM**：表格、删除线、任务列表、自动链接、引用块、代码块
+- **斜杠菜单（`/`）**：行内插入块类型或 BB 命令
+- **Cmd+B Cmd+B 双击组合键**：内联触发任意 `<bb-*>` 标签
+- **AI 流式块**：AI 输出以内联块的形式逐 token 显示
+- **图片与附件粘贴**：粘贴或拖入文件 — 保存到文档目录或 `blogbuddy.assetDir` 配置的子目录，以相对路径插入
+- **代码块语法高亮**：基于 Prism，20+ 种语言（ts/js/python/bash/yaml/rust/go/sql 等），配色自适应 VS Code 明/暗/高对比度主题
+- **Arrow 连字**：`->` → `→`，`=>` → `⇒`；代码块内和 IME 组合期间不触发
+- **标题一键退回段落**：在标题行开头按 `Backspace` 直接把标题转为段落（不需要 `h2 → h1 → p` 一级级退）
+
+### Frontmatter Properties 面板
+
+YAML frontmatter 在编辑器顶部以类型化面板呈现：
+
+- **类型化字段**：`title`（文本）、`date`（日期选择器）、`tags` / `categories`（chip 输入框）、`author` / `slug`（文本）、`draft`（开关）、`description`（多行文本）
+- **添加字段**：下拉菜单可以加一个还没在 YAML 里的已知字段
+- **原始 YAML 兜底**：底部可折叠的 `<details>` 里直接改 raw YAML（有自定义字段或注释时用）
+- 面板和磁盘在自动保存时双向同步
+
+### 保存与可靠性
+
+- **自动保存**：防抖写盘（~500ms 静默后）
+- **Cmd+S**：立即 flush
+- **IME 组合保护**：CJK 输入（中文拼音、日语、韩语等）期间挂起自动保存和 BB 触发，直到 composition 提交为止 — 半成品拼音不会被写进磁盘
+- **保存时 Markdown 规范化**：bullet 统一为 `-`、紧凑列表、HTML 实体解码、粗体标记周围空白外移、3 个以上连续空行合并为 2 个 — 降低 Git diff 噪声。代码块内容不动
+- **外部文件冲突检测**：在 BB Editor 里有未保存改动期间，如果磁盘上文件被修改，顶部黄色横幅让你选 **Reload**（从盘重新载入）或 **Keep my version**（保留当前版本） — 不再静默覆盖
+- **View source 按钮**：Frontmatter 面板标题栏的按钮，点一下在侧边 VS Code 编辑器打开原始 `.md`
 
 ---
 
-## 📊 文档统计系统 (Ctrl+Shift+D)
+## 📊 文档统计
 
-通过实时词数显示跟踪你的写作进度：
+当前 Markdown 文件的字数会常驻状态栏右侧：
 
-### 功能
+- **统计**：中文字符和英文单词分别计数后相加
+- **仅限 Markdown**：非 Markdown 文件下自动隐藏
+- **常开**：没有开关 — 打开 `.md` 就显示
 
-- **智能词数统计**：自动分别检测并统计中文字符和英文单词
-- **状态栏显示**：在 VS Code 状态栏中以不显眼的方式显示词数
-- **点击切换**：点击状态栏项可快速启用/禁用该功能
-- **仅限 Markdown**：统计仅在 Markdown (.md) 文件中显示
-- **实时更新**：在你输入或编辑内容时自动更新词数
+## 🎛️ 状态栏 — 配置来源指示器
 
-### 使用方法
+状态栏另一个 BlogBuddy 小项，显示 `apiKey` 的解析来源：
 
-1. 打开一个 Markdown 文件
-2. 按 `Ctrl+Shift+D`（Windows/Linux）或 `Cmd+Shift+D`（Mac）以启用
-3. 词数会出现在右侧的状态栏
-4. 点击状态栏项可切换开/关
-5. 再次按快捷键以禁用
+- `$(key) BB · cfg` — 用的是 `blogbuddy.apiKey` 设置
+- `$(key) BB · env` — 用的是 `BLOGBUDDY_API_KEY` 或 `OPENAI_API_KEY` 环境变量
+- `$(key) BB · default` — 用的是默认 base URL（`https://api.openai.com/v1`）
+- `$(warning) BB: no key` / `$(warning) BB: no model` — 关键配置缺失，黄底警示
 
-### 配置
-
-该功能可在 VS Code 设置中永久启用/禁用：
-
-- 设置：`blogbuddy.documentInfoDisplay`
-- 默认值：`false`（禁用）
-- 当你使用切换命令时，该设置会自动更新
+Hover 查看每个字段的来源（apiKey / baseURL / model）+ Diagnostics / Select Model / Settings 快捷链接。点击打开完整的 **Show Config Diagnostics** 报告。
 
 ---
 
-## 🎛️ 菜单系统 (Ctrl+Shift+B)
+## 🎛️ 菜单 (Ctrl+Shift+B)
 
-通过交互式菜单访问组织良好的功能：
+打开交互式菜单：
 
-### 使用统计
-
-- 按功能查看 AI 使用统计
-- 跟踪 token 消耗和请求次数
-- 在需要时重置统计数据
-- 导出详细的使用报告
-
-### 帮助信息
-
-- 访问这份综合帮助文档
-- 在编辑器中查看或以通知形式显示
-- 始终保持最新的功能参考
+- **Usage Statistics**（使用统计） — 请求数、token 用量、按 flag / 模型分类；有定价数据时也会估算费用
+- **Help Information**（帮助） — 打开本文档
 
 ---
 
 ## ⚙️ 配置
 
-### 必需设置
+### 必需配置
 
-1. **API Key** (`blogbuddy.apiKey`)：你的 AI 服务 API 密钥
-2. **Base URL** (`blogbuddy.baseURL`)：AI 服务端点（默认：`https://openrouter.ai/api/v1`）
-3. **Model** (`blogbuddy.model`)：使用的 AI 模型（默认：`openai/gpt-5-mini`）
+只有 **API key** 和 **model** 严格必需。`baseURL` 有合理默认值。
 
-### 可选设置
+| 配置 | 说明 |
+|------|------|
+| `blogbuddy.apiKey` | API key。解析顺序：此配置 → `$BLOGBUDDY_API_KEY` → `$OPENAI_API_KEY` |
+| `blogbuddy.baseURL` | OpenAI 兼容的 base URL。解析顺序：此配置 → `$BLOGBUDDY_BASE_URL` → `$OPENAI_BASE_URL` → `https://api.openai.com/v1` |
+| `blogbuddy.model` | 模型 id（如 `gpt-4o-mini`、`openai/gpt-4o-mini`）。**推荐**：用 **BlogBuddy: Select Model** 命令 |
 
-- **Mermaid 代码** (`blogbuddy.mermaidCode`)：选择 Mermaid 图表的输出格式
-  - `false`（默认）：创建带有 ![image](file.svg) 引用的 SVG 图像文件
-  - `true`：生成可在 Markdown 查看器中内联渲染的代码块（```mermaid```）
+### 可选配置
 
-### 配置访问
+| 配置 | 说明 |
+|------|------|
+| `blogbuddy.assetDir` | BB 编辑器资源上传的相对子目录（如 `assets` 或 `images/uploads`）。基于文档目录解析。留空 = 保存在文档同目录。路径必须位于文档目录内 |
 
-- 打开 VS Code 设置（`Ctrl+,` / `Cmd+,`）
-- 搜索 "Blog Buddy" 或 "blogbuddy"
-- 配置以下四个可用设置：
-  - `blogbuddy.apiKey`
-  - `blogbuddy.baseURL`
-  - `blogbuddy.model`
-  - `blogbuddy.mermaidCode`
+### 命令
+
+命令面板 (`Cmd+Shift+P` / `Ctrl+Shift+P`) 输入 `BlogBuddy:`
+
+| 命令 | 用途 |
+|------|------|
+| `BlogBuddy: Select Model` | 从 provider 的 `/v1/models` 拉模型列表让你选（或输入自定义 id）。fetch 失败会直接显示具体错误 |
+| `BlogBuddy: Show Config Diagnostics` | 打开脱敏报告，显示扩展对 `apiKey` / `baseURL` / `model` 每个字段**实际**读到的值和来源（settings / env / default）。用来排查"我环境变量没读到"这种坑 |
+| `BlogBuddy: Show Menu` | 使用统计和帮助 |
+| `BlogBuddy: Hi BB` | 在当前光标 / 选区上执行 BB 命令（和 `Cmd+B Cmd+B` 等价） |
+| `BlogBuddy: Open BB Editor` | 用 BB 编辑器打开当前 `.md` |
+
+### macOS 环境变量坑
+
+macOS 上从 Dock / Spotlight 启动的 App 不会继承 shell 环境变量。如果你把 `OPENAI_API_KEY` 写在 `~/.zshrc` 但 BlogBuddy 读不到：
+
+1. **最简单的办法**：从终端启动 VS Code：
+
+   ```bash
+   source ~/.zshrc && code .
+   ```
+
+2. **持久化办法**：注入到 launchd 会话：
+
+   ```bash
+   launchctl setenv OPENAI_API_KEY 'sk-...'
+   ```
+
+   然后 ⌘Q 彻底退出再重启 VS Code。这个设置重启电脑后失效；要永久持久化就建一个 LaunchAgent plist。
+
+跑一下 **BlogBuddy: Show Config Diagnostics** 就能确认扩展实际读到什么。
 
 ---
 
@@ -360,50 +275,30 @@ Other content below...
 
 ### 最佳实践
 
-1. **利用智能检测**：系统会根据光标位置自动确定范围
-   - **行级编辑**：将光标放在带有 BB 标签和内容的行上以进行单行处理
-   - **段落级编辑**：将光标放在包含 BB 标签的段落中的任意位置
-   - **手动控制**：选择特定文本以覆盖自动检测
-2. **掌握空行控制**：空行仍然决定文档级处理
-   - **同一文本块**（无空行）：仅处理该内容
-   - **被空行隔离**：处理整个文档
-3. **选择你的模式**：
-   - 对于快速行编辑：将 BB 标签和内容放在同一行
-   - 对于段落改进：将 BB 标签放在段落中的任意位置
-   - 对于整篇文档处理：用上下空行隔离命令
-4. **上下文很重要**：BB 命令会读取整个文档以获得更好的上下文
-5. **明确指示**：在命令消息中提供清晰的指令
-6. **文件类型**：在 Markdown (.md) 文件中效果最佳
-7. **备份重要工作**：BB 会为文档级操作创建新文件
+1. **利用智能范围检测**：光标位置即范围
+   - BB 标签和内容在同一行 → 只处理该行
+   - 光标在带 BB 标签的段落里任意位置 → 处理该段落
+   - BB 标签单独夹在上下空行之间 → 全文（前提是该命令支持全文模式）
+2. **指令要具体**：标签消息里写清楚你想要什么，输出质量会明显提高
+3. **审查 AI 输出**：落地前务必审 — AI 会出错
+4. **组合使用**：扩写 → 润色 → 翻译 是常见链路
 
-### 工作流集成
+### 命令组合示例
 
-1. **先起草**：先写初稿，然后使用 BB 命令进行增强
-2. **迭代改进**：使用多个命令逐步提升内容质量
-3. **审查输出**：在最终定稿前始终审核 AI 生成的内容
-4. **组合功能**：使用扩展 → 改进 → 翻译 的工作流
-
-### 命令组合
-
-**行级处理（内容和 BB 标签在同一行）：**
+**行级**（标签 + 内容同一行）：
 
 ```markdown
 Machine learning is a subset of AI. <bb-expd:add practical examples>
-
-This feature improves user experience. <bb-impv:make more technical>
 ```
 
-**文本块模式（段落处理）：**
+**段落**：
 
 ```markdown
 Your initial paragraph here.
 <bb-expd:add technical details>
-
-After expansion, this content needs polishing.
-<bb-impv:make more professional>
 ```
 
-**全文模式（文档范围处理）：**
+**全文**（标签夹在上下空行之间）：
 
 ```markdown
 Some content here...
@@ -411,77 +306,67 @@ Some content here...
 <bb-impv:improve grammar and readability throughout the entire document>
 
 More content here...
-
-<bb-kwd:focus on technical SEO terms>
-
-Final content here...
 ```
 
 ---
 
-## 🔧 快捷键与命令
+## 🔧 快捷键与命令（速查）
 
 | 操作 | 快捷键 | 命令 |
-|--------|----------|---------|
+|------|--------|------|
 | 执行 BB 命令 | `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | `blogbuddy.bb` |
 | 打开主菜单 | `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | `blogbuddy.menu` |
-| 切换文档统计 | `Cmd+Shift+D` (Mac)<br>`Ctrl+Shift+D` (Win/Linux) | `blogbuddy.toggleDocumentInfo` |
-| 查看使用统计 | 菜单 → 使用统计 | N/A |
-| 打开帮助 | 菜单 → 帮助信息 | N/A |
+| 打开 BB 编辑器 | `Cmd+B` (Mac)<br>`Ctrl+B` (Win/Linux) — 文件管理器选中 `.md` 时 | `blogbuddy.openEditor` |
+| 选择模型 | 命令面板 | `blogbuddy.selectModel` |
+| 显示配置诊断 | 命令面板 | `blogbuddy.showDiagnostics` |
 
 ---
 
 ## ❓ 故障排除
 
-### 常见问题
+### "API Key not set" 警告
 
-**🔴 “API Key 未配置”**
+- 检查 `blogbuddy.apiKey` 设置，**或** 导出 `BLOGBUDDY_API_KEY` / `OPENAI_API_KEY`
+- 跑 **BlogBuddy: Show Config Diagnostics** 看扩展**实际**读到什么
+- macOS 上如果设了环境变量但没生效，见上面的"macOS 环境变量坑"
 
-- 解决方案：在 VS Code 设置的 BlogBuddy 部分设置 API 密钥
+### BlogBuddy: Select Model 失败
 
-**🔴 “BB 无法识别命令：[command]”**
+- 看报错原文，常见情况：
+  - `401 Unauthorized`：API key 错了，或 key 对 provider 没足够权限
+  - `404 / ENOTFOUND`：base URL 错了（比如漏了 `/v1` 路径）
+  - `fetch failed` / `ECONNREFUSED`：网络 / 代理问题
+  - 证书错误：企业代理 / TLS 拦截
+- 错误对话框里的 "Enter Manually" 按钮允许在列表拉不到时手动输入模型 id
 
-- 解决方案：检查命令语法，确保使用受支持的 BB 命令
+### "Translation requires target language"
 
-**🔴 “翻译需要目标语言”**
+- 标签里加上目标语言，比如 `<bb-tslt:Spanish>` 或 `<bb-tslt:日本語>`
 
-- 解决方案：在翻译命令中指定目标语言（例如 `<bb-tslt:Spanish>`）
+### Mermaid 代码看起来有问题
 
-**🔴 “文件读取失败”**
+- BB 会校验输出以合法图表前缀开头（如 `flowchart`、`sequenceDiagram`）。如果 AI 生成的是无法识别的内容，换更具体的指令或更强的模型再试
 
-- 解决方案：确保文件已保存且为支持的类型（.md、.txt）
+### 生成的内容跑题
 
-**🔴 生成的内容看起来偏离主题**
-
-- 解决方案：在命令指示中更具体，检查文档上下文
-
-### 性能提示
-
-- 在处理前保存文件以获得更好的上下文
-- 使用具体指示而非泛泛的命令
-- 对于大型文档，考虑分段处理
-- 通过统计菜单监控 token 使用
+- 标签消息里写更具体的指令
+- BB 会读完整文档做上下文；如果文档太大上下文可能被截断，可以手动选中一部分文本缩小范围
 
 ### 获取支持
 
-- 检查 VS Code 开发者控制台以获取详细错误信息
-- 在 Output 面板中查看扩展日志
-- 确保 AI 服务的网络连接稳定
-- 验证文档级操作的文件权限
+- VS Code Output 面板看扩展日志
+- GitHub 上 [提 issue](https://github.com/FulcrumStd/blogbuddy/issues)，顺便附上诊断报告的输出
 
 ---
 
-## 🔄 版本历史与更新
+## 🔄 版本历史
 
-BlogBuddy 正在积极开发并定期更新。新功能和改进基于用户反馈和 AI 技术进步持续加入。
+完整的分版本变更清单见 [CHANGELOG](../CHANGELOG.md)。近期 release 亮点：
 
-### 最近的增强功能
-
-- 增强的上下文感知以获得更好的 AI 响应
-- 改进的错误处理和用户反馈
-- 扩展的 Mermaid 图表支持
-- 通过语言推断提升的翻译质量
+- **0.0.12** — 配置精简（单模型、永远流式、字数常开）；apiKey 和 baseURL 的环境变量回退；`BlogBuddy: Select Model` 和 `BlogBuddy: Show Config Diagnostics` 命令；状态栏配置来源指示器；Mermaid 输出统一为围栏代码块
+- **0.0.11** — BB 编辑器大升级：CJK IME 保护、Prism 语法高亮、外部文件冲突检测、frontmatter 类型化面板、arrow 连字、保存时 Markdown 规范化、View Source 按钮
+- **0.0.10** — BB 编辑器引入 frontmatter 预览与编辑面板
 
 ---
 
-为高效写作流程倾注 ❤️
+*为高效写作流程倾注 ❤️*
