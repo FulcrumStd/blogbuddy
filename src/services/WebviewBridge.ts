@@ -11,6 +11,7 @@ import {
     WebviewBBRequestMessage,
     WebviewSaveMessage,
     WebviewFileUploadMessage,
+    WebviewConflictResolveMessage,
 } from './webviewProtocol';
 
 export class WebviewBridge implements vscode.Disposable {
@@ -24,6 +25,8 @@ export class WebviewBridge implements vscode.Disposable {
     private fileWatcher?: vscode.FileSystemWatcher;
     private storedFrontmatter = '';
     private frontmatterAutoSaveTimer?: ReturnType<typeof setTimeout>;
+    private isDirty = false;
+    private pendingConflictContent?: string;
 
     constructor(
         private panel: vscode.WebviewPanel,
@@ -99,9 +102,38 @@ export class WebviewBridge implements vscode.Disposable {
                 await this.handleFileUpload(msg);
                 break;
             case 'dirty':
+                this.isDirty = msg.isDirty;
                 this.onDirtyChange?.(msg.isDirty);
                 break;
+            case 'open-source':
+                await this.handleOpenSource();
+                break;
+            case 'conflict-resolve':
+                await this.handleConflictResolve(msg);
+                break;
         }
+    }
+
+    private async handleOpenSource(): Promise<void> {
+        if (!this.filePath) {
+            vscode.window.showInformationMessage('Save the file first to view its source.');
+            return;
+        }
+        await vscode.commands.executeCommand(
+            'vscode.open',
+            vscode.Uri.file(this.filePath),
+            { viewColumn: vscode.ViewColumn.Beside },
+        );
+    }
+
+    private async handleConflictResolve(msg: WebviewConflictResolveMessage): Promise<void> {
+        if (msg.choice === 'reload' && this.pendingConflictContent !== undefined && this.filePath) {
+            const content = this.pendingConflictContent;
+            this.lastWrittenContent = content;
+            this.sendLoad(content, this.filePath);
+        }
+        // For 'keep', the webview will trigger a save to overwrite the disk.
+        this.pendingConflictContent = undefined;
     }
 
     private async handleBBRequest(msg: WebviewBBRequestMessage): Promise<void> {
@@ -239,10 +271,17 @@ export class WebviewBridge implements vscode.Disposable {
             if (!this.filePath) { return; }
             try {
                 const content = await fs.readFile(this.filePath, 'utf-8');
-                if (content !== this.lastWrittenContent) {
-                    this.lastWrittenContent = content;
-                    this.sendLoad(content, this.filePath);
+                if (content === this.lastWrittenContent) { return; }
+
+                if (this.isDirty) {
+                    // Editor has unsaved changes — don't stomp them; ask the user to choose.
+                    this.pendingConflictContent = content;
+                    this.post({ type: 'conflict' });
+                    return;
                 }
+
+                this.lastWrittenContent = content;
+                this.sendLoad(content, this.filePath);
             } catch {
                 // File read failures are silent
             }

@@ -57,6 +57,15 @@ export interface WebviewFrontmatterUpdateMessage {
     frontmatter: string;
 }
 
+export interface WebviewOpenSourceMessage {
+    type: 'open-source';
+}
+
+export interface WebviewConflictResolveMessage {
+    type: 'conflict-resolve';
+    choice: 'reload' | 'keep';
+}
+
 export type WebviewMessage =
     | WebviewReadyMessage
     | WebviewBBRequestMessage
@@ -67,7 +76,9 @@ export type WebviewMessage =
     | WebviewDirtyMessage
     | WebviewAutoSaveMessage
     | WebviewFileUploadMessage
-    | WebviewFrontmatterUpdateMessage;
+    | WebviewFrontmatterUpdateMessage
+    | WebviewOpenSourceMessage
+    | WebviewConflictResolveMessage;
 
 // ===== Extension Host → Webview =====
 
@@ -118,6 +129,10 @@ export interface HostFileUploadedMessage {
     fileName: string;
 }
 
+export interface HostConflictMessage {
+    type: 'conflict';
+}
+
 export type HostMessage =
     | HostLoadMessage
     | HostChunkMessage
@@ -125,4 +140,5 @@ export type HostMessage =
     | HostErrorMessage
     | HostSavedMessage
     | HostThemeMessage
-    | HostFileUploadedMessage;
+    | HostFileUploadedMessage
+    | HostConflictMessage;

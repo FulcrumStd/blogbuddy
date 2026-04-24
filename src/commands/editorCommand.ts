@@ -162,17 +162,30 @@ class EditorPanel implements vscode.Disposable {
     <title>BB Editor</title>
 </head>
 <body>
+    <div id="conflict-banner" class="conflict-banner hidden">
+        <span class="conflict-msg">This file changed on disk. Reload from disk, or keep your current edits?</span>
+        <button id="conflict-reload" class="conflict-btn">Reload</button>
+        <button id="conflict-keep" class="conflict-btn conflict-btn-primary">Keep my version</button>
+    </div>
     <div id="frontmatter-panel" class="frontmatter-panel frontmatter-hidden">
         <div class="frontmatter-header">
             <button id="frontmatter-toggle" class="frontmatter-toggle" title="Toggle frontmatter">
                 <span class="frontmatter-icon">&#9654;</span>
                 <span>Frontmatter</span>
             </button>
+            <div class="frontmatter-spacer"></div>
+            <button id="view-source" class="view-source-btn" title="Open the raw Markdown source in VS Code">
+                View source
+            </button>
         </div>
         <div class="frontmatter-body">
-            <textarea id="frontmatter-editor" class="frontmatter-textarea"
-                      spellcheck="false"
-                      placeholder="---&#10;title: &#10;date: &#10;---"></textarea>
+            <div id="frontmatter-props" class="frontmatter-props"></div>
+            <details class="frontmatter-raw">
+                <summary>Raw YAML</summary>
+                <textarea id="frontmatter-editor" class="frontmatter-textarea"
+                          spellcheck="false"
+                          placeholder="---&#10;title: &#10;date: &#10;---"></textarea>
+            </details>
         </div>
     </div>
     <div id="editor"></div>

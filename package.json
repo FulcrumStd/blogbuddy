@@ -151,6 +151,10 @@
   },
   "dependencies": {
     "@milkdown/kit": "^7.18.0",
-    "openai": "^5.12.2"
+    "@types/js-yaml": "^4.0.9",
+    "@types/prismjs": "^1.26.6",
+    "js-yaml": "^4.1.1",
+    "openai": "^5.12.2",
+    "prismjs": "^1.30.0"
   }
 }

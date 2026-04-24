@@ -6,10 +6,14 @@ import { history } from '@milkdown/kit/plugin/history';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { block } from '@milkdown/kit/plugin/block';
 import { upload, uploadConfig } from '@milkdown/kit/plugin/upload';
-import { getMarkdown, replaceAll } from '@milkdown/kit/utils';
+import { replaceAll } from '@milkdown/kit/utils';
 import { updateAIBlock, finalizeAIBlock, setAIBlockError, aiBlockPlugin } from './ai-block-plugin';
 import { bbSlashPlugin } from './bb-slash-plugin';
 import { headingKeymapPlugin } from './heading-keymap-plugin';
+import { arrowLigaturesPlugin } from './arrow-ligatures-plugin';
+import { codeHighlightPlugin } from './code-highlight-plugin';
+import { preprocessMarkdown, serializeForSave } from './markdown-output';
+import { initFrontmatterPanel, updateFrontmatterPanel, onFrontmatterChange } from './frontmatter-panel';
 import './styles.css';
 
 import type { Node } from '@milkdown/kit/prose/model';
@@ -30,25 +34,16 @@ const vscode = acquireVsCodeApi();
 
 let editor: Editor;
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
-let frontmatterUpdateTimer: ReturnType<typeof setTimeout> | null = null;
 let baseUri = '';
 
-// ---- URI Conversion ----
+// ---- IME composition guard ----
+// During CJK IME composition, ProseMirror emits intermediate text that must not
+// flow into auto-save or BB command execution. We snapshot dirty intent during
+// composition and flush exactly once on compositionend.
+let isComposing = false;
+let pendingComposedChange = false;
 
-function preprocessMarkdown(md: string): string {
-    if (!baseUri) { return md; }
-    return md.replace(
-        /(!?\[[^\]]*\])\((?!https?:\/\/|data:|vscode-webview:)([^)]+)\)/g,
-        (_, prefix, relativePath) => `${prefix}(${baseUri}/${relativePath})`
-    );
-}
-
-function postprocessMarkdown(md: string): string {
-    if (!baseUri) { return md; }
-    // Also strip URL-encoded variant (Milkdown may encode + as %2B)
-    const encodedBaseUri = baseUri.replace(/\+/g, '%2B');
-    return md.replaceAll(baseUri + '/', '').replaceAll(encodedBaseUri + '/', '');
-}
+export function isInComposition(): boolean { return isComposing; }
 
 // ---- File Upload ----
 
@@ -120,55 +115,16 @@ const fileUploader: Uploader = async (files, schema) => {
 // ---- Auto Save ----
 
 function scheduleAutoSave(): void {
+    if (isComposing) {
+        pendingComposedChange = true;
+        return;
+    }
     if (autoSaveTimer) { clearTimeout(autoSaveTimer); }
     autoSaveTimer = setTimeout(() => {
         if (!editor) { return; }
-        const content = postprocessMarkdown(editor.action(getMarkdown()));
+        const content = serializeForSave(editor, baseUri);
         vscode.postMessage({ type: 'auto-save', content });
     }, 500);
-}
-
-// ---- Frontmatter Panel ----
-
-function initFrontmatterPanel(): void {
-    const panel = document.getElementById('frontmatter-panel');
-    const toggle = document.getElementById('frontmatter-toggle');
-    const textarea = document.getElementById('frontmatter-editor') as HTMLTextAreaElement | null;
-    if (!panel || !toggle || !textarea) { return; }
-
-    toggle.addEventListener('click', () => {
-        panel.classList.toggle('frontmatter-collapsed');
-    });
-
-    textarea.addEventListener('input', () => {
-        // Auto-resize height
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-        // Debounce frontmatter update to host
-        if (frontmatterUpdateTimer) { clearTimeout(frontmatterUpdateTimer); }
-        frontmatterUpdateTimer = setTimeout(() => {
-            vscode.postMessage({ type: 'frontmatter-update', frontmatter: textarea.value });
-            vscode.postMessage({ type: 'dirty', isDirty: true });
-        }, 500);
-    });
-}
-
-function updateFrontmatterPanel(frontmatter: string): void {
-    const panel = document.getElementById('frontmatter-panel');
-    const textarea = document.getElementById('frontmatter-editor') as HTMLTextAreaElement | null;
-    if (!panel || !textarea) { return; }
-
-    if (frontmatter) {
-        panel.classList.remove('frontmatter-hidden');
-        panel.classList.remove('frontmatter-collapsed');
-        textarea.value = frontmatter;
-        // Trigger auto-resize
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-    } else {
-        panel.classList.add('frontmatter-hidden');
-        textarea.value = '';
-    }
 }
 
 // ---- Editor Init ----
@@ -203,8 +159,23 @@ async function initEditor(): Promise<void> {
         .use(upload)
         .use(bbSlashPlugin)
         .use(headingKeymapPlugin)
+        .use(arrowLigaturesPlugin)
+        .use(codeHighlightPlugin)
         .use(aiBlockPlugin)
         .create();
+
+    // IME composition guard on the editor root.
+    // ProseMirror emits onChange during composition; suppress auto-save/BB until it ends.
+    editorRoot.addEventListener('compositionstart', () => {
+        isComposing = true;
+    });
+    editorRoot.addEventListener('compositionend', () => {
+        isComposing = false;
+        if (pendingComposedChange) {
+            pendingComposedChange = false;
+            scheduleAutoSave();
+        }
+    });
 }
 
 // Message handler from Extension Host
@@ -214,12 +185,16 @@ window.addEventListener('message', (event) => {
         case 'load':
             if (msg.baseUri) { baseUri = msg.baseUri; }
             if (editor) {
-                editor.action(replaceAll(preprocessMarkdown(msg.content || '')));
+                editor.action(replaceAll(preprocessMarkdown(msg.content || '', baseUri)));
             }
             updateFrontmatterPanel(msg.frontmatter || '');
+            hideConflictBanner();
             setTimeout(() => {
                 vscode.postMessage({ type: 'dirty', isDirty: false });
             }, 100);
+            break;
+        case 'conflict':
+            showConflictBanner();
             break;
         case 'chunk':
             if (editor) { updateAIBlock(editor, msg.id, msg.text, msg.replace); }
@@ -295,6 +270,7 @@ const BB_TAG_REGEX = /<([\w-]+)(?::([^>]*))?>/;
 
 function triggerBB(): void {
     if (!editor) { return; }
+    if (isComposing) { return; }
 
     editor.action((ctx) => {
         const view = ctx.get(editorViewCtx);
@@ -371,13 +347,49 @@ function triggerBB(): void {
 
 function saveFile(): void {
     if (!editor) { return; }
-    const content = postprocessMarkdown(editor.action(getMarkdown()));
+    const content = serializeForSave(editor, baseUri);
     vscode.postMessage({ type: 'save', content });
 }
 
 function updateStatus(text: string): void {
     const el = document.getElementById('status');
     if (el) { el.textContent = text; }
+}
+
+// ---- Conflict Banner ----
+
+function showConflictBanner(): void {
+    const banner = document.getElementById('conflict-banner');
+    if (banner) { banner.classList.remove('hidden'); }
+}
+
+function hideConflictBanner(): void {
+    const banner = document.getElementById('conflict-banner');
+    if (banner) { banner.classList.add('hidden'); }
+}
+
+function initConflictBanner(): void {
+    const reload = document.getElementById('conflict-reload');
+    const keep = document.getElementById('conflict-keep');
+    reload?.addEventListener('click', () => {
+        vscode.postMessage({ type: 'conflict-resolve', choice: 'reload' });
+        hideConflictBanner();
+    });
+    keep?.addEventListener('click', () => {
+        vscode.postMessage({ type: 'conflict-resolve', choice: 'keep' });
+        hideConflictBanner();
+        // Force a save to overwrite disk with current editor content.
+        saveFile();
+    });
+}
+
+// ---- View Source ----
+
+function initViewSourceButton(): void {
+    const btn = document.getElementById('view-source');
+    btn?.addEventListener('click', () => {
+        vscode.postMessage({ type: 'open-source' });
+    });
 }
 
 // Click on #editor padding area delegates focus to the editor
@@ -391,7 +403,12 @@ document.getElementById('editor')?.addEventListener('mousedown', (e) => {
 });
 
 // Init
-initFrontmatterPanel();
+initFrontmatterPanel(vscode);
+onFrontmatterChange(() => {
+    vscode.postMessage({ type: 'dirty', isDirty: true });
+});
+initConflictBanner();
+initViewSourceButton();
 initEditor().then(() => {
     vscode.postMessage({ type: 'ready' });
 });

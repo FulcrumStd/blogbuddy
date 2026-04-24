@@ -15,6 +15,55 @@ html, body {
     background: var(--vscode-sideBar-background, var(--vscode-editor-background));
 }
 
+/* ===== Conflict Banner ===== */
+
+.conflict-banner {
+    max-width: 860px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--vscode-inputValidation-warningBackground, rgba(255, 204, 0, 0.15));
+    border: 1px solid var(--vscode-inputValidation-warningBorder, #bb8a00);
+    color: var(--vscode-editor-foreground);
+    font-size: 12px;
+    border-radius: 4px;
+    margin-top: 8px;
+}
+
+.conflict-banner.hidden {
+    display: none;
+}
+
+.conflict-msg {
+    flex: 1;
+}
+
+.conflict-btn {
+    background: var(--vscode-button-secondaryBackground, rgba(128, 128, 128, 0.2));
+    color: var(--vscode-button-secondaryForeground, inherit);
+    border: 1px solid var(--vscode-button-border, transparent);
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.conflict-btn:hover {
+    background: var(--vscode-button-secondaryHoverBackground, rgba(128, 128, 128, 0.3));
+}
+
+.conflict-btn-primary {
+    background: var(--vscode-button-background, #0e639c);
+    color: var(--vscode-button-foreground, #fff);
+}
+
+.conflict-btn-primary:hover {
+    background: var(--vscode-button-hoverBackground, #1177bb);
+}
+
 /* ===== Frontmatter Panel ===== */
 
 .frontmatter-panel {
@@ -35,6 +84,26 @@ html, body {
     display: flex;
     align-items: center;
     padding: 4px 12px;
+    gap: 8px;
+}
+
+.frontmatter-spacer {
+    flex: 1;
+}
+
+.view-source-btn {
+    background: none;
+    border: 1px solid var(--vscode-button-border, rgba(128, 128, 128, 0.3));
+    color: var(--vscode-descriptionForeground, #888);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+}
+
+.view-source-btn:hover {
+    color: var(--vscode-editor-foreground);
+    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.1));
 }
 
 .frontmatter-toggle {
@@ -94,6 +163,193 @@ html, body {
 
 .frontmatter-textarea::placeholder {
     color: var(--vscode-input-placeholderForeground, #888);
+}
+
+/* ===== Properties (typed fields) ===== */
+
+.frontmatter-props {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 0 8px;
+}
+
+.prop-row {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 10px;
+    align-items: start;
+}
+
+.prop-row-add {
+    grid-template-columns: 1fr;
+}
+
+.prop-label {
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground, #888);
+    padding-top: 6px;
+}
+
+.prop-control {
+    min-width: 0;
+}
+
+.prop-input {
+    width: 100%;
+    padding: 4px 8px;
+    background: var(--vscode-input-background, rgba(255, 255, 255, 0.06));
+    color: var(--vscode-input-foreground, inherit);
+    border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
+    border-radius: 3px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.prop-input:focus {
+    border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.prop-textarea {
+    resize: vertical;
+    min-height: 32px;
+    font-family: inherit;
+}
+
+.prop-error {
+    padding: 6px 8px;
+    font-size: 12px;
+    color: var(--vscode-inputValidation-errorForeground, #f48771);
+    background: var(--vscode-inputValidation-errorBackground, rgba(190, 17, 0, 0.1));
+    border: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+    border-radius: 3px;
+}
+
+/* Switch (boolean) */
+.prop-switch {
+    position: relative;
+    display: inline-block;
+    width: 32px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.prop-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
+}
+
+.prop-switch-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--vscode-input-background, rgba(128, 128, 128, 0.3));
+    border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.4));
+    border-radius: 10px;
+    transition: 0.15s;
+}
+
+.prop-switch-slider::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 1px;
+    width: 12px;
+    height: 12px;
+    background: var(--vscode-editor-foreground);
+    border-radius: 50%;
+    transition: 0.15s;
+    opacity: 0.6;
+}
+
+.prop-switch input:checked + .prop-switch-slider {
+    background: var(--vscode-button-background, #0e639c);
+    border-color: var(--vscode-button-background, #0e639c);
+}
+
+.prop-switch input:checked + .prop-switch-slider::before {
+    transform: translateX(14px);
+    background: var(--vscode-button-foreground, #fff);
+    opacity: 1;
+}
+
+/* Tags */
+.prop-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+    padding: 3px 6px;
+    background: var(--vscode-input-background, rgba(255, 255, 255, 0.06));
+    border: 1px solid var(--vscode-input-border, rgba(128, 128, 128, 0.3));
+    border-radius: 3px;
+    min-height: 30px;
+}
+
+.prop-tags:focus-within {
+    border-color: var(--vscode-focusBorder, #007acc);
+}
+
+.prop-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--vscode-badge-background, rgba(100, 150, 200, 0.4));
+    color: var(--vscode-badge-foreground, inherit);
+    padding: 2px 6px 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+}
+
+.prop-tag-remove {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    opacity: 0.7;
+}
+
+.prop-tag-remove:hover {
+    opacity: 1;
+}
+
+.prop-tag-input {
+    flex: 1;
+    min-width: 80px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: inherit;
+    font-size: 13px;
+    font-family: inherit;
+    padding: 2px;
+}
+
+.prop-tag-input::placeholder {
+    color: var(--vscode-input-placeholderForeground, #888);
+}
+
+/* Raw YAML details section */
+.frontmatter-raw {
+    margin-top: 8px;
+}
+
+.frontmatter-raw > summary {
+    cursor: pointer;
+    font-size: 11px;
+    color: var(--vscode-descriptionForeground, #888);
+    padding: 2px 0;
+    user-select: none;
+}
+
+.frontmatter-raw > summary:hover {
+    color: var(--vscode-editor-foreground);
 }
 
 /* ===== Milkdown Editor ===== */
@@ -190,6 +446,128 @@ body {
 .milkdown pre code {
     background: transparent;
     padding: 0;
+}
+
+/* ===== Prism code highlighting ===== */
+/* Uses Milkdown's default light palette; dark theme overrides below. */
+
+.milkdown pre code .token.comment,
+.milkdown pre code .token.prolog,
+.milkdown pre code .token.doctype,
+.milkdown pre code .token.cdata {
+    color: #6a9955;
+    font-style: italic;
+}
+
+.milkdown pre code .token.punctuation {
+    color: var(--vscode-editor-foreground);
+    opacity: 0.7;
+}
+
+.milkdown pre code .token.property,
+.milkdown pre code .token.tag,
+.milkdown pre code .token.constant,
+.milkdown pre code .token.symbol,
+.milkdown pre code .token.deleted {
+    color: #d73a49;
+}
+
+.milkdown pre code .token.boolean,
+.milkdown pre code .token.number {
+    color: #005cc5;
+}
+
+.milkdown pre code .token.selector,
+.milkdown pre code .token.attr-name,
+.milkdown pre code .token.string,
+.milkdown pre code .token.char,
+.milkdown pre code .token.builtin,
+.milkdown pre code .token.inserted {
+    color: #032f62;
+}
+
+.milkdown pre code .token.operator,
+.milkdown pre code .token.entity,
+.milkdown pre code .token.url,
+.milkdown pre code .language-css .token.string,
+.milkdown pre code .style .token.string {
+    color: #6f42c1;
+}
+
+.milkdown pre code .token.atrule,
+.milkdown pre code .token.attr-value,
+.milkdown pre code .token.keyword {
+    color: #d73a49;
+}
+
+.milkdown pre code .token.function,
+.milkdown pre code .token.class-name {
+    color: #6f42c1;
+}
+
+.milkdown pre code .token.regex,
+.milkdown pre code .token.important,
+.milkdown pre code .token.variable {
+    color: #e36209;
+}
+
+.milkdown pre code .token.important,
+.milkdown pre code .token.bold {
+    font-weight: bold;
+}
+
+.milkdown pre code .token.italic {
+    font-style: italic;
+}
+
+/* Dark theme overrides */
+body:not([data-theme="light"]) .milkdown pre code .token.comment,
+body:not([data-theme="light"]) .milkdown pre code .token.prolog,
+body:not([data-theme="light"]) .milkdown pre code .token.doctype,
+body:not([data-theme="light"]) .milkdown pre code .token.cdata {
+    color: #6a9955;
+}
+
+body:not([data-theme="light"]) .milkdown pre code .token.property,
+body:not([data-theme="light"]) .milkdown pre code .token.tag,
+body:not([data-theme="light"]) .milkdown pre code .token.constant,
+body:not([data-theme="light"]) .milkdown pre code .token.symbol,
+body:not([data-theme="light"]) .milkdown pre code .token.deleted,
+body:not([data-theme="light"]) .milkdown pre code .token.atrule,
+body:not([data-theme="light"]) .milkdown pre code .token.attr-value,
+body:not([data-theme="light"]) .milkdown pre code .token.keyword {
+    color: #569cd6;
+}
+
+body:not([data-theme="light"]) .milkdown pre code .token.boolean,
+body:not([data-theme="light"]) .milkdown pre code .token.number {
+    color: #b5cea8;
+}
+
+body:not([data-theme="light"]) .milkdown pre code .token.string,
+body:not([data-theme="light"]) .milkdown pre code .token.char,
+body:not([data-theme="light"]) .milkdown pre code .token.builtin,
+body:not([data-theme="light"]) .milkdown pre code .token.inserted,
+body:not([data-theme="light"]) .milkdown pre code .token.attr-name,
+body:not([data-theme="light"]) .milkdown pre code .token.selector {
+    color: #ce9178;
+}
+
+body:not([data-theme="light"]) .milkdown pre code .token.operator,
+body:not([data-theme="light"]) .milkdown pre code .token.entity,
+body:not([data-theme="light"]) .milkdown pre code .token.url {
+    color: #d4d4d4;
+}
+
+body:not([data-theme="light"]) .milkdown pre code .token.function,
+body:not([data-theme="light"]) .milkdown pre code .token.class-name {
+    color: #dcdcaa;
+}
+
+body:not([data-theme="light"]) .milkdown pre code .token.regex,
+body:not([data-theme="light"]) .milkdown pre code .token.important,
+body:not([data-theme="light"]) .milkdown pre code .token.variable {
+    color: #d7ba7d;
 }
 
 .milkdown table {
