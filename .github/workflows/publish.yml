@@ -1,0 +1,45 @@
+name: Publish to VS Code Marketplace
+
+on:
+  release:
+    types: [published]
+  # Allow manual re-runs from the Actions tab when a release event was
+  # consumed but the publish step itself failed (e.g. transient network).
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Guards against shipping the wrong version: if the release tag says
+      # v0.0.13 but package.json wasn't bumped, fail loudly instead of
+      # silently re-publishing the old version to the Marketplace.
+      - name: Verify tag matches package.json version
+        if: github.event_name == 'release'
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          TAG_VERSION="${TAG#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "Tag:         $TAG (parsed: $TAG_VERSION)"
+          echo "package.json: $PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Release tag ($TAG) does not match package.json version ($PKG_VERSION). Bump the version and re-tag."
+            exit 1
+          fi
+
+      - name: Publish to Marketplace
+        run: npm run deploy
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
