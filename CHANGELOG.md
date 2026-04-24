@@ -16,6 +16,33 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.11] - 2026-04-24
+
+### Added
+
+- **Syntax highlighting in code blocks**: Fenced code blocks in BB Editor now render colored tokens (Prism-based, 20+ languages including ts/js/python/bash/yaml/rust/go/sql/…); palette adapts to VS Code light and dark/high-contrast themes
+- **Typed Properties panel** for YAML frontmatter: `title`, `date`, `tags`, `categories`, `author`, `slug`, `draft`, `description` render as typed controls (text / date picker / chip input / toggle / textarea) with an "Add field" dropdown; raw YAML remains available as a collapsible fallback
+- **External file conflict detection**: when the file changes on disk while BB Editor has unsaved edits, a banner offers **Reload from disk** or **Keep my version** instead of silently overwriting
+- **View Source button** in the Frontmatter header opens the raw `.md` in a side VS Code editor
+- **Arrow ligatures**: typing `->` auto-converts to `→`, `=>` to `⇒`; skipped inside code blocks/inline code and during IME composition
+
+### Improved
+
+- **IME composition protection**: auto-save and `Cmd+B Cmd+B` are suppressed during CJK (Chinese/Japanese/Korean) IME composition, so half-composed pinyin/kana no longer leaks into saves or BB command execution
+- **Markdown output normalization** on save: bullets normalized to `-`, list items tightened (no blank lines between siblings), common HTML entities (`&amp;`, `&lt;`, `&gt;`, `&#x20;`, …) decoded, whitespace around `**bold**` markers moved outside, 3+ consecutive blank lines collapsed to 2; fenced code block contents are left untouched. Reduces Git diff noise when round-tripping through BB Editor
+- **One-press Backspace** at the start of a heading now converts it directly to a paragraph (no longer steps down h2 → h1 → paragraph)
+- **Centralized serialization pipeline**: `save` and `auto-save` share a single `getMarkdown → stripBaseUri → compactMarkdown` path for consistent output
+
+---
+
+## [0.0.10] - 2026-02-26
+
+### Added
+
+- **Frontmatter preview and editing panel**: YAML/TOML frontmatter is exposed as a dedicated collapsible editor at the top of BB Editor; changes auto-save alongside body edits
+
+---
+
 ## [0.0.9] - 2026-02-26
 
 ### Added
