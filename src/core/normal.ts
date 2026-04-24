@@ -1,11 +1,11 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIService } from '../services/AIService';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
-import { ProcessRequest, ProcessResponse, ProcessChunk, StreamingProcessor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, Processor } from './types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export class NormalProcessor implements StreamingProcessor {
+export class NormalProcessor implements Processor {
     private static instance: NormalProcessor = new NormalProcessor();
     private constructor() { }
 
@@ -13,91 +13,34 @@ export class NormalProcessor implements StreamingProcessor {
         return NormalProcessor.instance;
     }
 
-    /**
-     * 处理通用任务请求 - 完全听从用户指示
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        // 验证用户是否提供了指示
-        if (Utils.isEmpty(request.msg)) {
-            throw new AppError(
-                ErrorCode.SERVER_ERROR,
-                'Normal task requires user instructions. Please specify what you want me to do with the text.',
-                'Normal task requires user instructions'
-            );
-        }
-
-        // 判断是否为局部文本操作还是全文操作
-        const hasSelectedText = !Utils.isEmpty(request.selectText);
-
-        if (hasSelectedText) {
-            // 局部文本操作模式
-            return await this.processTextBlock(request);
-        } else {
-            // 全文操作模式
-            return await this.processFullDocument(request);
-        }
-    }
-
-    /**
-     * 统一的流式处理接口实现
-     */
-    public async processStreaming(
-        request: ProcessRequest
+    public async process(
+        request: ProcessRequest,
     ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
-        // 验证用户是否提供了指示
         if (Utils.isEmpty(request.msg)) {
             throw new AppError(
                 ErrorCode.SERVER_ERROR,
                 'Normal task requires user instructions. Please specify what you want me to do with the text.',
-                'Normal task requires user instructions'
+                'Normal task requires user instructions',
             );
         }
 
-        // 判断是否为局部文本操作还是全文操作
         const hasSelectedText = !Utils.isEmpty(request.selectText);
-
         if (hasSelectedText) {
-            // 局部文本操作模式 - 使用真正的流式处理（类似 Expander）
             return this.processTextBlockStreaming(request);
         } else {
-            // 全文操作模式 - 使用模拟流式处理（类似 Translator）
             return this.processFullDocumentStreaming(request);
         }
     }
 
-    /**
-     * 局部文本操作 - 替换局部文本
-     */
-    private async processTextBlock(request: ProcessRequest): Promise<ProcessResponse> {
-        const taskPrompt = this.getNormalBlockPrompt(request.selectText, request.msg);
-
-        // 准备消息 - 使用核心系统提示词
-        const messages: Array<any> = [];
-        messages.push({ role: 'system', content: this.getCoreSystemPrompt() });
-        messages.push({ role: 'user', content: taskPrompt });
-
-        // 调用AI处理文本
-        const aiService = AIService.getInstance();
-        const processedContent = await aiService.chat(messages, 'NORMAL');
-
-        return {
-            replaceText: processedContent
-        };
-    }
-
-    /**
-     * 局部文本流式操作 - 类似 Expander 模式（真正的流式处理）
-     */
     private async processTextBlockStreaming(
-        request: ProcessRequest
+        request: ProcessRequest,
     ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
         const generator = async function* (this: NormalProcessor): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             const taskPrompt = this.getNormalBlockPrompt(request.selectText, request.msg);
-
-            // 准备消息 - 使用核心系统提示词
-            const messages: Array<any> = [];
-            messages.push({ role: 'system', content: this.getCoreSystemPrompt() });
-            messages.push({ role: 'user', content: taskPrompt });
+            const messages: Array<any> = [
+                { role: 'system', content: this.getCoreSystemPrompt() },
+                { role: 'user', content: taskPrompt },
+            ];
 
             const aiService = AIService.getInstance();
             const streamGenerator = await aiService.chatStreaming(messages, 'NORMAL');
@@ -107,74 +50,14 @@ export class NormalProcessor implements StreamingProcessor {
                 fullResponse += chunk;
                 yield { text: chunk };
             }
-
             return { replaceText: fullResponse };
         }.bind(this);
 
         return generator();
     }
 
-    /**
-     * 全文操作 - 生成新文件
-     */
-    private async processFullDocument(request: ProcessRequest): Promise<ProcessResponse> {
-        // 检查文件路径是否存在
-        if (Utils.isEmpty(request.filePath)) {
-            throw new AppError(
-                ErrorCode.SERVER_ERROR,
-                'Full document processing requires a file path',
-                'Full document processing requires a file path'
-            );
-        }
-
-        // 读取完整文件内容
-        const fileContent = await FileUtils.readFileContentAsync(
-            request.filePath!,
-            FileUtils.SupportedFileTypes.MARKDOWN
-        );
-
-        if (!fileContent) {
-            throw new AppError(
-                ErrorCode.SERVER_ERROR,
-                'Unable to read file content or file type not supported',
-                'File reading failed'
-            );
-        }
-
-        const taskPrompt = this.getNormalDocumentPrompt(fileContent.replace(request.cmdText, ''), request.msg);
-
-        // 准备消息 - 使用核心系统提示词
-        const messages: Array<any> = [];
-        messages.push({ role: 'system', content: this.getCoreSystemPrompt() });
-        messages.push({ role: 'user', content: taskPrompt });
-
-        // 调用AI处理全文
-        const aiService = AIService.getInstance();
-        const processedContent = await aiService.chat(messages, 'NORMAL');
-
-        // 生成新文件名
-        const parsedPath = path.parse(request.filePath!);
-        const newFileName = `${parsedPath.name}_processed${parsedPath.ext}`;
-        const newFilePath = path.join(parsedPath.dir, newFileName);
-
-        // 在处理内容末尾添加BB标签
-        const processedContentWithTag = processedContent + '\n\n' + this.normalTag();
-
-        // 写入处理内容到新文件
-        await fs.promises.writeFile(newFilePath, processedContentWithTag, 'utf-8');
-
-        const resultMessage = `[Processed](${newFileName})`;
-
-        return {
-            replaceText: resultMessage
-        };
-    }
-
-    /**
-     * 全文流式操作 - 类似 Translator 模式（模拟流式处理）
-     */
     private async processFullDocumentStreaming(
-        request: ProcessRequest
+        request: ProcessRequest,
     ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
         const generator = async function* (this: NormalProcessor): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             const response = await this.processFullDocument(request);
@@ -184,9 +67,46 @@ export class NormalProcessor implements StreamingProcessor {
         return generator();
     }
 
-    /**
-     * 获取系统提示词
-     */
+    private async processFullDocument(request: ProcessRequest): Promise<ProcessResponse> {
+        if (Utils.isEmpty(request.filePath)) {
+            throw new AppError(
+                ErrorCode.SERVER_ERROR,
+                'Full document processing requires a file path',
+                'Full document processing requires a file path',
+            );
+        }
+
+        const fileContent = await FileUtils.readFileContentAsync(
+            request.filePath!,
+            FileUtils.SupportedFileTypes.MARKDOWN,
+        );
+
+        if (!fileContent) {
+            throw new AppError(
+                ErrorCode.SERVER_ERROR,
+                'Unable to read file content or file type not supported',
+                'File reading failed',
+            );
+        }
+
+        const taskPrompt = this.getNormalDocumentPrompt(fileContent.replace(request.cmdText, ''), request.msg);
+        const messages: Array<any> = [
+            { role: 'system', content: this.getCoreSystemPrompt() },
+            { role: 'user', content: taskPrompt },
+        ];
+
+        const aiService = AIService.getInstance();
+        const processedContent = await aiService.chat(messages, 'NORMAL');
+
+        const parsedPath = path.parse(request.filePath!);
+        const newFileName = `${parsedPath.name}_processed${parsedPath.ext}`;
+        const newFilePath = path.join(parsedPath.dir, newFileName);
+        const processedContentWithTag = processedContent + '\n\n' + this.normalTag();
+        await fs.promises.writeFile(newFilePath, processedContentWithTag, 'utf-8');
+
+        return { replaceText: `[Processed](${newFileName})` };
+    }
+
     private getCoreSystemPrompt(): string {
         return `
 # AI Agent System Prompt
@@ -313,10 +233,10 @@ You will receive inputs in this specific format:
 ## Quality Assurance Checklist
 
 Before outputting:
-- ✓ Confirm output matches requested operation
-- ✓ Verify all markdown syntax is preserved
-- ✓ Ensure no explanatory text is included
-- ✓ Check that response starts directly with processed content
+- Confirm output matches requested operation
+- Verify all markdown syntax is preserved
+- Ensure no explanatory text is included
+- Check that response starts directly with processed content
 
 ## Edge Case Handling
 
@@ -328,11 +248,11 @@ Before outputting:
 ## Output Format
 
 Return processed text immediately without any of these elements:
-- ❌ "Here is the processed text:"
-- ❌ "I've expanded/rewritten/polished..."
-- ❌ "Changes made include..."
-- ❌ "Would you like me to..."
-- ❌ Multiple versions or options
+- "Here is the processed text:"
+- "I've expanded/rewritten/polished..."
+- "Changes made include..."
+- "Would you like me to..."
+- Multiple versions or options
 
 ## Examples of Correct Behavior
 
@@ -351,13 +271,9 @@ Artificial Intelligence is fundamentally transforming every aspect of our modern
 ---
 
 Remember: Your response IS the processed text. Nothing more, nothing less.
-
-    `;
+`;
     }
 
-    /**
-     * 局部文本操作提示词
-     */
     private getNormalBlockPrompt(text: string, userMsg: string): string {
         return `
 User Request: ${userMsg}
@@ -369,12 +285,9 @@ ${text}
 
 ## Instructions:
 Please follow the user's request exactly as specified. Process the provided text according to their instructions and return only the result without any explanations or meta-commentary.
-        `;
+`;
     }
 
-    /**
-     * 全文档操作提示词
-     */
     private getNormalDocumentPrompt(text: string, userMsg: string): string {
         return `
 User Request: ${userMsg}
@@ -386,12 +299,9 @@ ${text}
 
 ## Instructions:
 Please follow the user's request exactly as specified. Process the entire document according to their instructions and return the complete result without any explanations or meta-commentary.
-        `;
+`;
     }
 
-    /**
-     * 获取 BB Normal 标签文本
-     */
     public normalTag(): string {
         return '[![BB](https://img.shields.io/badge/processed-by-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)';
     }

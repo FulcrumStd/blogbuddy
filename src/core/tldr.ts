@@ -1,57 +1,32 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIService } from '../services/AIService';
-import { ConfigService } from '../services/ConfigService';
-import { ProcessRequest, ProcessResponse, ProcessChunk, StreamingProcessor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, Processor } from './types';
 
 
-export class TldrGenerator implements StreamingProcessor {
+export class TldrGenerator implements Processor {
     private static instance: TldrGenerator = new TldrGenerator();
     private constructor() { }
-    
+
     public static getInstance(): TldrGenerator {
         return TldrGenerator.instance;
     }
 
-    /**
-     * 处理TLDR生成请求 - 真正的TLDR生成功能
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-            const completePrompt = await this.generateCompleteTldrPrompt(request);
-
-            // 准备消息
-            const messages: Array<any> = [];
-            messages.push({ role: 'user', content: completePrompt });
-
-            // 调用AI进行TLDR生成
-            const aiService = AIService.getInstance();
-            const config = ConfigService.getInstance().getAllConfig();
-            const tldrContent = await aiService.chat(messages, 'TLDR', config.smallModel);
-            // tldr 的 cmd 保留用户选择的文本
-            return {
-                replaceText: `${request.selectText}\n${tldrContent}`,
-            };
-    }
-
-    /**
-     * 统一的流式处理接口实现
-     */
-    public async processStreaming(
-        request: ProcessRequest
+    public async process(
+        request: ProcessRequest,
     ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
         const generator = async function* (this: TldrGenerator): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             const completePrompt = await this.generateCompleteTldrPrompt(request);
-            const messages: Array<any> = [];
-            messages.push({ role: 'user', content: completePrompt });
+            const messages: Array<any> = [{ role: 'user', content: completePrompt }];
 
             const aiService = AIService.getInstance();
-            const config = ConfigService.getInstance().getAllConfig();
-            const streamGenerator = await aiService.chatStreaming(messages, 'TLDR', config.smallModel);
-            // tldr 的 cmd 保留用户选择的文本
+            const streamGenerator = await aiService.chatStreaming(messages, 'TLDR');
+
+            // tldr 命令保留用户选择的文本
             let fullResponse = request.selectText;
-            if(fullResponse.length > 0) {
-                yield {text: fullResponse + '\n'};
+            if (fullResponse.length > 0) {
+                yield { text: fullResponse + '\n' };
             }
-            
+
             for await (const chunk of streamGenerator) {
                 fullResponse += chunk;
                 yield { text: chunk };
@@ -63,22 +38,15 @@ export class TldrGenerator implements StreamingProcessor {
         return generator();
     }
 
-
-    /**
-     * 生成完整的 TLDR 提示词（集中处理所有提示词逻辑）
-     */
     private async generateCompleteTldrPrompt(request: ProcessRequest): Promise<string> {
         const content = await FileUtils.readFileContentAsync(
             request.filePath,
-            FileUtils.SupportedFileTypes.MARKDOWN
+            FileUtils.SupportedFileTypes.MARKDOWN,
         ) || request.selectText;
         const basePrompt = this.buildTldrPrompt(content);
         return this.addUserInstructions(basePrompt, request.msg);
     }
 
-    /**
-     * 构建基础 TLDR 提示词
-     */
     private buildTldrPrompt(text: string): string {
         return `You are a content summarization specialist. Your task is to generate a concise, informative TL;DR summary that captures the essential points and key insights.
 
@@ -108,14 +76,8 @@ ${text}
 Return the TLDR with the heading, followed by a concise summary that captures the essence of the content. Focus on what readers need to know most.`;
     }
 
-    /**
-     * 添加用户附加指令到提示词
-     */
     private addUserInstructions(basePrompt: string, userMsg: string): string {
-        if (Utils.isEmpty(userMsg)) {
-            return basePrompt;
-        }
-        
+        if (Utils.isEmpty(userMsg)) { return basePrompt; }
         return `${basePrompt}
 
 ## Additional User Instructions:
@@ -123,5 +85,4 @@ ${userMsg}
 
 Please incorporate these instructions while generating the TLDR.`;
     }
-
 }

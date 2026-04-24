@@ -1,10 +1,9 @@
 import { Utils, FileUtils } from '../utils/helpers';
 import { AIService } from '../services/AIService';
-import { ConfigService } from '../services/ConfigService';
-import { ProcessRequest, ProcessResponse, ProcessChunk, StreamingProcessor } from './types';
+import { ProcessRequest, ProcessResponse, ProcessChunk, Processor } from './types';
 
 
-export class KeywordExtractor implements StreamingProcessor {
+export class KeywordExtractor implements Processor {
     private static instance: KeywordExtractor = new KeywordExtractor();
     private constructor() { }
 
@@ -12,44 +11,20 @@ export class KeywordExtractor implements StreamingProcessor {
         return KeywordExtractor.instance;
     }
 
-    /**
-     * 处理关键词提取请求 - 真正的关键词提取功能
-     */
-    public async process(request: ProcessRequest): Promise<ProcessResponse> {
-        const completePrompt = await this.generateCompleteKeywordPrompt(request);
-
-        // 准备消息
-        const messages: Array<any> = [];
-        messages.push({ role: 'user', content: completePrompt });
-
-        // 调用AI进行关键词提取
-        const aiService = AIService.getInstance();
-        const config = ConfigService.getInstance().getAllConfig();
-        const keywordContent = await aiService.chat(messages, 'KEYWORD', config.smallModel);
-        // keyword 的 cmd 保留用户选择的文本
-        return {
-            replaceText: `${request.selectText}\n${keywordContent}`,
-        };
-    }
-
-    /**
-     * 统一的流式处理接口实现
-     */
-    public async processStreaming(
-        request: ProcessRequest
+    public async process(
+        request: ProcessRequest,
     ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
         const generator = async function* (this: KeywordExtractor): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             const completePrompt = await this.generateCompleteKeywordPrompt(request);
-            const messages: Array<any> = [];
-            messages.push({ role: 'user', content: completePrompt });
+            const messages: Array<any> = [{ role: 'user', content: completePrompt }];
 
             const aiService = AIService.getInstance();
-            const config = ConfigService.getInstance().getAllConfig();
-            const streamGenerator = await aiService.chatStreaming(messages, 'KEYWORD', config.smallModel);
-            // keyword 的 cmd 保留用户选择的文本
+            const streamGenerator = await aiService.chatStreaming(messages, 'KEYWORD');
+
+            // keyword 命令保留用户选择的文本
             let fullResponse = request.selectText;
-            if(fullResponse.length > 0) {
-                yield {text: fullResponse + '\n'};
+            if (fullResponse.length > 0) {
+                yield { text: fullResponse + '\n' };
             }
 
             for await (const chunk of streamGenerator) {
@@ -63,24 +38,15 @@ export class KeywordExtractor implements StreamingProcessor {
         return generator();
     }
 
-
-    /**
-     * 生成完整的关键词提示词（集中处理所有提示词逻辑）
-     */
     private async generateCompleteKeywordPrompt(request: ProcessRequest): Promise<string> {
         const content = await FileUtils.readFileContentAsync(
             request.filePath,
-            FileUtils.SupportedFileTypes.MARKDOWN
+            FileUtils.SupportedFileTypes.MARKDOWN,
         ) || request.selectText;
         const basePrompt = this.buildKeywordPrompt(content);
         return this.addUserInstructions(basePrompt, request.msg);
     }
 
-
-
-    /**
-     * 构建基础关键词提示词
-     */
     private buildKeywordPrompt(text: string): string {
         return `You are a keyword extraction specialist. Your task is to extract relevant, SEO-friendly keywords and key phrases from the provided content.
 
@@ -104,7 +70,7 @@ Present keywords as a clean, organized list:
 
 \`\`\`
 ---
-**Keywords**: *Primary keyword 1*, *Primary keyword 2*, *Long-tail keyword phrase 1*, *Long-tail keyword phrase 2*, *Supporting keyword 1*, *Supporting keyword 2*  
+**Keywords**: *Primary keyword 1*, *Primary keyword 2*, *Long-tail keyword phrase 1*, *Long-tail keyword phrase 2*, *Supporting keyword 1*, *Supporting keyword 2*
 \`\`\`
 
 ## Content for Analysis:
@@ -116,14 +82,8 @@ ${text}
 Return the keyword list with the heading, organized by relevance and search potential. Focus on terms that would help readers discover this content.`;
     }
 
-    /**
-     * 添加用户附加指令到提示词
-     */
     private addUserInstructions(basePrompt: string, userMsg: string): string {
-        if (Utils.isEmpty(userMsg)) {
-            return basePrompt;
-        }
-
+        if (Utils.isEmpty(userMsg)) { return basePrompt; }
         return `${basePrompt}
 
 ## Additional User Instructions:
@@ -131,5 +91,4 @@ ${userMsg}
 
 Please incorporate these instructions while extracting keywords.`;
     }
-
 }

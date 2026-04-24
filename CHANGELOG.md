@@ -16,6 +16,35 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.12] - 2026-04-24
+
+### Added
+
+- **`BlogBuddy: Select Model` command**: fetches `/v1/models` from the configured base URL and opens a picker; choose an existing model or "Enter custom model…" to type one manually. Surfaces auth / network / base-URL errors directly (with Retry / Enter Manually) instead of silently returning an empty list
+- **Environment variable fallback** for credentials. Resolution order (first non-empty wins):
+  - `apiKey`: `blogbuddy.apiKey` → `$BLOGBUDDY_API_KEY` → `$OPENAI_API_KEY`
+  - `baseURL`: `blogbuddy.baseURL` → `$BLOGBUDDY_BASE_URL` → `$OPENAI_BASE_URL` → `https://api.openai.com/v1` (final default, so a fresh install works out of the box with just an API key)
+- **`BlogBuddy: Show Config Diagnostics` command**: opens a masked markdown report showing what the extension host actually resolves for each field (settings vs env vs default), useful for debugging the "I set the env var but it doesn't work" case
+- **Config source status bar indicator**: a right-side `$(key) BB · cfg|env|default` item (turns yellow `$(warning) BB: no key` if nothing resolves). Hover for a per-field source table; click to open diagnostics. Also links to Select Model and settings
+
+### Changed
+
+- **Configuration simplified**. Removed the following settings (and their handling code):
+  - `blogbuddy.smallModel` — all commands now use the single `blogbuddy.model`
+  - `blogbuddy.streaming` — streaming is always on
+  - `blogbuddy.documentInfoDisplay` — word count in the status bar is always shown for Markdown files; the `Toggle Document Info Display` command and its `Cmd+Shift+D` keybinding are removed
+  - `blogbuddy.mermaidSVG` — Mermaid output is always an inline fenced code block; the Kroki-based SVG rendering path is removed (along with `src/services/KrokiService.ts`)
+- **Settings UI polish**: `apiKey` / `baseURL` / `model` now use `markdownDescription` documenting the full resolution order; descriptions include inline clickable command links to Show Config Diagnostics and Select Model (since the model field can't be rendered as a native dropdown — the model list is fetched dynamically from the provider)
+- **AI client recreation**: the OpenAI client is now rebuilt when `apiKey` or `baseURL` changes at runtime (previously cached the first-seen credentials until restart)
+
+### Removed / Cleaned up
+
+- `BB.act()` / `Processor.process()` non-streaming paths and the `StreamingProcessor` interface — all processors now expose a single streaming `process()`
+- `aiService.chat(..., model?)` / `chatStreaming(..., model?)` per-call model override — both now use `blogbuddy.model` from config
+- `src/services/KrokiService.ts` and its Mermaid-to-SVG rendering path
+
+---
+
 ## [0.0.11] - 2026-04-24
 
 ### Added

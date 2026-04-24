@@ -3,14 +3,34 @@ import * as vscode from 'vscode';
 export enum ConfigKey {
     API_KEY = 'apiKey',
     MODEL = 'model',
-    SMALL_MODEL = 'smallModel',
     BASE_URL = 'baseURL',
-    MERMAID_SVG = 'mermaidSVG',
-    STREAMING = 'streaming',
-    DOCUMENT_INFO_DISPLAY = 'documentInfoDisplay',
-    ASSET_DIR = 'assetDir'
+    ASSET_DIR = 'assetDir',
 }
 
+export interface ResolvedConfig {
+    apiKey: string;
+    model: string;
+    baseURL: string;
+    assetDir: string;
+}
+
+/** Final fallback when neither settings nor env vars provide a baseURL. */
+export const DEFAULT_BASE_URL = 'https://api.openai.com/v1';
+
+export type ResolutionSource =
+    | 'settings'
+    | 'env:BLOGBUDDY_API_KEY'
+    | 'env:OPENAI_API_KEY'
+    | 'env:BLOGBUDDY_BASE_URL'
+    | 'env:OPENAI_BASE_URL'
+    | 'default'
+    | 'none';
+
+export interface ConfigSources {
+    apiKey: ResolutionSource;
+    baseURL: ResolutionSource;
+    model: ResolutionSource;
+}
 
 export class ConfigService {
     private static instance: ConfigService;
@@ -25,58 +45,82 @@ export class ConfigService {
         return ConfigService.instance;
     }
 
-    /**
-     * 获取配置项的值
-     */
     private get<T>(key: ConfigKey, defaultValue?: T): T {
         const config = vscode.workspace.getConfiguration(this.configSection);
         return config.get<T>(key, defaultValue as T);
     }
 
-    /**
-     * 获取所有配置
-     */
-    public getAllConfig() {
-        const model = this.get<string>(ConfigKey.MODEL, '');
-        const smallModel = this.get<string>(ConfigKey.SMALL_MODEL, '');
-        
+    // ---- Env var fallback ----
+    // Priority: settings value (if non-empty) → BLOGBUDDY_* → OPENAI_* → ''
+    private resolveSecret(configValue: string, bbKey: string, openaiKey: string): string {
+        if (configValue && configValue.trim() !== '') { return configValue; }
+        const env = (typeof process !== 'undefined' && process.env) || {};
+        return (env[bbKey] || env[openaiKey] || '').trim();
+    }
+
+    public getAllConfig(): ResolvedConfig {
+        const apiKeyRaw = this.get<string>(ConfigKey.API_KEY, '');
+        const baseURLRaw = this.get<string>(ConfigKey.BASE_URL, '');
         return {
-            apiKey: this.get<string>(ConfigKey.API_KEY, ''),
-            model: model,
-            smallModel: (!smallModel || smallModel.trim() === '') ? model : smallModel,
-            baseURL: this.get<string>(ConfigKey.BASE_URL, ''),
-            mermaidSVG: this.get<boolean>(ConfigKey.MERMAID_SVG, false),
-            streaming: this.get<boolean>(ConfigKey.STREAMING, true),
-            documentInfoDisplay: this.get<boolean>(ConfigKey.DOCUMENT_INFO_DISPLAY, false),
+            apiKey: this.resolveSecret(apiKeyRaw, 'BLOGBUDDY_API_KEY', 'OPENAI_API_KEY'),
+            // baseURL always has a value: settings → BLOGBUDDY_* → OPENAI_* → OpenAI official.
+            baseURL: this.resolveSecret(baseURLRaw, 'BLOGBUDDY_BASE_URL', 'OPENAI_BASE_URL')
+                || DEFAULT_BASE_URL,
+            model: this.get<string>(ConfigKey.MODEL, ''),
             assetDir: this.get<string>(ConfigKey.ASSET_DIR, ''),
         };
     }
 
-    /**
-     * 验证配置是否有效
-     */
     public validateConfig(): { isValid: boolean; errors: string[] } {
         const errors: string[] = [];
         const config = this.getAllConfig();
 
-        // 验证API密钥
-        if (!config.apiKey || config.apiKey.trim() === '') {
-            errors.push('API key is not setting');
+        if (!config.apiKey) {
+            errors.push('API key is not set (configure blogbuddy.apiKey or set BLOGBUDDY_API_KEY / OPENAI_API_KEY)');
+        }
+        if (!config.model) {
+            errors.push('Model is not set (configure blogbuddy.model or run "BlogBuddy: Select Model")');
         }
 
-        // 验证API密钥
-        if (!config.baseURL || config.baseURL.trim() === '') {
-            errors.push('API base url is not setting');
-        }
+        return { isValid: errors.length === 0, errors };
+    }
 
-        // 验证API密钥
-        if (!config.model || config.model.trim() === '') {
-            errors.push('Model is not setting');
-        }
+    public async setModel(model: string): Promise<void> {
+        await vscode.workspace.getConfiguration(this.configSection).update(
+            ConfigKey.MODEL,
+            model,
+            vscode.ConfigurationTarget.Global,
+        );
+    }
 
-        return {
-            isValid: errors.length === 0,
-            errors
-        };
+    /** Reports where each resolved value came from. Used by the status bar /
+     *  diagnostics UI so the user can see settings-vs-env-vs-default at a glance. */
+    public getSources(): ConfigSources {
+        const env = (typeof process !== 'undefined' && process.env) || {};
+        const isSet = (v: string | undefined) => !!(v && v.trim() !== '');
+
+        const apiKeyCfg = this.get<string>(ConfigKey.API_KEY, '');
+        const baseURLCfg = this.get<string>(ConfigKey.BASE_URL, '');
+        const modelCfg = this.get<string>(ConfigKey.MODEL, '');
+
+        const apiKey: ResolutionSource = isSet(apiKeyCfg)
+            ? 'settings'
+            : isSet(env.BLOGBUDDY_API_KEY)
+                ? 'env:BLOGBUDDY_API_KEY'
+                : isSet(env.OPENAI_API_KEY)
+                    ? 'env:OPENAI_API_KEY'
+                    : 'none';
+
+        const baseURL: ResolutionSource = isSet(baseURLCfg)
+            ? 'settings'
+            : isSet(env.BLOGBUDDY_BASE_URL)
+                ? 'env:BLOGBUDDY_BASE_URL'
+                : isSet(env.OPENAI_BASE_URL)
+                    ? 'env:OPENAI_BASE_URL'
+                    : 'default';
+
+        const model: ResolutionSource = isSet(modelCfg) ? 'settings' : 'none';
+
+        return { apiKey, baseURL, model };
     }
 }

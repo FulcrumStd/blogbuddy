@@ -1,36 +1,36 @@
 import * as vscode from 'vscode';
 import { ConfigService } from './ConfigService';
 
-export class ConfigWatcher {
+/**
+ * Surfaces a warning when a config change leaves the extension in an invalid state
+ * (missing API key, base URL, or model). Silent on valid changes.
+ */
+export class ConfigWatcher implements vscode.Disposable {
     private disposables: vscode.Disposable[] = [];
     private configService: ConfigService;
 
     constructor() {
         this.configService = ConfigService.getInstance();
-        this.setupWatcher();
+        this.disposables.push(
+            vscode.workspace.onDidChangeConfiguration((event) => {
+                if (event.affectsConfiguration('blogbuddy')) {
+                    this.onConfigurationChanged();
+                }
+            }),
+        );
     }
 
-    private setupWatcher() {
-        // 监听配置变化
-        const watcher = vscode.workspace.onDidChangeConfiguration((event) => {
-            if (event.affectsConfiguration('blogbuddy')) {
-                this.onConfigurationChanged(event);
-            }
-        });
-
-        this.disposables.push(watcher);
-    }
-
-    private onConfigurationChanged(event: vscode.ConfigurationChangeEvent) {
+    private onConfigurationChanged(): void {
         const validation = this.configService.validateConfig();
         if (!validation.isValid) {
             vscode.window.showWarningMessage(
-                `配置验证失败: ${validation.errors.join(', ')}`
+                `BlogBuddy config: ${validation.errors.join(', ')}`,
             );
         }
     }
 
-    public dispose() {
+    public dispose(): void {
         this.disposables.forEach(d => d.dispose());
+        this.disposables = [];
     }
 }

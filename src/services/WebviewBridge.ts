@@ -155,28 +155,21 @@ export class WebviewBridge implements vscode.Disposable {
                 cmdText: msg.msg ? `<${msg.cmd}:${msg.msg}>` : `<${msg.cmd}>`,
             };
 
-            const config = ConfigService.getInstance().getAllConfig();
             let fullText = '';
-
-            if (config.streaming) {
-                const generator = await BB.i().actStreaming(request);
-                for await (const chunk of generator) {
-                    if (state.cancelled) { break; }
-                    if (chunk.replace) {
-                        fullText = chunk.text;
-                    } else {
-                        fullText += chunk.text;
-                    }
-                    this.post({
-                        type: 'chunk',
-                        id: msg.id,
-                        text: chunk.text,
-                        replace: chunk.replace,
-                    });
+            const generator = await BB.i().act(request);
+            for await (const chunk of generator) {
+                if (state.cancelled) { break; }
+                if (chunk.replace) {
+                    fullText = chunk.text;
+                } else {
+                    fullText += chunk.text;
                 }
-            } else {
-                const response = await BB.i().act(request);
-                fullText = response.replaceText;
+                this.post({
+                    type: 'chunk',
+                    id: msg.id,
+                    text: chunk.text,
+                    replace: chunk.replace,
+                });
             }
 
             if (!state.cancelled) {

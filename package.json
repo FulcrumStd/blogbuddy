@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
@@ -23,19 +23,23 @@
     "commands": [
       {
         "command": "blogbuddy.menu",
-        "title": "Show BB menu"
+        "title": "BlogBuddy: Show Menu"
       },
       {
         "command": "blogbuddy.bb",
-        "title": "Hi BB"
+        "title": "BlogBuddy: Hi BB"
       },
       {
-        "command": "blogbuddy.toggleDocumentInfo",
-        "title": "Toggle Document Info Display"
+        "command": "blogbuddy.selectModel",
+        "title": "BlogBuddy: Select Model"
+      },
+      {
+        "command": "blogbuddy.showDiagnostics",
+        "title": "BlogBuddy: Show Config Diagnostics"
       },
       {
         "command": "blogbuddy.openEditor",
-        "title": "Open BB Editor",
+        "title": "BlogBuddy: Open BB Editor",
         "icon": "$(edit)"
       }
     ],
@@ -61,12 +65,6 @@
         "when": "editorTextFocus"
       },
       {
-        "command": "blogbuddy.toggleDocumentInfo",
-        "key": "ctrl+shift+d",
-        "mac": "cmd+shift+d",
-        "when": "editorTextFocus"
-      },
-      {
         "command": "blogbuddy.openEditor",
         "key": "ctrl+b",
         "mac": "cmd+b",
@@ -80,44 +78,26 @@
         "blogbuddy.apiKey": {
           "type": "string",
           "default": "",
-          "description": "API key",
+          "markdownDescription": "API key. **Resolution order** (first non-empty wins):\n1. This setting\n2. `$BLOGBUDDY_API_KEY` environment variable\n3. `$OPENAI_API_KEY` environment variable\n\nLeave empty to rely on the env vars. Run [BlogBuddy: Show Config Diagnostics](command:blogbuddy.showDiagnostics) to see which source is currently in use.",
           "order": 1
         },
         "blogbuddy.baseURL": {
           "type": "string",
-          "default": "https://openrouter.ai/api/v1",
-          "description": "Base Url",
+          "default": "",
+          "markdownDescription": "OpenAI-compatible base URL (e.g. `https://api.openai.com/v1`, `https://openrouter.ai/api/v1`). **Resolution order** (first non-empty wins):\n1. This setting\n2. `$BLOGBUDDY_BASE_URL` environment variable\n3. `$OPENAI_BASE_URL` environment variable\n4. Default: `https://api.openai.com/v1`\n\nLeave empty to use the env vars or the OpenAI official endpoint. Run [BlogBuddy: Show Config Diagnostics](command:blogbuddy.showDiagnostics) to verify.",
           "order": 2
         },
         "blogbuddy.model": {
           "type": "string",
-          "default": "openai/gpt-5-mini",
-          "description": "Model name",
-          "order": 3
-        },
-        "blogbuddy.smallModel": {
-          "type": "string",
           "default": "",
-          "description": "Small model for simple tasks (uses main model if not set)",
-          "order": 4
-        },
-        "blogbuddy.streaming": {
-          "type": "boolean",
-          "default": true,
-          "description": "BB generate content using streaming.",
-          "order": 5
-        },
-        "blogbuddy.documentInfoDisplay": {
-          "type": "boolean",
-          "default": false,
-          "description": "Show document word count in the status bar",
-          "order": 6
+          "markdownDescription": "Model id used for all BB commands (e.g. `gpt-4o-mini`, `openai/gpt-4o-mini` on OpenRouter).\n\n**Recommended:** click [BlogBuddy: Select Model](command:blogbuddy.selectModel) to open a picker populated from the provider's model list (auto-fetched from the configured base URL).",
+          "order": 3
         },
         "blogbuddy.assetDir": {
           "type": "string",
           "default": "",
-          "description": "Relative subdirectory for uploaded assets (e.g. \"assets\" or \"images/uploads\"). Resolved from the document directory. Leave empty to save alongside the document.",
-          "order": 7
+          "description": "Relative subdirectory for uploaded assets in BB Editor (e.g. \"assets\" or \"images/uploads\"). Resolved from the document directory. Leave empty to save alongside the document.",
+          "order": 4
         }
       }
     }

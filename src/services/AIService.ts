@@ -21,15 +21,10 @@ export interface UsageStats {
     }>;
 }
 
-export interface AIServiceConfig {
-    apiKey: string;
-    baseURL?: string;
-    model: string;
-}
-
 export class AIService {
     private static instance: AIService;
     private client: OpenAI | null = null;
+    private clientSignature = '';
     private usageStats: UsageStats;
     private pricingService: PricingService;
 
@@ -51,19 +46,39 @@ export class AIService {
         return AIService.instance;
     }
 
-    private initializeClient(): void {
-        if (!this.client) {
-            const config = ConfigService.getInstance().getAllConfig();
+    /**
+     * Build (or rebuild) the OpenAI client against the latest config. When apiKey or
+     * baseURL changes between calls, the cached client would otherwise silently keep
+     * using the stale credentials.
+     */
+    private getClient(): OpenAI {
+        const config = ConfigService.getInstance().getAllConfig();
+        const sig = `${config.apiKey}::${config.baseURL}`;
+        if (!this.client || sig !== this.clientSignature) {
             this.client = new OpenAI({
                 apiKey: config.apiKey,
-                baseURL: config.baseURL
+                baseURL: config.baseURL || undefined,
             });
+            this.clientSignature = sig;
         }
+        return this.client;
+    }
+
+    /** Fetch the provider's model list (/v1/models). Throws on failure so the
+     *  caller can surface the real error (auth, network, wrong base URL, ...). */
+    public async fetchAvailableModels(): Promise<string[]> {
+        const client = this.getClient();
+        const list = await client.models.list();
+        const ids: string[] = [];
+        for (const model of list.data) {
+            if (typeof model.id === 'string') { ids.push(model.id); }
+        }
+        return ids.sort();
     }
 
     private updateUsageStats(
-        flag: string, 
-        model: string, 
+        flag: string,
+        model: string,
         tokensUsed: number = 0,
         promptTokens: number = 0,
         completionTokens: number = 0
@@ -71,7 +86,6 @@ export class AIService {
         this.usageStats.totalRequests++;
         this.usageStats.totalTokensUsed += tokensUsed;
 
-        // Calculate cost if pricing is available
         let cost: number | undefined;
         const costCalculation = this.pricingService.calculateCost(model, promptTokens, completionTokens);
         if (costCalculation) {
@@ -79,30 +93,28 @@ export class AIService {
             this.usageStats.totalCost = (this.usageStats.totalCost || 0) + cost;
         }
 
-        // Update flag stats
         if (!this.usageStats.flagStats.has(flag)) {
             this.usageStats.flagStats.set(flag, {
                 requests: 0,
                 tokensUsed: 0,
                 model: model,
-                cost: 0
+                cost: 0,
             });
         }
 
         const flagStat = this.usageStats.flagStats.get(flag)!;
         flagStat.requests++;
         flagStat.tokensUsed += tokensUsed;
-        flagStat.model = model; // Update to latest model used for this flag
+        flagStat.model = model;
         if (cost !== undefined) {
             flagStat.cost = (flagStat.cost || 0) + cost;
         }
 
-        // Update model stats
         if (!this.usageStats.modelStats.has(model)) {
             this.usageStats.modelStats.set(model, {
                 requests: 0,
                 tokensUsed: 0,
-                cost: 0
+                cost: 0,
             });
         }
 
@@ -114,37 +126,37 @@ export class AIService {
         }
     }
 
+    /**
+     * One-shot (non-streaming) completion. Used internally by processors for short
+     * auxiliary calls (e.g. language inference). The user-facing path is always
+     * streaming — see chatStreaming.
+     */
     public async chat(
-        messages: ChatCompletionMessageParam[], 
+        messages: ChatCompletionMessageParam[],
         flag: string,
-        model?: string
     ): Promise<string> {
-        this.initializeClient();
         const config = ConfigService.getInstance().getAllConfig();
-        
-        const selectedModel = model || config.model;
-
+        const model = config.model;
         try {
-            const response = await this.client!.chat.completions.create({
-                model: selectedModel,
-                messages: messages,
-                stream: false
+            const response = await this.getClient().chat.completions.create({
+                model,
+                messages,
+                stream: false,
             }) as OpenAI.Chat.Completions.ChatCompletion;
-            
+
             const tokensUsed = response.usage?.total_tokens || 0;
             const promptTokens = response.usage?.prompt_tokens || 0;
             const completionTokens = response.usage?.completion_tokens || 0;
-            const responseModel = response.model || selectedModel || 'unknown';
+            const responseModel = response.model || model || 'unknown';
             this.updateUsageStats(flag, responseModel, tokensUsed, promptTokens, completionTokens);
 
             const content = response.choices[0]?.message?.content;
             if (!content) {
                 throw new Error('No response content received from AI');
             }
-            
             return content;
         } catch (error) {
-            this.updateUsageStats(flag, selectedModel || 'unknown', 0, 0, 0);
+            this.updateUsageStats(flag, model || 'unknown', 0, 0, 0);
             throw error;
         }
     }
@@ -152,15 +164,12 @@ export class AIService {
     public async chatStreaming(
         messages: ChatCompletionMessageParam[],
         flag: string,
-        model?: string
     ): Promise<AsyncGenerator<string, string, unknown>> {
-        this.initializeClient();
         const config = ConfigService.getInstance().getAllConfig();
-
         const params: ChatCompletionCreateParams = {
-            model: model || config.model,
-            messages: messages,
-            stream: true
+            model: config.model,
+            messages,
+            stream: true,
         };
 
         let fullResponse = '';
@@ -168,30 +177,25 @@ export class AIService {
         let promptTokens = 0;
         let completionTokens = 0;
 
+        const client = this.getClient();
         const generator = async function* (this: AIService): AsyncGenerator<string, string, unknown> {
             try {
-                const stream = await this.client!.chat.completions.create(params);
-                
+                const stream = await client.chat.completions.create(params);
                 for await (const chunk of stream) {
                     const delta = chunk.choices[0]?.delta?.content;
-                    
                     if (delta) {
                         fullResponse += delta;
                         yield delta;
                     }
-                    
                     if (chunk.usage) {
                         totalTokens = chunk.usage.total_tokens;
                         promptTokens = chunk.usage.prompt_tokens || 0;
                         completionTokens = chunk.usage.completion_tokens || 0;
                     }
                 }
-
                 const model = params.model || 'unknown';
                 this.updateUsageStats(flag, model, totalTokens, promptTokens, completionTokens);
-                
                 return fullResponse;
-
             } catch (error) {
                 const model = params.model || 'unknown';
                 this.updateUsageStats(flag, model, 0, 0, 0);
@@ -207,7 +211,7 @@ export class AIService {
             totalRequests: this.usageStats.totalRequests,
             totalTokensUsed: this.usageStats.totalTokensUsed,
             flagStats: new Map(this.usageStats.flagStats),
-            modelStats: new Map(this.usageStats.modelStats)
+            modelStats: new Map(this.usageStats.modelStats),
         };
     }
 

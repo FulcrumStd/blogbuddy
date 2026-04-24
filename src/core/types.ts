@@ -20,7 +20,7 @@ export interface ProcessRequest {
     filePath: string;        // 文本所在文件的路径
     msg: string;             // 用户的附加消息或指令
     cmd: BBCmd;             // 用于标识命令类型
-    cmdText: string         //  匹配到的 BB 标签内容
+    cmdText: string;        //  匹配到的 BB 标签内容
 }
 
 /**
@@ -31,33 +31,14 @@ export interface ProcessResponse {
     replaceText: string;     // 替换掉用户选择文本的内容
 }
 
-export type ProcessChunk=TextBlockChunk;
+export type ProcessChunk = TextBlockChunk;
 
 /**
  * 处理器统一接口
- * 所有核心处理器都应该实现这个接口
+ * 所有核心处理器都实现这个接口，统一走流式路径
  */
 export interface Processor {
-    /**
-     * 处理请求的核心方法
-     * @param request 处理请求
-     * @returns 处理响应
-     */
-    process(request: ProcessRequest): Promise<ProcessResponse>;
-}
-
-/**
- * 流式处理器接口
- * 支持流式输出的处理器应该实现这个接口
- */
-export interface StreamingProcessor extends Processor {
-    /**
-     * 流式处理请求的方法
-     * @param request 处理请求
-     * @param options 流式处理选项
-     * @returns 异步生成器，逐步输出结果
-     */
-    processStreaming(
-        request: ProcessRequest
+    process(
+        request: ProcessRequest,
     ): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>>;
 }

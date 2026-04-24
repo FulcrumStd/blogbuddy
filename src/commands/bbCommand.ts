@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import { TextUtils } from '../utils/helpers';
 import { AppError, ErrorCode } from '../utils/ErrorHandler';
 import { TextBlockProcessor } from '../utils/TextBlockProcessor';
-import { ConfigService } from '../services/ConfigService';
 import { StatusBarAnimation } from '../utils/StatusBarAnimation';
 import { BBCmd, ProcessRequest } from '../core/types';
 import { BB } from '../core/bb';
@@ -184,7 +183,6 @@ class BBCommand implements vscode.Disposable {
             return;
         }
 
-        const config = ConfigService.getInstance().getAllConfig();
         const animation = StatusBarAnimation.getInstance();
 
         // 初始化处理器
@@ -201,15 +199,8 @@ class BBCommand implements vscode.Disposable {
             // 开始处理
             animation.showStatic(`$(loading~spin) BB executing ${request.cmd}`);
 
-            if (config.streaming) {
-                const streamGenerator = await BB.i().actStreaming(request);
-                await this.currentProcessor.writeStream(streamGenerator, { delay: 20 });
-            } else {
-                const response = await BB.i().act(request);
-                if (!BBCommand.isInterrupted) {
-                    await this.currentProcessor.writeText(response.replaceText);
-                }
-            }
+            const streamGenerator = await BB.i().act(request);
+            await this.currentProcessor.writeStream(streamGenerator, { delay: 20 });
 
             // 成功完成
             if (!BBCommand.isInterrupted) {

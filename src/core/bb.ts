@@ -18,25 +18,29 @@ export class BB {
         return BB.instance;
     }
 
-    public async act(request: ProcessRequest): Promise<ProcessResponse> {
-        try {
+    public async act(request: ProcessRequest): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
+        const self = this;
+        const generator = async function* (): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
             switch (request.cmd) {
                 case BBCmd.EXPAND:
-                    return await Expander.getInstance().process(request);
-                case BBCmd.TRANSLATE:
-                    return await Translator.getInstance().process(request);
-                case BBCmd.TLDR:
-                    return await TldrGenerator.getInstance().process(request);
+                    return yield* await Expander.getInstance().process(request);
                 case BBCmd.KEYWORD:
-                    return await KeywordExtractor.getInstance().process(request);
-                case BBCmd.MERMAID:
-                    return await MermaidGenerator.getInstance().process(request);
+                    return yield* await KeywordExtractor.getInstance().process(request);
+                case BBCmd.TLDR:
+                    return yield* await TldrGenerator.getInstance().process(request);
                 case BBCmd.IMPROVE:
-                    return await TextImprover.getInstance().process(request);
+                    return yield* await TextImprover.getInstance().process(request);
                 case BBCmd.NORMAL:
-                    return await NormalProcessor.getInstance().process(request);
-                case BBCmd.TAG:
-                    return { replaceText: this.generateTag(request) };
+                    return yield* await NormalProcessor.getInstance().process(request);
+                case BBCmd.MERMAID:
+                    return yield* await MermaidGenerator.getInstance().process(request);
+                case BBCmd.TRANSLATE:
+                    return yield* await Translator.getInstance().process(request);
+                case BBCmd.TAG: {
+                    const text = self.generateTag(request);
+                    yield { text };
+                    return { replaceText: text };
+                }
                 default:
                     throw new AppError(
                         ErrorCode.UNKNOWN_ERROR,
@@ -44,55 +48,15 @@ export class BB {
                         `Unsupported command: ${request.cmd}`,
                     );
             }
-        } catch (error) {
-            if (error instanceof AppError) {
-                throw error;
-            }
-            throw new AppError(
-                ErrorCode.UNKNOWN_ERROR,
-                'BB encountered an unexpected error.',
-                error instanceof Error ? error.message : 'Unknown error',
-            );
-        }
-    }
-
-    public async actStreaming(request: ProcessRequest): Promise<AsyncGenerator<ProcessChunk, ProcessResponse, unknown>> {
-        const generator = async function* (this: BB): AsyncGenerator<ProcessChunk, ProcessResponse, unknown> {
-            switch (request.cmd) {
-                case BBCmd.EXPAND:
-                    return yield* await Expander.getInstance().processStreaming(request);
-                case BBCmd.KEYWORD:
-                    return yield* await KeywordExtractor.getInstance().processStreaming(request);
-                case BBCmd.TLDR:
-                    return yield* await TldrGenerator.getInstance().processStreaming(request);
-                case BBCmd.IMPROVE:
-                    return yield* await TextImprover.getInstance().processStreaming(request);
-                case BBCmd.NORMAL:
-                    return yield* await NormalProcessor.getInstance().processStreaming(request);
-                case BBCmd.MERMAID:
-                    return yield* await MermaidGenerator.getInstance().processStreaming(request);
-                case BBCmd.TRANSLATE:
-                    return yield* await Translator.getInstance().processStreaming(request);
-                case BBCmd.TAG:
-                    yield { text: this.generateTag(request) };
-                    return { replaceText: this.generateTag(request) };
-                default:
-                    throw new AppError(
-                        ErrorCode.UNKNOWN_ERROR,
-                        `BB cannot handle streaming command '${request.cmd}' right now. Only EXPAND, KEYWORD, TLDR, IMPROVE, NORMAL, MERMAID and TAG commands support streaming.`,
-                        `Unsupported command: ${request.cmd}`,
-                    );
-            }
-        }.bind(this);
+        };
 
         return generator();
     }
 
-    private generateTag(request: ProcessRequest) {
+    private generateTag(request: ProcessRequest): string {
         if (Utils.isEmpty(request.selectText)) {
             return this.tagText;
         }
         return `${request.selectText}\n${this.tagText}`;
     }
-
 }
