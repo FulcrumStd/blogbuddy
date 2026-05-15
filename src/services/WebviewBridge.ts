@@ -5,6 +5,7 @@ import { BB } from '../core/bb';
 import { BBCmd, ProcessRequest } from '../core/types';
 import { ConfigService } from './ConfigService';
 import { AppError } from '../utils/ErrorHandler';
+import { extractFrontmatter } from '../utils/frontmatter';
 import {
     WebviewMessage,
     HostMessage,
@@ -376,20 +377,6 @@ export class WebviewBridge implements vscode.Disposable {
         this.disposables.forEach(d => d.dispose());
         this.disposables = [];
     }
-}
-
-function extractFrontmatter(content: string): { frontmatter: string; body: string } {
-    // YAML frontmatter: ---\n...\n---
-    const yamlMatch = content.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/);
-    if (yamlMatch) {
-        return { frontmatter: yamlMatch[0], body: content.slice(yamlMatch[0].length) };
-    }
-    // TOML frontmatter: +++\n...\n+++
-    const tomlMatch = content.match(/^\+\+\+\r?\n[\s\S]*?\r?\n\+\+\+\r?\n?/);
-    if (tomlMatch) {
-        return { frontmatter: tomlMatch[0], body: content.slice(tomlMatch[0].length) };
-    }
-    return { frontmatter: '', body: content };
 }
 
 async function getUniqueFileName(dir: string, name: string): Promise<string> {
