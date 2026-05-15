@@ -36,4 +36,11 @@ suite('extractFrontmatter', () => {
         assert.strictEqual(frontmatter, '');
         assert.strictEqual(body, input);
     });
+
+    test('two-line fence (empty body between delimiters) is not recognized as frontmatter', () => {
+        const input = '---\n---\n# Body';
+        const { frontmatter, body } = extractFrontmatter(input);
+        assert.strictEqual(frontmatter, '');
+        assert.strictEqual(body, input);
+    });
 });
