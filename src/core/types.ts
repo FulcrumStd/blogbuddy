@@ -9,6 +9,11 @@ export enum BBCmd {
     KEYWORD = 'bb-kwd',     // 提取关键词
     TLDR = 'bb-tldr',       // 加入省流
     TAG = 'bb-tag',         // 加入 BBtag
+    // Reader (Task 3+) — these route to ReaderPanel, not inline replacement.
+    RENDER = 'bb-render',           // 自定义 prompt 渲染
+    RENDER_BLOG = 'bb-render-blog', // 博客风格阅读视图
+    RENDER_SKIM = 'bb-render-skim', // 快速扫读视图
+    RENDER_EXPL = 'bb-render-expl', // 教学/讲解视图
 }
 
 /**
