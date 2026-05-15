@@ -19,7 +19,7 @@ import type { CommandManager } from '@milkdown/kit/core';
 interface SlashItem {
     label: string;
     desc: string;
-    group: 'format' | 'bb';
+    group: 'format' | 'bb' | 'render';
     onSelect: (view: EditorView, slashProvider: SlashProvider) => void;
 }
 
@@ -41,6 +41,13 @@ const BB_COMMANDS: BBCmdDef[] = [
     { command: 'bb-kwd',  label: 'BB Keywords',   desc: 'Extract keywords',                tag: '<bb-kwd>' },
     { command: 'bb-tldr', label: 'BB TL;DR',      desc: 'Generate a TL;DR summary',        tag: '<bb-tldr>' },
     { command: 'bb-mmd',  label: 'BB Mermaid',    desc: 'Generate a Mermaid diagram',      tag: '<bb-mmd>' },
+];
+
+const RENDER_COMMANDS: BBCmdDef[] = [
+    { command: 'bb-render-blog', label: 'Render: Blog View',  desc: 'AI-render as a polished article', tag: '<bb-render-blog:$1>' },
+    { command: 'bb-render-skim', label: 'Render: Skim Mode',  desc: 'AI-render for fast scanning',     tag: '<bb-render-skim:$1>' },
+    { command: 'bb-render-expl', label: 'Render: Explainer',  desc: 'AI-render with SVG teaching aids', tag: '<bb-render-expl:$1>' },
+    { command: 'bb-render',      label: 'Render: Custom',     desc: 'AI-render with your own prompt',  tag: '<bb-render:$1>' },
 ];
 
 // ---- Helpers ----
@@ -94,6 +101,20 @@ function buildSlashItems(commands: CommandManager): SlashItem[] {
             label: cmd.label,
             desc: cmd.desc,
             group: 'bb',
+            onSelect: (view, sp) => {
+                sp.hide();
+                removeSlashText(view);
+                insertBBTag(view, cmd.tag);
+            },
+        });
+    }
+
+    // Render items — same insert-tag pattern as BB items, just a different group.
+    for (const cmd of RENDER_COMMANDS) {
+        items.push({
+            label: cmd.label,
+            desc: cmd.desc,
+            group: 'render',
             onSelect: (view, sp) => {
                 sp.hide();
                 removeSlashText(view);
