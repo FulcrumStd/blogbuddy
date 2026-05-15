@@ -16,6 +16,7 @@ export function registerReaderCommand(_context: vscode.ExtensionContext): void {
 
 export class ReaderPanel implements vscode.Disposable {
     private static panels = new Map<string, ReaderPanel>();
+    private static readonly LARGE_INPUT_TOKEN_THRESHOLD = 25_000;
 
     /**
      * Open a Reader panel for the given document (revealing it if one already
@@ -137,12 +138,26 @@ export class ReaderPanel implements vscode.Disposable {
     }
 
     private async startGeneration(): Promise<void> {
+        const fullSource = this.sourceDoc.getText();
+        const estInputTokens = Math.ceil(fullSource.length / 4);
+        if (estInputTokens > ReaderPanel.LARGE_INPUT_TOKEN_THRESHOLD) {
+            const proceed = await vscode.window.showWarningMessage(
+                `This file is large (~${estInputTokens.toLocaleString()} input tokens). Render anyway?`,
+                { modal: true },
+                'Render',
+            );
+            if (proceed !== 'Render') {
+                this.post({ type: 'reader-error', message: 'Cancelled (large input)' });
+                return;
+            }
+        }
+
         const myId = ++this.generationId;
         this.generating = true;
         this.startTime = Date.now();
         this.fullText = '';
 
-        const { frontmatter, body } = extractFrontmatter(this.sourceDoc.getText());
+        const { frontmatter, body } = extractFrontmatter(fullSource);
 
         // Snapshot cumulative usage so we can show THIS render's delta, not the
         // running total across all renders since the extension started.
