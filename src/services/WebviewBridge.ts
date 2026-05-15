@@ -29,6 +29,8 @@ export class WebviewBridge implements vscode.Disposable {
     private isDirty = false;
     private pendingConflictContent?: string;
 
+    private onReaderDispatch?: (cmd: string, msg: string, content: string) => Promise<void>;
+
     constructor(
         private panel: vscode.WebviewPanel,
         private webview: vscode.Webview,
@@ -36,11 +38,13 @@ export class WebviewBridge implements vscode.Disposable {
             filePath?: string;
             onDirtyChange?: (isDirty: boolean) => void;
             onReady?: () => void;
+            onReaderDispatch?: (cmd: string, msg: string, content: string) => Promise<void>;
         }
     ) {
         this.filePath = options?.filePath;
         this.onDirtyChange = options?.onDirtyChange;
         this.onReady = options?.onReady;
+        this.onReaderDispatch = options?.onReaderDispatch;
 
         this.disposables.push(
             this.panel.webview.onDidReceiveMessage((msg: WebviewMessage) => {
@@ -111,6 +115,9 @@ export class WebviewBridge implements vscode.Disposable {
                 break;
             case 'conflict-resolve':
                 await this.handleConflictResolve(msg);
+                break;
+            case 'reader-dispatch':
+                await this.onReaderDispatch?.(msg.cmd, msg.msg, msg.content);
                 break;
         }
     }

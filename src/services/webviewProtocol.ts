@@ -66,6 +66,13 @@ export interface WebviewConflictResolveMessage {
     choice: 'reload' | 'keep';
 }
 
+export interface WebviewReaderDispatchMessage {
+    type: 'reader-dispatch';
+    cmd: string;
+    msg: string;
+    content: string;   // full Markdown with the render tag already removed
+}
+
 export type WebviewMessage =
     | WebviewReadyMessage
     | WebviewBBRequestMessage
@@ -78,7 +85,8 @@ export type WebviewMessage =
     | WebviewFileUploadMessage
     | WebviewFrontmatterUpdateMessage
     | WebviewOpenSourceMessage
-    | WebviewConflictResolveMessage;
+    | WebviewConflictResolveMessage
+    | WebviewReaderDispatchMessage;
 
 // ===== Extension Host → Webview =====
 

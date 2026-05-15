@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { WebviewBridge } from '../services/WebviewBridge';
+import { ReaderPanel } from './readerCommand';
+import { isRenderCmd } from '../core/reader';
 
 export function registerEditorCommand(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -113,6 +115,7 @@ class EditorPanel implements vscode.Disposable {
             filePath: this.filePath,
             onDirtyChange: (dirty) => this.setDirty(dirty),
             onReady: () => this.onWebviewReady(),
+            onReaderDispatch: (cmd, msgText, content) => this.handleReaderDispatch(cmd, msgText, content),
         });
 
         this.panel.webview.html = this.getWebviewHtml();
@@ -157,6 +160,26 @@ class EditorPanel implements vscode.Disposable {
             }
         } else {
             this.bridge.sendLoad('');
+        }
+    }
+
+    private async handleReaderDispatch(cmd: string, msgText: string, content: string): Promise<void> {
+        if (!this.filePath) {
+            vscode.window.showInformationMessage('Save the file first to use the AI Reader.');
+            return;
+        }
+        if (!isRenderCmd(cmd)) {
+            return;
+        }
+        try {
+            // Write the tag-free Markdown to disk so the TextDocument the
+            // Reader opens reflects the user's current state.
+            await fs.writeFile(this.filePath, content, 'utf-8');
+            const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(this.filePath));
+            await ReaderPanel.openForDocument(this.context, doc, cmd, msgText);
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            vscode.window.showErrorMessage(`Failed to open AI Reader: ${message}`);
         }
     }
 

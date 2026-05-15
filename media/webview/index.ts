@@ -320,6 +320,29 @@ function triggerBB(): void {
         // Text without the BB tag = selectText for the request
         const selectText = searchText.slice(0, tagStart) + searchText.slice(tagEnd);
 
+        // Render commands bypass the inline ai_block flow entirely. Output goes
+        // to a side panel, not back into the document — so we just delete the
+        // tag text and dispatch a reader-dispatch message to the host with the
+        // current (now tag-free) Markdown.
+        if (command.startsWith('bb-render')) {
+            // The block's interior content starts at (replaceFrom + 1).
+            const absTagStart = replaceFrom + 1 + tagStart;
+            const absTagEnd = replaceFrom + 1 + tagEnd;
+            const delTr = state.tr.delete(absTagStart, absTagEnd);
+            view.dispatch(delTr);
+
+            if (editor) {
+                const content = serializeForSave(editor, baseUri);
+                vscode.postMessage({
+                    type: 'reader-dispatch',
+                    cmd: command,
+                    msg: message,
+                    content,
+                });
+            }
+            return;
+        }
+
         // Replace the source range with an AI block
         const nodeType = schema.nodes['ai_block'];
         if (!nodeType) { return; }
