@@ -65,4 +65,28 @@ suite('inlineImageAssets', () => {
         const result = await inlineImageAssets(html, tmpDir);
         assert.ok(result.includes('data:image/png;base64,'));
     });
+
+    test('does not corrupt alt text when alt matches src filename', async () => {
+        await fs.writeFile(path.join(tmpDir, 'a.png'), Buffer.from([0x89]));
+        const html = '<img alt="a.png" src="a.png">';
+        const result = await inlineImageAssets(html, tmpDir);
+        // alt remains intact, src becomes data URI
+        assert.ok(result.includes('alt="a.png"'), 'alt should be preserved');
+        assert.match(result, /src="data:image\/png;base64,[A-Za-z0-9+/]+={0,2}"/);
+    });
+
+    test('handles single-quoted src attributes', async () => {
+        await fs.writeFile(path.join(tmpDir, 'sq.png'), Buffer.from([0x89]));
+        const html = "<img src='sq.png'>";
+        const result = await inlineImageAssets(html, tmpDir);
+        assert.match(result, /src='data:image\/png;base64,[A-Za-z0-9+/]+={0,2}'/);
+    });
+
+    test('rejects path traversal (../) attempts', async () => {
+        // baseDir = tmpDir; pretend the AI emitted "../../etc/passwd.png"
+        const html = '<img src="../../etc/passwd.png">';
+        const result = await inlineImageAssets(html, tmpDir);
+        // src is left as-is because the resolved path escapes baseDir
+        assert.strictEqual(result, html);
+    });
 });

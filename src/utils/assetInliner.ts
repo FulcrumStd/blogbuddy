@@ -36,13 +36,25 @@ export async function inlineImageAssets(html: string, baseDir: string): Promise<
         tasks.push((async () => {
             const ext = path.extname(src).toLowerCase();
             const mime = MIME_BY_EXT[ext];
-            if (!mime) { return; }
+            if (!mime) {
+                console.warn(`[bb-reader] skipped inlining ${src}: unsupported extension ${ext}`);
+                return;
+            }
 
             const filePath = path.resolve(baseDir, decodeURIComponent(src));
+            if (!filePath.startsWith(baseDir + path.sep) && filePath !== baseDir) {
+                console.warn(`[bb-reader] skipped inlining ${src}: path escapes baseDir`);
+                return;
+            }
+
             try {
                 const buf = await fs.readFile(filePath);
                 const dataUri = `data:${mime};base64,${buf.toString('base64')}`;
-                const replaced = match.replace(src, dataUri);
+                const escapedSrc = src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const replaced = match.replace(
+                    new RegExp(`(\\bsrc=)(["'])${escapedSrc}\\2`),
+                    `$1$2${dataUri}$2`
+                );
                 replacements.push({ from: match, to: replaced });
             } catch (err) {
                 console.warn(`[bb-reader] skipped inlining ${src}: ${(err as Error).message}`);
