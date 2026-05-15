@@ -65,7 +65,9 @@ function getSystemPromptForPreset(cmd: BBCmd): string {
 
 // ---- Public API ----
 
-export function isRenderCmd(cmd: string): cmd is BBCmd.RENDER | BBCmd.RENDER_BLOG | BBCmd.RENDER_SKIM | BBCmd.RENDER_EXPL {
+export type RenderCmd = BBCmd.RENDER | BBCmd.RENDER_BLOG | BBCmd.RENDER_SKIM | BBCmd.RENDER_EXPL;
+
+export function isRenderCmd(cmd: string): cmd is RenderCmd {
     return (
         cmd === BBCmd.RENDER ||
         cmd === BBCmd.RENDER_BLOG ||
@@ -74,13 +76,12 @@ export function isRenderCmd(cmd: string): cmd is BBCmd.RENDER | BBCmd.RENDER_BLO
     );
 }
 
-export function getPresetDisplayName(cmd: BBCmd): string {
+export function getPresetDisplayName(cmd: RenderCmd): string {
     switch (cmd) {
         case BBCmd.RENDER:       return 'Custom';
         case BBCmd.RENDER_BLOG:  return 'Blog View';
         case BBCmd.RENDER_SKIM:  return 'Skim Mode';
         case BBCmd.RENDER_EXPL:  return 'Explainer';
-        default: return cmd;
     }
 }
 
@@ -99,13 +100,14 @@ export function buildReaderMessages(input: BuildMessagesInput): ChatCompletionMe
     // System message: hard constraints + preset (if any) + user steering (custom or "Additionally:")
     const systemParts: string[] = [HARD_CONSTRAINTS];
     if (preset) { systemParts.push(preset); }
-    if (userPrompt) {
-        if (input.cmd === BBCmd.RENDER) {
-            // Custom render: user prompt IS the primary creative direction.
-            systemParts.push(`User direction: ${userPrompt}`);
-        } else {
-            systemParts.push(`Additionally: ${userPrompt}`);
-        }
+    if (input.cmd === BBCmd.RENDER) {
+        // Custom render: userPrompt IS the primary creative direction.
+        // Fall back to a sensible default if the user provided none, so the
+        // model still has steering beyond the hard structural constraints.
+        const direction = userPrompt || 'Render this document as a clean, readable HTML article.';
+        systemParts.push(`User direction: ${direction}`);
+    } else if (userPrompt) {
+        systemParts.push(`Additionally: ${userPrompt}`);
     }
 
     // User message: file context + frontmatter + body
@@ -113,7 +115,7 @@ export function buildReaderMessages(input: BuildMessagesInput): ChatCompletionMe
     if (input.frontmatter.trim()) {
         userParts.push(`Frontmatter:\n${input.frontmatter.trim()}`);
     }
-    userParts.push('---', input.body);
+    userParts.push('Content (Markdown):', input.body);
 
     return [
         { role: 'system', content: systemParts.join('\n\n') },
@@ -127,6 +129,11 @@ export function buildReaderMessages(input: BuildMessagesInput): ChatCompletionMe
  * Run the render request through AIService streaming. Returns an async generator
  * yielding raw text deltas and finally the accumulated full text. Caller is
  * responsible for forwarding to the webview and tracking cancellation.
+ *
+ * This wrapper exists so callers (ReaderPanel) do not need to import OpenAI types
+ * or know the AIService usage-stats flag ('render'). If you find yourself
+ * inlining this call, prefer keeping the wrapper — it is the only place that
+ * defines the prompt-to-API mapping.
  */
 export async function runReaderStream(input: BuildMessagesInput): Promise<AsyncGenerator<string, string, unknown>> {
     const messages = buildReaderMessages(input);

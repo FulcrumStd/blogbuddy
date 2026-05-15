@@ -86,6 +86,29 @@ suite('reader.buildReaderMessages', () => {
         const userContent = typeof msgs[1].content === 'string' ? msgs[1].content : '';
         assert.ok(userContent.includes('my-post.md'));
     });
+
+    test('Custom render with empty userPrompt falls back to default direction', () => {
+        const msgs = buildReaderMessages({
+            cmd: BBCmd.RENDER, userPrompt: '', frontmatter: '', body: '# Hi', sourceFileName: 'a.md',
+        });
+        const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
+        assert.ok(
+            systemContent.includes('User direction:'),
+            'Empty custom-render userPrompt should still produce a User direction line',
+        );
+        assert.ok(
+            systemContent.includes('clean, readable HTML article'),
+            'Default fallback wording should appear',
+        );
+    });
+
+    test('User message uses labeled Content separator, not bare ---', () => {
+        const msgs = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG, userPrompt: '', frontmatter: '', body: '# Hi', sourceFileName: 'a.md',
+        });
+        const userContent = typeof msgs[1].content === 'string' ? msgs[1].content : '';
+        assert.ok(userContent.includes('Content (Markdown):'));
+    });
 });
 
 suite('reader.getPresetDisplayName', () => {
