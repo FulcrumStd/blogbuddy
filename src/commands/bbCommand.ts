@@ -5,6 +5,8 @@ import { TextBlockProcessor } from '../utils/TextBlockProcessor';
 import { StatusBarAnimation } from '../utils/StatusBarAnimation';
 import { BBCmd, ProcessRequest } from '../core/types';
 import { BB } from '../core/bb';
+import { ReaderPanel } from './readerCommand';
+import { isRenderCmd } from '../core/reader';
 
 export function registerBBCommand(context: vscode.ExtensionContext) {
     const bbCommand = new BBCommand(context);
@@ -148,10 +150,6 @@ class BBCommand implements vscode.Disposable {
                 return;
             }
 
-            // 保存当前上下文
-            this.currentEditor = editor;
-            this.originalText = editor.document.getText(result.range);
-
             const cmd = Object.values(BBCmd).find(status => ps.command === status);
             if (!cmd) {
                 throw new AppError(
@@ -160,6 +158,28 @@ class BBCommand implements vscode.Disposable {
                     "BB don't know cmd: " + ps.command,
                 );
             }
+
+            // Render commands route to ReaderPanel and bypass the inline-replacement
+            // path entirely. We delete the tag and return early — currentEditor and
+            // originalText are intentionally NOT set, so the file-switch interrupt
+            // listener stays quiet when ReaderPanel takes focus on the side.
+            if (isRenderCmd(cmd)) {
+                // Compute the absolute range of the tag inside the document.
+                const tagStartInRange = ps.startIndex;
+                const tagEndInRange = ps.endIndex;
+                const docStart = result.range.start;
+                const lineStartOffset = editor.document.offsetAt(docStart);
+                const tagStartPos = editor.document.positionAt(lineStartOffset + tagStartInRange);
+                const tagEndPos = editor.document.positionAt(lineStartOffset + tagEndInRange);
+                const tagRange = new vscode.Range(tagStartPos, tagEndPos);
+                await editor.edit(eb => eb.delete(tagRange));
+                await ReaderPanel.openForDocument(this.context, editor.document, cmd, ps.message);
+                return;
+            }
+
+            // 保存当前上下文 (inline-replacement path only)
+            this.currentEditor = editor;
+            this.originalText = editor.document.getText(result.range);
 
             const request = {
                 filePath: editor.document.uri.fsPath,

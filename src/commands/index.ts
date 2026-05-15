@@ -7,6 +7,7 @@ import { registerEditorCommand } from './editorCommand';
 import { registerSelectModelCommand } from './selectModelCommand';
 import { registerDiagnosticsCommand } from './diagnosticsCommand';
 import { registerConfigStatusBar } from './configStatusBar';
+import { registerReaderCommand } from './readerCommand';
 
 export function registerAllCommands(context: ExtensionContext) {
     registerMenuCommand(context);
@@ -16,4 +17,5 @@ export function registerAllCommands(context: ExtensionContext) {
     registerSelectModelCommand(context);
     registerDiagnosticsCommand(context);
     registerConfigStatusBar(context);
+    registerReaderCommand(context);
 }
