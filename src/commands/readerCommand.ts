@@ -131,7 +131,7 @@ export class ReaderPanel implements vscode.Disposable {
                 void this.startGeneration();
                 break;
             case 'reader-export':
-                void this.handleExport(msg.html);
+                void this.handleExport();
                 break;
             default: break;
         }
@@ -218,7 +218,8 @@ export class ReaderPanel implements vscode.Disposable {
         }
     }
 
-    private async handleExport(html: string): Promise<void> {
+    private async handleExport(): Promise<void> {
+        const html = this.fullText;
         try {
             const sourcePath = this.sourceDoc.uri.fsPath;
             const sourceDir = path.dirname(sourcePath);

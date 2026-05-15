@@ -47,7 +47,6 @@ document.body.innerHTML = appHtml;
 // ---- State ----
 
 let baseUri = '';
-let lastFullHtml = ''; // canonical accumulated text from render-done
 
 // ---- Helpers ----
 
@@ -114,7 +113,6 @@ let currentUserPrompt = '';
 function resetForNewGeneration(): void {
     tailBuffer = '';
     receivedChars = 0;
-    lastFullHtml = '';
     setTail('');
     setProgress(0);
     setCost(0);
@@ -160,13 +158,13 @@ function handleHost(msg: ReaderHostMessage): void {
             const pct = estInputTokens > 0
                 ? Math.min(99, (approxTok / estInputTokens) * 100)
                 : 0;
+            setCost(approxTok);
             setProgress(pct);
             pushTail(msg.text);
             break;
         }
 
         case 'reader-done': {
-            lastFullHtml = msg.fullHtml;
             // Re-render the canonical final HTML by replacing innerHTML once.
             const rewritten = rewriteImageSrcs(msg.fullHtml, baseUri);
             $('ai-output').innerHTML = rewritten;
@@ -194,6 +192,7 @@ function handleHost(msg: ReaderHostMessage): void {
             $('source-banner').classList.remove('bb-reader__banner--hidden');
             $('banner-msg').textContent = 'Source closed — Regenerate disabled.';
             $('btn-regenerate').setAttribute('disabled', 'true');
+            $('banner-regen').setAttribute('disabled', 'true');
             break;
 
         case 'reader-export-result':
@@ -222,7 +221,7 @@ $('btn-regenerate').addEventListener('click', () => {
     vscode.postMessage({ type: 'reader-regenerate' });
 });
 $('btn-export').addEventListener('click', () => {
-    vscode.postMessage({ type: 'reader-export', html: lastFullHtml });
+    vscode.postMessage({ type: 'reader-export' });
 });
 $('banner-regen').addEventListener('click', () => {
     $('source-banner').classList.add('bb-reader__banner--hidden');

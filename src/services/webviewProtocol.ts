@@ -148,7 +148,7 @@ export type HostMessage =
 // Webview → Host
 export interface ReaderReadyMessage { type: 'reader-ready'; }
 export interface ReaderRegenerateMessage { type: 'reader-regenerate'; }
-export interface ReaderExportMessage { type: 'reader-export'; html: string; }
+export interface ReaderExportMessage { type: 'reader-export'; }
 
 export type ReaderWebviewMessage =
     | ReaderReadyMessage

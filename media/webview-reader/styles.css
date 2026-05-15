@@ -138,6 +138,10 @@ body {
     cursor: pointer;
     font-size: 12px;
 }
+.bb-reader__banner-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
 .bb-reader__banner-btn-icon {
     background: transparent;
     color: var(--bb-fg);
@@ -158,7 +162,6 @@ body {
 .bb-reader__empty {
     padding: 40px;
     text-align: center;
-    color: var(--bb-muted);
     font-style: italic;
     background: var(--bb-bg);
     color: var(--bb-fg);
