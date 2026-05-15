@@ -156,6 +156,38 @@ Some following content here.
 
 ---
 
+### AI Reader View
+
+The Render commands generate a full HTML "reading artifact" of your Markdown
+in a side panel. The Reader does not modify your source — it produces a new
+rendering optimized for humans, which you can preview and export to a
+standalone `.html` file (with images base64-inlined by default).
+
+**Tags:**
+
+- `<bb-render-blog:>` — Render as a polished article with a TOC and callouts.
+- `<bb-render-skim:>` — Render in Skim Mode: TL;DR at top, collapsibles, badges.
+- `<bb-render-expl:>` — Render as a teaching artifact: SVG diagrams + annotations.
+- `<bb-render:your prompt>` — Render with your own creative direction.
+
+You can add a refinement prompt to any preset:
+`<bb-render-blog:make the TOC sticky and add a print stylesheet>`.
+
+**Fire:** position the cursor anywhere on the tag and press `Cmd+B Cmd+B`
+(macOS) / `Ctrl+B Ctrl+B` (Windows/Linux). The tag is removed from your
+source and a BB Reader panel opens to the right.
+
+**Export:** the Reader has an Export button that writes a self-contained
+`.html` file next to your `.md`. Toggle `blogbuddy.reader.inlineAssets` to
+`false` if you'd rather keep relative image paths (e.g., for site-uploads
+where the assets folder ships alongside the HTML).
+
+**Security:** the Reader webview executes scripts the AI emits, with
+network access blocked (`connect-src 'none'`). Trust depends on trusting
+your AI provider and the source content you render.
+
+---
+
 ## 📝 BB Editor
 
 A WYSIWYG Markdown editor built into the extension. Open it from the Explorer context menu (right-click a `.md` file → **BlogBuddy: Open BB Editor**) or press `Cmd+B` with the file selected.
@@ -238,6 +270,7 @@ Only **API key** and **model** are strictly required. `baseURL` has a sensible d
 | Setting | Description |
 |---------|-------------|
 | `blogbuddy.assetDir` | Relative subdirectory for BB Editor asset uploads (e.g. `assets` or `images/uploads`). Resolved from the document directory. Empty = alongside the document. Paths must stay within the document directory |
+| `blogbuddy.reader.inlineAssets` | When exporting from BB Reader, inline local images as base64 to produce a single self-contained HTML file. Default `true`. Set `false` to keep relative image paths (e.g. for site-uploads where the assets folder ships alongside the HTML) |
 
 ### Commands
 

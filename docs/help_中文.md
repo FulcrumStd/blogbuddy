@@ -154,6 +154,36 @@ Some following content here.
 
 ---
 
+### AI 阅读视图
+
+Render 系列命令会基于当前 Markdown 生成一份"为人类阅读优化"的完整 HTML
+文档，显示在侧边面板里。Reader **不会修改你的源文件**，只会产出一份新的
+渲染结果——你可以预览，并导出成一个独立的 `.html`（默认会把本地图片以
+base64 内嵌，得到单文件结果）。
+
+**可用标签：**
+
+- `<bb-render-blog:>` — 渲染成有 TOC 和 callout 的"博客文章"风格。
+- `<bb-render-skim:>` — 速读模式：开头 TL;DR + 折叠详情 + 徽标。
+- `<bb-render-expl:>` — 教学型：SVG 图示 + 代码注解。
+- `<bb-render:你的提示词>` — 完全按你的提示词来写。
+
+任意 preset 都可以追加细化指令：
+`<bb-render-blog:让 TOC 吸顶并加一份打印样式>`。
+
+**触发：** 把光标放到标签所在行的任意位置，按 `Cmd+B Cmd+B`（macOS）/
+`Ctrl+B Ctrl+B`（Win/Linux）。标签会从源文件里被删除，Reader 面板在右侧
+打开。
+
+**导出：** Reader 顶部有 Export 按钮，会把渲染结果存为 `<原名>.reader.html`，
+放在 `.md` 旁边。如果你想保留相对图片路径（比如部署到博客时和资源目录一起
+发上去），把 `blogbuddy.reader.inlineAssets` 设为 `false`。
+
+**安全：** Reader 的 webview 会执行 AI 生成的内联脚本，但禁用了网络访问
+（`connect-src 'none'`）。信任边界等同于你对 AI 服务商和源文件内容的信任。
+
+---
+
 ## 📝 BB 编辑器
 
 扩展内置的所见即所得 Markdown 编辑器。打开方式：Explorer 里右键 `.md` 文件 → **BlogBuddy: Open BB Editor**，或选中文件后按 `Cmd+B`。
@@ -236,6 +266,7 @@ Hover 查看每个字段的来源（apiKey / baseURL / model）+ Diagnostics / S
 | 配置 | 说明 |
 |------|------|
 | `blogbuddy.assetDir` | BB 编辑器资源上传的相对子目录（如 `assets` 或 `images/uploads`）。基于文档目录解析。留空 = 保存在文档同目录。路径必须位于文档目录内 |
+| `blogbuddy.reader.inlineAssets` | BB Reader 导出时，是否将本地图片以 base64 内嵌，生成单文件 HTML。默认 `true`。设为 `false` 可保留相对图片路径（适用于博客部署时资源目录和 HTML 一起上传的场景） |
 
 ### 命令
 

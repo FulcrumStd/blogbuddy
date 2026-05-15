@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
@@ -108,6 +108,12 @@
           "default": "",
           "description": "Relative subdirectory for uploaded assets in BB Editor (e.g. \"assets\" or \"images/uploads\"). Resolved from the document directory. Leave empty to save alongside the document.",
           "order": 4
+        },
+        "blogbuddy.reader.inlineAssets": {
+          "type": "boolean",
+          "default": true,
+          "description": "When exporting from BB Reader, inline local images as base64 to produce a single self-contained HTML file. Set false to keep relative image paths.",
+          "order": 5
         }
       }
     }
