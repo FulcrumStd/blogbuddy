@@ -142,3 +142,58 @@ export type HostMessage =
     | HostThemeMessage
     | HostFileUploadedMessage
     | HostConflictMessage;
+
+// ===== Reader Webview ↔ Extension Host =====
+
+// Webview → Host
+export interface ReaderReadyMessage { type: 'reader-ready'; }
+export interface ReaderRegenerateMessage { type: 'reader-regenerate'; }
+export interface ReaderExportMessage { type: 'reader-export'; html: string; }
+
+export type ReaderWebviewMessage =
+    | ReaderReadyMessage
+    | ReaderRegenerateMessage
+    | ReaderExportMessage;
+
+// Host → Webview
+export interface ReaderInitMessage {
+    type: 'reader-init';
+    sourceFileName: string;        // basename for the title bar
+    preset: string;                // human-readable preset name (e.g. "Blog View")
+    userPrompt: string;            // empty string if not provided
+    baseUri: string;               // webview URI to source's directory (for image rewriting)
+    estInputTokens: number;        // heuristic chars/4
+}
+export interface ReaderStartMessage { type: 'reader-start'; }
+export interface ReaderChunkMessage { type: 'reader-chunk'; text: string; }
+export interface ReaderDoneMessage {
+    type: 'reader-done';
+    fullHtml: string;
+    tokensUsed: number;
+    costUsd?: number;
+    durationMs: number;
+}
+export interface ReaderErrorMessage { type: 'reader-error'; message: string; }
+export interface ReaderSourceChangedMessage { type: 'reader-source-changed'; }
+export interface ReaderSourceClosedMessage { type: 'reader-source-closed'; }
+export interface ReaderExportResultMessage {
+    type: 'reader-export-result';
+    success: boolean;
+    filePath?: string;
+    error?: string;
+}
+export interface ReaderThemeMessage {
+    type: 'reader-theme';
+    kind: 'light' | 'dark' | 'highContrast';
+}
+
+export type ReaderHostMessage =
+    | ReaderInitMessage
+    | ReaderStartMessage
+    | ReaderChunkMessage
+    | ReaderDoneMessage
+    | ReaderErrorMessage
+    | ReaderSourceChangedMessage
+    | ReaderSourceClosedMessage
+    | ReaderExportResultMessage
+    | ReaderThemeMessage;
