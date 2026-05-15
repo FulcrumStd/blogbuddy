@@ -71,28 +71,138 @@ function setCost(tokens: number, cost?: number): void {
     $('cost').textContent = `${tokStr} ${costStr}`.trim();
 }
 
-// ---- Bootstrap ----
+// ---- Image src rewriting ----
+
+/**
+ * Replace local-path <img src="..."> with webview URIs. Skips https:, data:,
+ * and vscode-webview:. Mirrors the host-side rewrite used in BB Editor.
+ */
+function rewriteImageSrcs(html: string, baseUri: string): string {
+    if (!baseUri) { return html; }
+    const encodedBase = baseUri.replace(/\+/g, '%2B');
+    return html.replace(
+        /(<img\b[^>]*\bsrc=)("([^"]*)"|'([^']*)')/gi,
+        (match, before: string, _quoted: string, dq?: string, sq?: string) => {
+            const src = dq ?? sq ?? '';
+            if (!src || /^(https?:|data:|vscode-webview:)/i.test(src)) { return match; }
+            const resolved = `${encodedBase}/${src}`;
+            const quote = dq !== undefined ? '"' : "'";
+            return `${before}${quote}${resolved}${quote}`;
+        },
+    );
+}
+
+// ---- Tail preview buffer ----
+
+const TAIL_MAX = 80;
+let tailBuffer = '';
+
+function pushTail(chunk: string): void {
+    // Strip tags and squash whitespace to get a clean preview.
+    const text = chunk.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
+    tailBuffer = (tailBuffer + text).slice(-TAIL_MAX);
+    setTail(tailBuffer);
+}
+
+// ---- Streaming state ----
+
+let estInputTokens = 0;
+let receivedChars = 0;
+let preset = '';
+let currentUserPrompt = '';
+
+function resetForNewGeneration(): void {
+    tailBuffer = '';
+    receivedChars = 0;
+    lastFullHtml = '';
+    setTail('');
+    setProgress(0);
+    setCost(0);
+    $('btn-regenerate').setAttribute('disabled', 'true');
+    $('btn-export').setAttribute('disabled', 'true');
+    $('ai-output').innerHTML = '<div class="bb-reader__empty">Streaming…</div>';
+}
+
+// ---- Message dispatch ----
 
 window.addEventListener('message', (event: MessageEvent<ReaderHostMessage>) => {
     handleHost(event.data);
 });
 
-vscode.postMessage({ type: 'reader-ready' });
-
-// Stub handler — full body lives in Task 9.
 function handleHost(msg: ReaderHostMessage): void {
     switch (msg.type) {
         case 'reader-init':
             baseUri = msg.baseUri;
-            $('user-prompt-echo').textContent = msg.userPrompt ? `↳ Custom: "${msg.userPrompt}"` : '';
-            setPhase(`Initialized (${msg.preset})`);
-            void baseUri; // suppress unused warning until Task 9
+            preset = msg.preset;
+            currentUserPrompt = msg.userPrompt;
+            estInputTokens = msg.estInputTokens;
+            setUserPromptEcho(currentUserPrompt);
+            setPhase(`Ready (${preset})`);
             break;
+
+        case 'reader-start':
+            resetForNewGeneration();
+            setPhase(`Generating (${preset})`);
+            break;
+
+        case 'reader-chunk': {
+            if ($('ai-output').querySelector('.bb-reader__empty')) {
+                $('ai-output').innerHTML = '';
+            }
+            const rewritten = rewriteImageSrcs(msg.text, baseUri);
+            // Append by inserting an adjacent HTML span. innerHTML += would
+            // re-parse the whole accumulated string each chunk, which is O(n²)
+            // on long docs. insertAdjacentHTML appends.
+            $('ai-output').insertAdjacentHTML('beforeend', rewritten);
+            receivedChars += msg.text.length;
+            const approxTok = Math.ceil(receivedChars / 4);
+            const pct = estInputTokens > 0
+                ? Math.min(99, (approxTok / estInputTokens) * 100)
+                : 0;
+            setProgress(pct);
+            pushTail(msg.text);
+            break;
+        }
+
+        case 'reader-done': {
+            lastFullHtml = msg.fullHtml;
+            // Re-render the canonical final HTML by replacing innerHTML once.
+            const rewritten = rewriteImageSrcs(msg.fullHtml, baseUri);
+            $('ai-output').innerHTML = rewritten;
+            setProgress(100);
+            setTail(`Rendered in ${(msg.durationMs / 1000).toFixed(1)}s`);
+            setCost(msg.tokensUsed, msg.costUsd);
+            setPhase(`Done (${preset})`);
+            $('btn-regenerate').removeAttribute('disabled');
+            $('btn-export').removeAttribute('disabled');
+            break;
+        }
+
+        case 'reader-error':
+            setPhase('Error');
+            setTail(msg.message);
+            $('btn-regenerate').removeAttribute('disabled');
+            break;
+
+        case 'reader-theme':
+            document.body.dataset.theme = msg.kind;
+            break;
+
         default:
-            // Other messages handled in later tasks. No-op for now.
+            // Banner, export-result handled in later tasks.
             break;
     }
 }
 
-// Mark unused to silence TS until Task 9 wires them up.
-void setTail; void setProgress; void setCost; void setUserPromptEcho; void lastFullHtml;
+// ---- Button wiring ----
+
+$('btn-regenerate').addEventListener('click', () => {
+    vscode.postMessage({ type: 'reader-regenerate' });
+});
+$('btn-export').addEventListener('click', () => {
+    vscode.postMessage({ type: 'reader-export', html: lastFullHtml });
+});
+
+// ---- Bootstrap ----
+
+vscode.postMessage({ type: 'reader-ready' });

@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getPresetDisplayName, RenderCmd } from '../core/reader';
+import { getPresetDisplayName, RenderCmd, runReaderStream } from '../core/reader';
+import { AIService } from '../services/AIService';
+import { extractFrontmatter } from '../utils/frontmatter';
 import type { ReaderHostMessage, ReaderWebviewMessage } from '../services/webviewProtocol';
 
 export function registerReaderCommand(_context: vscode.ExtensionContext): void {
@@ -46,6 +48,10 @@ export class ReaderPanel implements vscode.Disposable {
     private userPrompt: string;
     private webviewReady = false;
     private pendingInit = false;
+    private generationId = 0;       // increments on each new run, used to discard stale chunks
+    private generating = false;
+    private startTime = 0;
+    private fullText = '';
 
     private constructor(
         private readonly context: vscode.ExtensionContext,
@@ -81,18 +87,19 @@ export class ReaderPanel implements vscode.Disposable {
         );
     }
 
-    private async bootstrap(): Promise<void> {
-        // The webview will post 'reader-ready' once mounted; we then send init.
-        this.pendingInit = true;
-        if (this.webviewReady) {
-            this.sendInit();
-        }
-    }
-
     private applyNewRequest(cmd: RenderCmd, userPrompt: string): void {
         this.cmd = cmd;
         this.userPrompt = userPrompt;
         this.sendInit();
+        void this.startGeneration();
+    }
+
+    private async bootstrap(): Promise<void> {
+        this.pendingInit = true;
+        if (this.webviewReady) {
+            this.sendInit();
+            void this.startGeneration();
+        }
     }
 
     private onMessage(msg: ReaderWebviewMessage): void {
@@ -101,11 +108,81 @@ export class ReaderPanel implements vscode.Disposable {
                 this.webviewReady = true;
                 if (this.pendingInit) {
                     this.sendInit();
+                    void this.startGeneration();
                     this.pendingInit = false;
                 }
                 break;
-            // Other messages handled in later tasks.
+            case 'reader-regenerate':
+                void this.startGeneration();
+                break;
+            // Other messages handled in Tasks 11+.
             default: break;
+        }
+    }
+
+    private async startGeneration(): Promise<void> {
+        const myId = ++this.generationId;
+        this.generating = true;
+        this.startTime = Date.now();
+        this.fullText = '';
+
+        const { frontmatter, body } = extractFrontmatter(this.sourceDoc.getText());
+
+        // Snapshot cumulative usage so we can show THIS render's delta, not the
+        // running total across all renders since the extension started.
+        const baseTokens = readFlagTokens('render');
+        const baseCost = readFlagCost('render');
+
+        this.post({ type: 'reader-start' });
+
+        let stream: AsyncGenerator<string, string, unknown>;
+        try {
+            stream = await runReaderStream({
+                cmd: this.cmd,
+                userPrompt: this.userPrompt,
+                frontmatter,
+                body,
+                sourceFileName: path.basename(this.sourceDoc.uri.fsPath),
+            });
+        } catch (err) {
+            if (myId === this.generationId) {
+                this.post({ type: 'reader-error', message: (err as Error).message });
+                this.generating = false;
+            }
+            return;
+        }
+
+        try {
+            for await (const chunk of stream) {
+                if (myId !== this.generationId) {
+                    // A newer generation started; drop this stream's output. The
+                    // underlying HTTP request continues until OpenAI finishes, but
+                    // we ignore further chunks.
+                    return;
+                }
+                this.fullText += chunk;
+                this.post({ type: 'reader-chunk', text: chunk });
+            }
+            if (myId !== this.generationId) { return; }
+
+            // Compute the delta for this render.
+            const tokensUsed = readFlagTokens('render') - baseTokens;
+            const costDelta = readFlagCost('render') - baseCost;
+            const costUsd = costDelta > 0 ? costDelta : undefined;
+
+            this.post({
+                type: 'reader-done',
+                fullHtml: this.fullText,
+                tokensUsed,
+                costUsd,
+                durationMs: Date.now() - this.startTime,
+            });
+            this.generating = false;
+        } catch (err) {
+            if (myId === this.generationId) {
+                this.post({ type: 'reader-error', message: (err as Error).message });
+                this.generating = false;
+            }
         }
     }
 
@@ -173,6 +250,7 @@ export class ReaderPanel implements vscode.Disposable {
     }
 
     dispose(): void {
+        this.generationId++; // invalidates the running for-await loop
         this.disposables.forEach(d => d.dispose());
         this.disposables.length = 0;
         try { this.panel.dispose(); } catch { /* already disposed */ }
@@ -186,4 +264,12 @@ function getNonce(): string {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
+}
+
+function readFlagTokens(flag: string): number {
+    return AIService.getInstance().getUsageStatsByFlag(flag)?.tokensUsed ?? 0;
+}
+function readFlagCost(flag: string): number {
+    const all = AIService.getInstance().getUsageStats();
+    return all.flagStats.get(flag)?.cost ?? 0;
 }
