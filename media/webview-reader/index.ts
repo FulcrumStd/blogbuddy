@@ -121,6 +121,7 @@ function resetForNewGeneration(): void {
     $('btn-regenerate').setAttribute('disabled', 'true');
     $('btn-export').setAttribute('disabled', 'true');
     $('ai-output').innerHTML = '<div class="bb-reader__empty">Streaming…</div>';
+    $('source-banner').classList.add('bb-reader__banner--hidden');
 }
 
 // ---- Message dispatch ----
@@ -184,6 +185,17 @@ function handleHost(msg: ReaderHostMessage): void {
             $('btn-regenerate').removeAttribute('disabled');
             break;
 
+        case 'reader-source-changed':
+            $('source-banner').classList.remove('bb-reader__banner--hidden');
+            $('banner-msg').textContent = 'Source changed — re-render to refresh.';
+            break;
+
+        case 'reader-source-closed':
+            $('source-banner').classList.remove('bb-reader__banner--hidden');
+            $('banner-msg').textContent = 'Source closed — Regenerate disabled.';
+            $('btn-regenerate').setAttribute('disabled', 'true');
+            break;
+
         case 'reader-theme':
             document.body.dataset.theme = msg.kind;
             break;
@@ -201,6 +213,13 @@ $('btn-regenerate').addEventListener('click', () => {
 });
 $('btn-export').addEventListener('click', () => {
     vscode.postMessage({ type: 'reader-export', html: lastFullHtml });
+});
+$('banner-regen').addEventListener('click', () => {
+    $('source-banner').classList.add('bb-reader__banner--hidden');
+    vscode.postMessage({ type: 'reader-regenerate' });
+});
+$('banner-dismiss').addEventListener('click', () => {
+    $('source-banner').classList.add('bb-reader__banner--hidden');
 });
 
 // ---- Bootstrap ----

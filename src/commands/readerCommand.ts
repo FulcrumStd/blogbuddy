@@ -50,6 +50,7 @@ export class ReaderPanel implements vscode.Disposable {
     private pendingInit = false;
     private generationId = 0;       // increments on each new run, used to discard stale chunks
     private generating = false;
+    private hasRenderedOnce = false;
     private startTime = 0;
     private fullText = '';
 
@@ -84,6 +85,17 @@ export class ReaderPanel implements vscode.Disposable {
         this.disposables.push(
             this.panel.webview.onDidReceiveMessage((m: ReaderWebviewMessage) => this.onMessage(m)),
             vscode.window.onDidChangeActiveColorTheme((t) => this.postTheme(t.kind)),
+        );
+        this.disposables.push(
+            vscode.workspace.onDidChangeTextDocument((e) => {
+                if (e.document.uri.toString() !== this.sourceDoc.uri.toString()) { return; }
+                if (!this.hasRenderedOnce || this.generating) { return; }
+                this.post({ type: 'reader-source-changed' });
+            }),
+            vscode.workspace.onDidCloseTextDocument((doc) => {
+                if (doc.uri.toString() !== this.sourceDoc.uri.toString()) { return; }
+                this.post({ type: 'reader-source-closed' });
+            }),
         );
     }
 
@@ -178,6 +190,7 @@ export class ReaderPanel implements vscode.Disposable {
                 durationMs: Date.now() - this.startTime,
             });
             this.generating = false;
+            this.hasRenderedOnce = true;
         } catch (err) {
             if (myId === this.generationId) {
                 this.post({ type: 'reader-error', message: (err as Error).message });
