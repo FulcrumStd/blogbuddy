@@ -196,12 +196,22 @@ function handleHost(msg: ReaderHostMessage): void {
             $('btn-regenerate').setAttribute('disabled', 'true');
             break;
 
+        case 'reader-export-result':
+            // Toast-style: flash the phase area briefly.
+            if (msg.success) {
+                setPhase('Exported');
+                setTimeout(() => setPhase(`Done (${preset})`), 2000);
+            } else if (msg.error && msg.error !== 'Cancelled') {
+                setPhase('Export failed');
+                setTail(msg.error);
+            }
+            break;
+
         case 'reader-theme':
             document.body.dataset.theme = msg.kind;
             break;
 
         default:
-            // Banner, export-result handled in later tasks.
             break;
     }
 }

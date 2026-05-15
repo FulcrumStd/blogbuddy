@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as fs from 'fs/promises';
 import { getPresetDisplayName, RenderCmd, runReaderStream } from '../core/reader';
 import { AIService } from '../services/AIService';
 import { extractFrontmatter } from '../utils/frontmatter';
+import { inlineImageAssets } from '../utils/assetInliner';
 import type { ReaderHostMessage, ReaderWebviewMessage } from '../services/webviewProtocol';
 
 export function registerReaderCommand(_context: vscode.ExtensionContext): void {
@@ -127,7 +129,9 @@ export class ReaderPanel implements vscode.Disposable {
             case 'reader-regenerate':
                 void this.startGeneration();
                 break;
-            // Other messages handled in Tasks 11+.
+            case 'reader-export':
+                void this.handleExport(msg.html);
+                break;
             default: break;
         }
     }
@@ -196,6 +200,55 @@ export class ReaderPanel implements vscode.Disposable {
                 this.post({ type: 'reader-error', message: (err as Error).message });
                 this.generating = false;
             }
+        }
+    }
+
+    private async handleExport(html: string): Promise<void> {
+        try {
+            const sourcePath = this.sourceDoc.uri.fsPath;
+            const sourceDir = path.dirname(sourcePath);
+            const sourceBase = path.basename(sourcePath, path.extname(sourcePath));
+            const defaultName = `${sourceBase}.reader.html`;
+            const defaultUri = vscode.Uri.file(path.join(sourceDir, defaultName));
+
+            const target = await vscode.window.showSaveDialog({
+                defaultUri,
+                filters: { 'HTML': ['html'] },
+                saveLabel: 'Export AI Reader HTML',
+            });
+            if (!target) {
+                this.post({ type: 'reader-export-result', success: false, error: 'Cancelled' });
+                return;
+            }
+
+            // Inline assets unless the user opted out.
+            const cfg = vscode.workspace.getConfiguration('blogbuddy.reader');
+            const shouldInline = cfg.get<boolean>('inlineAssets', true);
+            const finalHtml = shouldInline
+                ? await inlineImageAssets(html, sourceDir)
+                : html;
+
+            await fs.writeFile(target.fsPath, finalHtml, 'utf-8');
+
+            this.post({ type: 'reader-export-result', success: true, filePath: target.fsPath });
+
+            const choice = await vscode.window.showInformationMessage(
+                `Saved ${path.basename(target.fsPath)}`,
+                'Open',
+                'Show in Folder',
+            );
+            if (choice === 'Open') {
+                await vscode.env.openExternal(target);
+            } else if (choice === 'Show in Folder') {
+                await vscode.commands.executeCommand('revealFileInOS', target);
+            }
+        } catch (err) {
+            this.post({
+                type: 'reader-export-result',
+                success: false,
+                error: (err as Error).message,
+            });
+            vscode.window.showErrorMessage(`Export failed: ${(err as Error).message}`);
         }
     }
 
