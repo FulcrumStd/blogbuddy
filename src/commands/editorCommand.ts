@@ -24,7 +24,35 @@ export function registerEditorCommand(context: vscode.ExtensionContext) {
                     }
                 }
             }
-            EditorPanel.createOrShow(context, uri);
+
+            // Locate any text-editor tabs already showing this file so we can
+            // open BB in the same column and then close them — "replace" UX.
+            const uriStr = uri.toString();
+            const matchingTabs: vscode.Tab[] = [];
+            let targetColumn: vscode.ViewColumn | undefined;
+            for (const group of vscode.window.tabGroups.all) {
+                for (const tab of group.tabs) {
+                    if (tab.input instanceof vscode.TabInputText && tab.input.uri.toString() === uriStr) {
+                        matchingTabs.push(tab);
+                        targetColumn ??= group.viewColumn;
+                    }
+                }
+            }
+
+            // Persist unsaved edits before we close the source tab, otherwise
+            // the user would see a save prompt or lose content.
+            const dirtyDoc = vscode.workspace.textDocuments.find(
+                doc => doc.uri.toString() === uriStr && doc.isDirty,
+            );
+            if (dirtyDoc) {
+                await dirtyDoc.save();
+            }
+
+            EditorPanel.createOrShow(context, uri, targetColumn);
+
+            if (matchingTabs.length > 0) {
+                await vscode.window.tabGroups.close(matchingTabs);
+            }
         })
     );
 }
@@ -38,17 +66,17 @@ class EditorPanel implements vscode.Disposable {
     private isDirty = false;
     private disposables: vscode.Disposable[] = [];
 
-    static createOrShow(context: vscode.ExtensionContext, uri?: vscode.Uri): void {
+    static createOrShow(context: vscode.ExtensionContext, uri?: vscode.Uri, column?: vscode.ViewColumn): void {
         const filePath = uri?.fsPath;
         const key = filePath || `untitled-${Date.now()}`;
 
         const existing = filePath ? EditorPanel.panels.get(filePath) : undefined;
         if (existing) {
-            existing.panel.reveal();
+            existing.panel.reveal(column);
             return;
         }
 
-        const panel = new EditorPanel(context, filePath);
+        const panel = new EditorPanel(context, filePath, column);
         EditorPanel.panels.set(key, panel);
 
         panel.panel.onDidDispose(() => {
@@ -60,6 +88,7 @@ class EditorPanel implements vscode.Disposable {
     private constructor(
         private context: vscode.ExtensionContext,
         filePath?: string,
+        column?: vscode.ViewColumn,
     ) {
         this.filePath = filePath;
         const title = filePath ? path.basename(filePath) : 'New Document';
@@ -67,7 +96,7 @@ class EditorPanel implements vscode.Disposable {
         this.panel = vscode.window.createWebviewPanel(
             'blogbuddy.editor',
             title,
-            vscode.ViewColumn.One,
+            column ?? vscode.ViewColumn.One,
             {
                 enableScripts: true,
                 retainContextWhenHidden: true,

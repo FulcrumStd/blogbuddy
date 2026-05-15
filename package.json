@@ -40,7 +40,10 @@
       {
         "command": "blogbuddy.openEditor",
         "title": "BlogBuddy: Open BB Editor",
-        "icon": "$(edit)"
+        "icon": {
+          "light": "images/icon.png",
+          "dark": "images/icon.png"
+        }
       }
     ],
     "menus": {
@@ -49,6 +52,13 @@
           "command": "blogbuddy.openEditor",
           "when": "resourceExtname == .md",
           "group": "blogbuddy"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "blogbuddy.openEditor",
+          "when": "resourceExtname == .md && resourceScheme == file",
+          "group": "navigation@-10"
         }
       ]
     },
