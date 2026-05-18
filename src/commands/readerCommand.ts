@@ -95,11 +95,14 @@ export class ReaderPanel implements vscode.Disposable {
                 if (!this.hasRenderedOnce || this.generating) { return; }
                 this.post({ type: 'reader-source-changed' });
             }),
-            vscode.workspace.onDidCloseTextDocument((doc) => {
-                if (doc.uri.toString() !== this.sourceDoc.uri.toString()) { return; }
-                this.post({ type: 'reader-source-closed' });
-            }),
         );
+        // Note: we intentionally do NOT listen for onDidCloseTextDocument. VS Code
+        // fires that event whenever the TextDocument is "disposed" — which happens
+        // routinely for documents that aren't displayed in a visible editor (e.g.
+        // when the source was opened via BB Editor, or when the user dispatched
+        // from a plain editor and then switched away). The cached getText() still
+        // returns valid content after close, so regeneration would actually work.
+        // True file deletion is a separate signal that needs a FileSystemWatcher.
     }
 
     private applyNewRequest(cmd: RenderCmd, userPrompt: string): void {
