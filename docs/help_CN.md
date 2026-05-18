@@ -267,11 +267,9 @@ Hover 查看每个字段的来源（apiKey / baseURL / model）+ Diagnostics / S
 
 ---
 
-## 📊 使用统计 & 帮助
+## 📊 使用统计
 
 命令面板里运行 `BlogBuddy: Show Usage Statistics`——直接打开一份 markdown 报告，展示请求数、token 用量、按 flag / 模型分类的明细；有定价数据时还会估算费用。配套两个独立命令：`BlogBuddy: Reset Usage Statistics`（带确认清空计数器）和 `BlogBuddy: Refresh Pricing Data`（重新从 provider 拉定价数据）。
-
-运行 `BlogBuddy: Show Help` 打开本文档。
 
 ---
 
@@ -305,7 +303,6 @@ Hover 查看每个字段的来源（apiKey / baseURL / model）+ Diagnostics / S
 | `BlogBuddy: Show Usage Statistics` | 直接打开 markdown 报告：token 用量、请求次数、按 flag / 模型分类 |
 | `BlogBuddy: Reset Usage Statistics` | 清空计数器（带确认） |
 | `BlogBuddy: Refresh Pricing Data` | 重新从 provider 拉取定价数据 |
-| `BlogBuddy: Show Help` | 打开本文档 |
 | `BlogBuddy: Create .bbreader.md Template` | 在工作区根创建 AI Reader 的样式参考模板 |
 | `BlogBuddy: Hi BB` | 在当前光标 / 选区上执行 BB 命令（和 `Cmd+B Cmd+B` 等价） |
 | `BlogBuddy: Open BB Editor` | 用 BB 编辑器打开当前 `.md` |
@@ -380,7 +377,6 @@ More content here...
 | 选择模型 | 命令面板 | `blogbuddy.selectModel` |
 | 显示配置诊断 | 命令面板 | `blogbuddy.showDiagnostics` |
 | 显示使用统计 | 命令面板 | `blogbuddy.showUsageStats` |
-| 显示帮助 | 命令面板 | `blogbuddy.showHelp` |
 | 创建 .bbreader.md 模板 | 命令面板 | `blogbuddy.createReaderTemplate` |
 
 ---

@@ -267,11 +267,9 @@ Hover the item for a per-field source table (apiKey, baseURL, model) and quick l
 
 ---
 
-## 📊 Usage Statistics & Help
+## 📊 Usage Statistics
 
 Run `BlogBuddy: Show Usage Statistics` from the command palette to open a markdown report with request counts, token usage, per-flag / per-model breakdown, and (when pricing data is available) cost estimates. Two related commands sit next to it in the palette: `BlogBuddy: Reset Usage Statistics` (clears counters after confirmation) and `BlogBuddy: Refresh Pricing Data` (re-fetches pricing from the provider).
-
-Run `BlogBuddy: Show Help` to open this document.
 
 ---
 
@@ -305,7 +303,6 @@ Open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and type `BlogBuddy:`
 | `BlogBuddy: Show Usage Statistics` | Open a markdown report with token usage, request counts, per-flag / per-model breakdown |
 | `BlogBuddy: Reset Usage Statistics` | Clear all counters (with confirmation) |
 | `BlogBuddy: Refresh Pricing Data` | Re-fetch pricing data from the provider |
-| `BlogBuddy: Show Help` | Open this document |
 | `BlogBuddy: Create .bbreader.md Template` | Scaffold the style-reference template at the workspace root for AI Reader |
 | `BlogBuddy: Hi BB` | Execute the BB command on current cursor / selection (same as `Cmd+B Cmd+B`) |
 | `BlogBuddy: Open BB Editor` | Open the current `.md` in the BB Editor |
@@ -380,7 +377,6 @@ More content here...
 | Select model | Command palette | `blogbuddy.selectModel` |
 | Show diagnostics | Command palette | `blogbuddy.showDiagnostics` |
 | Show usage statistics | Command palette | `blogbuddy.showUsageStats` |
-| Show help | Command palette | `blogbuddy.showHelp` |
 | Create .bbreader.md template | Command palette | `blogbuddy.createReaderTemplate` |
 
 ---

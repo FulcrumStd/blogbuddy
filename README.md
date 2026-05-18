@@ -173,7 +173,6 @@ BlogBuddy needs an API key and a model. Everything else has a sensible default.
 | `BlogBuddy: Show Usage Statistics` | View token usage, request counts, and (when pricing data is available) per-model cost |
 | `BlogBuddy: Reset Usage Statistics` | Clear all counters (with confirmation) |
 | `BlogBuddy: Refresh Pricing Data` | Re-fetch provider pricing data |
-| `BlogBuddy: Show Help` | Open the bundled help document |
 | `BlogBuddy: Create .bbreader.md Template` | Scaffold the style-reference template at the workspace root for AI Reader |
 | `BlogBuddy: Hi BB` | Execute BB command on current text |
 | `BlogBuddy: Open BB Editor` | Open the current `.md` in BB Editor |

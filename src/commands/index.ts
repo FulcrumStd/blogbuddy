@@ -9,7 +9,6 @@ import { registerConfigStatusBar } from './configStatusBar';
 import { registerReaderCommand } from './readerCommand';
 import { registerCreateReaderTemplateCommand } from './createReaderTemplateCommand';
 import { registerUsageStatsCommand } from './usageStatsCommand';
-import { registerHelpCommand } from './helpCommand';
 
 export function registerAllCommands(context: ExtensionContext) {
     registerBBCommand(context);
@@ -21,5 +20,4 @@ export function registerAllCommands(context: ExtensionContext) {
     registerReaderCommand(context);
     registerCreateReaderTemplateCommand(context);
     registerUsageStatsCommand(context);
-    registerHelpCommand(context);
 }

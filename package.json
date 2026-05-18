@@ -56,10 +56,6 @@
       {
         "command": "blogbuddy.refreshPricing",
         "title": "BlogBuddy: Refresh Pricing Data"
-      },
-      {
-        "command": "blogbuddy.showHelp",
-        "title": "BlogBuddy: Show Help"
       }
     ],
     "menus": {

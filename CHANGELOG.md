@@ -29,13 +29,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   - Cost guard at ~25k input tokens
 - **`.bbreader.md` style reference** — drop a `.bbreader.md` at workspace root; auto-loaded into every Reader render as authoritative style guidance for layout, typography, colors, components. Truncated at 10,000 chars
 - **`BlogBuddy: Create .bbreader.md Template`** command — scaffolds a 5-section starter (Visual style / Document structure / Components / Example HTML / Things to avoid) at workspace root
-- **`BlogBuddy: Show Usage Statistics`** / **`Reset Usage Statistics`** / **`Refresh Pricing Data`** / **`Show Help`** as standalone palette commands
+- **`BlogBuddy: Show Usage Statistics`** / **`Reset Usage Statistics`** / **`Refresh Pricing Data`** as standalone palette commands (the prior dialog-based stats menu is gone)
 
 ### Changed
 
 - **BB Menu removed** — the `Cmd+Shift+B` popup with just Usage Statistics + Help duplicated VS Code's native command palette. All BB features now live in the palette (`Cmd+Shift+P` `BlogBuddy:`). `Cmd+Shift+B` keybinding freed.
-- **Show Usage Statistics / Show Help** open content directly (no intermediate "Open in Editor" notification step)
-- **Show Help** picks `help_CN.md` when VS Code is set to Chinese; previously looked in the workspace folder (only worked for BB-repo developers, broken for end users)
+- **Show Usage Statistics** opens content directly (no intermediate "Open in Editor" notification step). The empty-state case (`totalRequests === 0`) shows an info toast instead of opening an empty markdown tab
 - **Slash menu nav** in BB Editor clamps at the first/last item instead of wrapping (the old modulo wrap felt like a teleport once the menu had 19 items)
 - Renamed Chinese docs to ASCII filenames: `help_中文.md` → `help_CN.md`, `README_中文.md` → `README_CN.md`
 
