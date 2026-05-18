@@ -20,6 +20,7 @@ const appHtml = `
         <div class="bb-reader__row1">
             <span id="phase" class="bb-reader__phase">Idle</span>
             <span id="spinner" class="bb-reader__spinner bb-reader__spinner--hidden" aria-hidden="true"></span>
+            <span id="check" class="bb-reader__check bb-reader__check--hidden" aria-hidden="true">✓</span>
             <span id="gen-tokens" class="bb-reader__gen-tokens"></span>
             <span class="bb-reader__spacer"></span>
             <button id="btn-regenerate" class="bb-reader__btn" disabled>↻ Regenerate</button>
@@ -47,8 +48,7 @@ const appHtml = `
         <iframe
             id="ai-frame"
             class="bb-reader__iframe bb-reader__iframe--hidden"
-            sandbox="allow-scripts"
-            srcdoc=""
+            src="about:blank"
         ></iframe>
     </div>
 </div>
@@ -72,6 +72,9 @@ function $(id: string): HTMLElement {
 function setPhase(text: string): void { $('phase').textContent = text; }
 function setSpinner(on: boolean): void {
     $('spinner').classList.toggle('bb-reader__spinner--hidden', !on);
+}
+function setCheck(on: boolean): void {
+    $('check').classList.toggle('bb-reader__check--hidden', !on);
 }
 function setGenTokens(text: string): void { $('gen-tokens').textContent = text; }
 function setPresetLabel(name: string): void { $('preset-label').textContent = name; }
@@ -115,14 +118,30 @@ function rewriteImageSrcs(html: string, base: string): string {
     );
 }
 
-// ---- Iframe srcdoc with throttled updates ----
+// ---- Iframe loading via Blob URLs with throttled updates ----
 //
-// Each chunk arrives ~50ms apart. Setting srcdoc reloads the iframe; doing it
-// on every chunk causes flicker. Throttle to one update per animation frame so
-// the iframe re-renders at most 60fps regardless of chunk arrival rate.
+// Each chunk arrives ~50ms apart. Reloading the iframe on every chunk causes
+// flicker; throttle to one update per animation frame (~60fps). We use Blob
+// URLs (frame.src) instead of srcdoc because srcdoc has subtle CSP / sandbox
+// edge cases in the VS Code webview environment that can leave the iframe
+// blank. A Blob URL is a real URL the browser can resolve cleanly under
+// `frame-src blob:` and works regardless of sandbox semantics.
 
 let accumulatedHtml = '';
 let pendingFrameUpdate = false;
+let currentBlobUrl: string | null = null;
+
+function writeFrame(html: string): void {
+    const rewritten = rewriteImageSrcs(html, baseUri);
+    const blob = new Blob([rewritten], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const frame = $('ai-frame') as HTMLIFrameElement;
+    if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
+    }
+    currentBlobUrl = url;
+    frame.src = url;
+}
 
 function scheduleFrameUpdate(html: string): void {
     accumulatedHtml = html;
@@ -130,8 +149,7 @@ function scheduleFrameUpdate(html: string): void {
     pendingFrameUpdate = true;
     requestAnimationFrame(() => {
         pendingFrameUpdate = false;
-        const frame = $('ai-frame') as HTMLIFrameElement;
-        frame.srcdoc = rewriteImageSrcs(accumulatedHtml, baseUri);
+        writeFrame(accumulatedHtml);
     });
 }
 
@@ -140,8 +158,7 @@ function setFrameNow(html: string): void {
     // final HTML lands immediately without an extra animation-frame delay.
     accumulatedHtml = html;
     pendingFrameUpdate = false;
-    const frame = $('ai-frame') as HTMLIFrameElement;
-    frame.srcdoc = rewriteImageSrcs(html, baseUri);
+    writeFrame(html);
 }
 
 // ---- Streaming state ----
@@ -157,6 +174,7 @@ function resetForNewGeneration(): void {
     showFrame(false);
     showStatus('Generating…');
     setSpinner(true);
+    setCheck(false);
     $('source-banner').classList.add('bb-reader__banner--hidden');
 }
 
@@ -176,6 +194,7 @@ function handleHost(msg: ReaderHostMessage): void {
             setPromptValue(currentUserPrompt);
             setPhase(`Ready (${preset})`);
             setSpinner(false);
+            setCheck(false);
             break;
 
         case 'reader-start':
@@ -202,10 +221,19 @@ function handleHost(msg: ReaderHostMessage): void {
             showStatus(null);
             showFrame(true);
             setSpinner(false);
+            setCheck(true);
+            // OpenAI-compatible endpoints don't always include usage stats in
+            // streaming responses, so msg.tokensUsed can come back as 0. In
+            // that case fall back to the live chars/4 approximation we were
+            // already displaying — it's better to keep a number than zero it.
+            const liveApproxTok = Math.ceil(receivedChars / 4);
+            const finalTokens = msg.tokensUsed > 0 ? msg.tokensUsed : liveApproxTok;
             const seconds = (msg.durationMs / 1000).toFixed(1);
-            const tokens = msg.tokensUsed.toLocaleString();
-            const costStr = msg.costUsd !== undefined ? ` · $${msg.costUsd.toFixed(4)}` : '';
-            setGenTokens(`${tokens} tok · ${seconds}s${costStr}`);
+            const tokensStr = finalTokens.toLocaleString();
+            const costStr = msg.costUsd !== undefined && msg.costUsd > 0
+                ? ` · $${msg.costUsd.toFixed(4)}`
+                : '';
+            setGenTokens(`${tokensStr} tok · ${seconds}s${costStr}`);
             setPhase(`Done (${preset})`);
             $('btn-regenerate').removeAttribute('disabled');
             $('btn-export').removeAttribute('disabled');
@@ -214,6 +242,7 @@ function handleHost(msg: ReaderHostMessage): void {
 
         case 'reader-error':
             setSpinner(false);
+            setCheck(false);
             setPhase('Error');
             showFrame(false);
             showStatus(msg.message);

@@ -76,6 +76,21 @@ body {
     to { transform: rotate(360deg); }
 }
 
+/* ---- Done checkmark ---- */
+
+.bb-reader__check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: var(--vscode-charts-green, #4caf50);
+    font-weight: 700;
+    font-size: 13px;
+    line-height: 1;
+}
+.bb-reader__check--hidden { display: none; }
+
 /* ---- Prompt input row ---- */
 
 .bb-reader__row2 {

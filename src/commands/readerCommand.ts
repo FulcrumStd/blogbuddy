@@ -330,7 +330,7 @@ export class ReaderPanel implements vscode.Disposable {
                    script-src 'unsafe-inline' 'nonce-${nonce}';
                    img-src ${webview.cspSource} data: https:;
                    font-src ${webview.cspSource};
-                   frame-src 'self' data: ${webview.cspSource};
+                   frame-src 'self' blob: data: ${webview.cspSource};
                    connect-src 'none';">
     <link href="${styleUri}" rel="stylesheet">
     <title>BB Reader</title>
