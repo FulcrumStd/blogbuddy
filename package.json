@@ -50,6 +50,14 @@
         "title": "BlogBuddy: Show Usage Statistics"
       },
       {
+        "command": "blogbuddy.resetUsageStats",
+        "title": "BlogBuddy: Reset Usage Statistics"
+      },
+      {
+        "command": "blogbuddy.refreshPricing",
+        "title": "BlogBuddy: Refresh Pricing Data"
+      },
+      {
         "command": "blogbuddy.showHelp",
         "title": "BlogBuddy: Show Help"
       }

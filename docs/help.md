@@ -246,7 +246,7 @@ Hover the item for a per-field source table (apiKey, baseURL, model) and quick l
 
 ## 📊 Usage Statistics & Help
 
-Run `BlogBuddy: Show Usage Statistics` from the command palette for request counts, token usage, per-flag / per-model breakdown, and (when pricing data is available) cost estimates. The dialog offers **Open in Editor** (full markdown table), **Reset Statistics**, and **Refresh Pricing**.
+Run `BlogBuddy: Show Usage Statistics` from the command palette to open a markdown report with request counts, token usage, per-flag / per-model breakdown, and (when pricing data is available) cost estimates. Two related commands sit next to it in the palette: `BlogBuddy: Reset Usage Statistics` (clears counters after confirmation) and `BlogBuddy: Refresh Pricing Data` (re-fetches pricing from the provider).
 
 Run `BlogBuddy: Show Help` to open this document.
 
@@ -279,7 +279,9 @@ Open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and type `BlogBuddy:`
 |---------|---------|
 | `BlogBuddy: Select Model` | Fetch the provider's `/v1/models` list and pick (or enter) a model id. Surfaces auth / network errors directly if the fetch fails |
 | `BlogBuddy: Show Config Diagnostics` | Open a masked report showing what the extension actually resolves for `apiKey`, `baseURL`, `model` — settings value, env var source, or default. Great for debugging "my env var isn't picked up" |
-| `BlogBuddy: Show Usage Statistics` | Token usage, request counts, per-flag / per-model breakdown; offers Open in Editor / Reset / Refresh Pricing |
+| `BlogBuddy: Show Usage Statistics` | Open a markdown report with token usage, request counts, per-flag / per-model breakdown |
+| `BlogBuddy: Reset Usage Statistics` | Clear all counters (with confirmation) |
+| `BlogBuddy: Refresh Pricing Data` | Re-fetch pricing data from the provider |
 | `BlogBuddy: Show Help` | Open this document |
 | `BlogBuddy: Create .bbreader.md Template` | Scaffold the style-reference template at the workspace root for AI Reader |
 | `BlogBuddy: Hi BB` | Execute the BB command on current cursor / selection (same as `Cmd+B Cmd+B`) |

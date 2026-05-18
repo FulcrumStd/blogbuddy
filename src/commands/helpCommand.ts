@@ -22,17 +22,9 @@ async function showHelp(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
 
-    const choice = await vscode.window.showInformationMessage(
-        'View Help Information',
-        'Open in Editor',
-        'Close'
-    );
-
-    if (choice === 'Open in Editor') {
-        const doc = await vscode.workspace.openTextDocument({
-            content: helpText,
-            language: 'markdown',
-        });
-        await vscode.window.showTextDocument(doc);
-    }
+    const doc = await vscode.workspace.openTextDocument({
+        content: helpText,
+        language: 'markdown',
+    });
+    await vscode.window.showTextDocument(doc);
 }

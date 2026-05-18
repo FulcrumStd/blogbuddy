@@ -242,7 +242,7 @@ Hover 查看每个字段的来源（apiKey / baseURL / model）+ Diagnostics / S
 
 ## 📊 使用统计 & 帮助
 
-命令面板里运行 `BlogBuddy: Show Usage Statistics`——展示请求数、token 用量、按 flag / 模型分类的明细；有定价数据时还会估算费用。对话框里可以选 **Open in Editor**（输出完整 markdown 表格）、**Reset Statistics**、**Refresh Pricing**。
+命令面板里运行 `BlogBuddy: Show Usage Statistics`——直接打开一份 markdown 报告，展示请求数、token 用量、按 flag / 模型分类的明细；有定价数据时还会估算费用。配套两个独立命令：`BlogBuddy: Reset Usage Statistics`（带确认清空计数器）和 `BlogBuddy: Refresh Pricing Data`（重新从 provider 拉定价数据）。
 
 运行 `BlogBuddy: Show Help` 打开本文档。
 
@@ -275,7 +275,9 @@ Hover 查看每个字段的来源（apiKey / baseURL / model）+ Diagnostics / S
 |------|------|
 | `BlogBuddy: Select Model` | 从 provider 的 `/v1/models` 拉模型列表让你选（或输入自定义 id）。fetch 失败会直接显示具体错误 |
 | `BlogBuddy: Show Config Diagnostics` | 打开脱敏报告，显示扩展对 `apiKey` / `baseURL` / `model` 每个字段**实际**读到的值和来源（settings / env / default）。用来排查"我环境变量没读到"这种坑 |
-| `BlogBuddy: Show Usage Statistics` | token 用量、请求次数、按 flag / 模型分类；提供 Open in Editor / Reset / Refresh Pricing 入口 |
+| `BlogBuddy: Show Usage Statistics` | 直接打开 markdown 报告：token 用量、请求次数、按 flag / 模型分类 |
+| `BlogBuddy: Reset Usage Statistics` | 清空计数器（带确认） |
+| `BlogBuddy: Refresh Pricing Data` | 重新从 provider 拉取定价数据 |
 | `BlogBuddy: Show Help` | 打开本文档 |
 | `BlogBuddy: Create .bbreader.md Template` | 在工作区根创建 AI Reader 的样式参考模板 |
 | `BlogBuddy: Hi BB` | 在当前光标 / 选区上执行 BB 命令（和 `Cmd+B Cmd+B` 等价） |
