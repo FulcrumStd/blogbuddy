@@ -2,6 +2,8 @@
 
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
+[English Version](help.md)
+
 BlogBuddy 是一个 VS Code 扩展，用 AI 增强你的 Markdown 写作流。命令直接嵌在文本里，一个快捷键触发，输出流式实时显示。本文档覆盖从配置到 BB 编辑器、内联命令、常见问题的所有内容。
 
 ## 🚀 快速开始
@@ -154,33 +156,58 @@ Some following content here.
 
 ---
 
-### AI 阅读视图
+## ✦ AI 阅读视图
 
-Render 系列命令会基于当前 Markdown 生成一份"为人类阅读优化"的完整 HTML
-文档，显示在侧边面板里。Reader **不会修改你的源文件**，只会产出一份新的
-渲染结果——你可以预览，并导出成一个独立的 `.html`（默认会把本地图片以
-base64 内嵌，得到单文件结果）。
+Render 系列命令做的事情是"AI 重新诠释"——不是替换源文本，而是为你的 Markdown 生成一份完整的 HTML "阅读 artifact"，渲染在侧边面板里。你的源 `.md` **从不会被修改**。
 
-**可用标签：**
+### 标签
 
-- `<bb-render-blog:>` — 渲染成有 TOC 和 callout 的"博客文章"风格。
-- `<bb-render-skim:>` — 速读模式：开头 TL;DR + 折叠详情 + 徽标。
-- `<bb-render-expl:>` — 教学型：SVG 图示 + 代码注解。
-- `<bb-render:你的提示词>` — 完全按你的提示词来写。
+- `<bb-render-blog:>` — **Blog View**（默认博客文章风格）：行内 TOC、callout、代码高亮、合适的阅读宽度
+- `<bb-render-skim:>` — **Skim Mode**（速读模式）：顶部 TL;DR、密集视觉结构、可跳过内容折在 `<details>` 里
+- `<bb-render-expl:>` — **Explainer**（教学型）：用 SVG 图示概念、给代码加注解、关键节点带"Why this matters"侧栏
+- `<bb-render:你的提示词>` — **Custom**：用户提示词为主导（覆盖 preset 风格）
 
-任意 preset 都可以追加细化指令：
-`<bb-render-blog:让 TOC 吸顶并加一份打印样式>`。
+任意 preset 都可以追加细化指令：`<bb-render-blog:让 TOC 吸顶并加一份打印样式>`。
 
-**触发：** 把光标放到标签所在行的任意位置，按 `Cmd+B Cmd+B`（macOS）/
-`Ctrl+B Ctrl+B`（Win/Linux）。标签会从源文件里被删除，Reader 面板在右侧
-打开。
+### 触发
 
-**导出：** Reader 顶部有 Export 按钮，会把渲染结果存为 `<原名>.reader.html`，
-放在 `.md` 旁边。如果你想保留相对图片路径（比如部署到博客时和资源目录一起
-发上去），把 `blogbuddy.reader.inlineAssets` 设为 `false`。
+把光标放到标签所在行任意位置，按 `Cmd+B Cmd+B`（macOS）/ `Ctrl+B Ctrl+B`（Win/Linux）。标签会**从源文件被删除**，Reader 面板在右侧打开。
 
-**安全：** Reader 的 webview 会执行 AI 生成的内联脚本，但禁用了网络访问
-（`connect-src 'none'`）。信任边界等同于你对 AI 服务商和源文件内容的信任。
+在 BB 编辑器里，`/` 斜杠菜单的 **Render** 分组列出所有四个 preset——选一个，在 `:` 和 `>` 之间打提示词，触发。
+
+### Reader 面板 UI
+
+- **顶栏**：phase 指示（`Generating…` / `Done ✓`）、实时 token 计数、当前 preset
+- **提示词输入框**：行内修改提示词，按 Enter 或点 **Regenerate** 重跑
+- **流式实时预览**：HTML 在沙盒 iframe 里逐步渲染
+- **源变更横幅**：render 完成后再编辑源 `.md`，会弹横幅提供一键 Regenerate（不会自动重生——AI 调用慢且计费）
+- **BB 徽章脚注**：每一份生成的页面底部都有一个小的 `created with BB` 链接回仓库
+
+### 导出
+
+Reader 顶部有 **Export** 按钮，把成品写成 `<source>.reader.html`（在 `.md` 旁边）。默认会把本地图片读盘后 base64 内嵌——结果是一个可随处发送的单文件 HTML。设 `blogbuddy.reader.inlineAssets` 为 `false` 可以保留相对图片路径（适用于资源目录和 HTML 一起部署到博客的场景）。
+
+### `.bbreader.md` 样式参考
+
+想让多次 render 的页面保持风格一致？在**工作区根目录**放一个 `.bbreader.md`。每次 render 都会自动加载它，作为权威样式指南喂给 AI（layout / typography / colors / 组件规范等）。Reader 顶栏出现 `· .bbreader.md` 标记表示样式参考已激活。
+
+在命令面板跑 **BlogBuddy: Create .bbreader.md Template**，一键生成包含五个章节的模板：
+
+- Visual style（字体、正文宽度、配色、标题、代码块、callout、链接）
+- Document structure（TOC、署名、日期格式、阅读时间估计）
+- Components（AI 可以用的特殊元素）
+- Example HTML（贴一段你现有博客的 HTML 片段作为直接参考）
+- Things to avoid（不要做的事）
+
+填你有意见的部分，其余留空。改完下一次 render 立即生效。文件最长 10,000 字符，超过会截断并加 `[... truncated]` 标记。
+
+### 成本守门
+
+预估输入 token 超过 25,000（大约 100KB 的 Markdown + 样式参考）时弹 modal 确认，避免在巨大文档上不小心花钱。
+
+### 安全
+
+Reader iframe 通过 Blob URL 加载并允许 AI 生成的内联脚本运行（折叠面板、tab 切换、简单 slider 等交互需要）。父 webview 的 CSP 带 `connect-src 'none'`，注入的脚本无法发网络请求。信任边界等同于你对 AI 服务商和源文件内容的信任。
 
 ---
 
@@ -399,6 +426,7 @@ More content here...
 
 完整的分版本变更清单见 [CHANGELOG](../CHANGELOG.md)。近期 release 亮点：
 
+- **0.0.13** — **AI Reader View**（`<bb-render-*:>` 标签 + 侧边面板 HTML 渲染、流式预览、导出 self-contained `.html`、`.bbreader.md` 样式参考、模板生成命令）；删除 BB Menu（所有命令统一走命令面板）；使用统计和帮助直接打开内容（不再有中间通知步骤）；斜杠菜单导航在边界处停止（不再循环回绕）
 - **0.0.12** — 配置精简（单模型、永远流式、字数常开）；apiKey 和 baseURL 的环境变量回退；`BlogBuddy: Select Model` 和 `BlogBuddy: Show Config Diagnostics` 命令；状态栏配置来源指示器；Mermaid 输出统一为围栏代码块
 - **0.0.11** — BB 编辑器大升级：CJK IME 保护、Prism 语法高亮、外部文件冲突检测、frontmatter 类型化面板、arrow 连字、保存时 Markdown 规范化、View Source 按钮
 - **0.0.10** — BB 编辑器引入 frontmatter 预览与编辑面板

@@ -16,6 +16,38 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.13] - 2026-05-18
+
+### Added
+
+- **AI Reader View** — a new BB command family (`<bb-render-blog:>` / `<bb-render-skim:>` / `<bb-render-expl:>` / `<bb-render:custom prompt>`) that has the AI re-interpret the current Markdown as a full HTML "reading artifact" rendered in a side panel. Source `.md` is never modified.
+  - Four presets: **Blog View** (polished article with TOC + callouts), **Skim Mode** (TL;DR + collapsibles), **Explainer** (SVG diagrams + teaching annotations), **Custom** (user prompt drives entirely)
+  - Streaming HTML preview inside a sandboxed iframe (Blob URL), with phase indicator, spinner→checkmark transition, live token counter, and editable refinement prompt
+  - **Export to self-contained `.html`** with images base64-inlined by default (`blogbuddy.reader.inlineAssets` controls this)
+  - Source-changed banner (no auto-regen — renders are slow/metered)
+  - BB credit footer injected into every render and exported file
+  - Cost guard at ~25k input tokens
+- **`.bbreader.md` style reference** — drop a `.bbreader.md` at workspace root; auto-loaded into every Reader render as authoritative style guidance for layout, typography, colors, components. Truncated at 10,000 chars
+- **`BlogBuddy: Create .bbreader.md Template`** command — scaffolds a 5-section starter (Visual style / Document structure / Components / Example HTML / Things to avoid) at workspace root
+- **`BlogBuddy: Show Usage Statistics`** / **`Reset Usage Statistics`** / **`Refresh Pricing Data`** / **`Show Help`** as standalone palette commands
+
+### Changed
+
+- **BB Menu removed** — the `Cmd+Shift+B` popup with just Usage Statistics + Help duplicated VS Code's native command palette. All BB features now live in the palette (`Cmd+Shift+P` `BlogBuddy:`). `Cmd+Shift+B` keybinding freed.
+- **Show Usage Statistics / Show Help** open content directly (no intermediate "Open in Editor" notification step)
+- **Show Help** picks `help_CN.md` when VS Code is set to Chinese; previously looked in the workspace folder (only worked for BB-repo developers, broken for end users)
+- **Slash menu nav** in BB Editor clamps at the first/last item instead of wrapping (the old modulo wrap felt like a teleport once the menu had 19 items)
+- Renamed Chinese docs to ASCII filenames: `help_中文.md` → `help_CN.md`, `README_中文.md` → `README_CN.md`
+
+### Internal
+
+- Frontmatter parser lifted from `WebviewBridge` into shared `src/utils/frontmatter.ts` (covered by regression tests)
+- New `src/utils/assetInliner.ts` with regex-based `<img>` rewriting, path-traversal guard, and 10 unit tests
+- Third esbuild context for the Reader webview (`media/webview-reader/` → `dist/webview-reader.js`)
+- New protocol unions in `src/services/webviewProtocol.ts` for Reader ↔ host messages (kept separate from BB Editor's existing protocol)
+
+---
+
 ## [0.0.12] - 2026-04-24
 
 ### Added

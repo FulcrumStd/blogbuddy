@@ -2,7 +2,7 @@
 
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
-[中文 Version](help_中文.md)
+[中文 Version](help_CN.md)
 
 BlogBuddy is a VS Code extension that enhances your Markdown writing workflow with AI. Embed commands directly in your text, run them with a keystroke, and watch the output stream in. This guide covers everything from setup to the BB Editor, inline commands, and troubleshooting.
 
@@ -156,35 +156,58 @@ Some following content here.
 
 ---
 
-### AI Reader View
+## ✦ AI Reader View
 
-The Render commands generate a full HTML "reading artifact" of your Markdown
-in a side panel. The Reader does not modify your source — it produces a new
-rendering optimized for humans, which you can preview and export to a
-standalone `.html` file (with images base64-inlined by default).
+The Render commands fire AI re-interpretation: instead of replacing text in your source, they generate a full HTML "reading artifact" rendered in a side panel. Your source `.md` is never modified.
 
-**Tags:**
+### Tags
 
-- `<bb-render-blog:>` — Render as a polished article with a TOC and callouts.
-- `<bb-render-skim:>` — Render in Skim Mode: TL;DR at top, collapsibles, badges.
-- `<bb-render-expl:>` — Render as a teaching artifact: SVG diagrams + annotations.
-- `<bb-render:your prompt>` — Render with your own creative direction.
+- `<bb-render-blog:>` — **Blog View** (default polished article style): in-page TOC, callouts, syntax-highlighted code, comfortable reading width
+- `<bb-render-skim:>` — **Skim Mode**: TL;DR at the top, dense visual structure, `<details>` collapsibles for skippable content
+- `<bb-render-expl:>` — **Explainer**: teaching artifact with SVG diagrams for concepts, code annotations, "Why this matters" sidebars
+- `<bb-render:your prompt>` — **Custom**: your prompt is the primary creative direction (overrides preset style)
 
-You can add a refinement prompt to any preset:
-`<bb-render-blog:make the TOC sticky and add a print stylesheet>`.
+Any preset accepts an optional refinement prompt: `<bb-render-blog:make the TOC sticky and add a print stylesheet>`.
 
-**Fire:** position the cursor anywhere on the tag and press `Cmd+B Cmd+B`
-(macOS) / `Ctrl+B Ctrl+B` (Windows/Linux). The tag is removed from your
-source and a BB Reader panel opens to the right.
+### Firing
 
-**Export:** the Reader has an Export button that writes a self-contained
-`.html` file next to your `.md`. Toggle `blogbuddy.reader.inlineAssets` to
-`false` if you'd rather keep relative image paths (e.g., for site-uploads
-where the assets folder ships alongside the HTML).
+Position the cursor anywhere on the tag and press `Cmd+B Cmd+B` (macOS) / `Ctrl+B Ctrl+B` (Windows/Linux). The tag is **deleted from your source** and a BB Reader panel opens to the right.
 
-**Security:** the Reader webview executes scripts the AI emits, with
-network access blocked (`connect-src 'none'`). Trust depends on trusting
-your AI provider and the source content you render.
+Inside BB Editor, the `/` slash menu has a **Render** group with all four presets prefilled — pick one, type a prompt between `:` and `>`, fire.
+
+### Reader panel UI
+
+- **Top bar**: phase indicator (`Generating…` / `Done ✓`), live token counter, current preset
+- **Prompt input**: edit the refinement prompt inline; press Enter or click **Regenerate** to re-run
+- **Live streaming**: HTML renders incrementally inside a sandboxed iframe as the AI generates it
+- **Source-changed banner**: edit your `.md` after a render → a banner appears offering one-click Regenerate (auto-regen is intentionally avoided — renders are slow and metered)
+- **BB credit footer**: every generated page carries a small `created with BB` badge linking to the repo
+
+### Export
+
+The Reader has an **Export** button that writes a self-contained `.html` file next to your `.md` (default name: `<source>.reader.html`). By default, local-path images are read from disk and base64-inlined so the result is one portable file. Set `blogbuddy.reader.inlineAssets` to `false` to keep relative image paths (useful when the assets folder ships alongside the HTML to your site).
+
+### `.bbreader.md` style reference
+
+To keep multiple Reader-generated pages stylistically consistent, drop a `.bbreader.md` at your **workspace root**. Every render auto-loads it and feeds it to the AI as authoritative guidance on layout, typography, colors, and component patterns. The Reader's top bar shows `· .bbreader.md` when a reference is active.
+
+Run **BlogBuddy: Create .bbreader.md Template** from the command palette to scaffold a starter file with five sections:
+
+- Visual style (typography, body width, colors, headings, code blocks, callouts, links)
+- Document structure (TOC, byline, date format, reading-time estimate)
+- Components (special elements the AI may use)
+- Example HTML (paste an excerpt from your existing blog as a direct reference)
+- Things to avoid
+
+Fill in what you have opinions about; leave the rest blank. Edit and re-render any time — changes take effect immediately on the next render. The file is capped at ~10,000 chars (longer references get truncated with a `[... truncated]` marker).
+
+### Cost guard
+
+If estimated input tokens exceed 25,000 (~100KB of Markdown + style ref), a modal prompts before kicking off the render so you don't accidentally spend on a giant doc.
+
+### Security
+
+The Reader iframe is loaded via a Blob URL and executes inline scripts the AI emits (so AI-generated interactivity — collapsibles, tab switchers, simple sliders — works). The parent webview's CSP has `connect-src 'none'`, so injected scripts cannot phone home. Trust depends on trusting your AI provider and the source content you render.
 
 ---
 
@@ -403,6 +426,7 @@ More content here...
 
 See the [CHANGELOG](../CHANGELOG.md) for a full per-version breakdown. Highlights of recent releases:
 
+- **0.0.13** — **AI Reader View** (`<bb-render-*:>` tags + side-panel HTML rendering, streaming preview, export to self-contained `.html`, `.bbreader.md` style reference, scaffold-template command); BB Menu removed in favor of palette-only command discovery; stats/help open directly without an intermediate notification; slash menu navigation clamps at boundaries instead of wrapping
 - **0.0.12** — Config simplified (one model, always-on streaming, always-on word count); env var fallback for API key and base URL; `BlogBuddy: Select Model` and `BlogBuddy: Show Config Diagnostics` commands; status bar config source indicator; Mermaid output always fenced
 - **0.0.11** — BB Editor polish: IME guard for CJK input, Prism syntax highlighting, external file conflict detection, typed Properties panel for frontmatter, arrow ligatures, compact Markdown normalization, View Source button
 - **0.0.10** — Frontmatter preview and editing panel in BB Editor

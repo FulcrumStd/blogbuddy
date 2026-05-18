@@ -6,13 +6,13 @@
 
 **Blog Buddy** makes Markdown magic happen with AI-powered writing assistance!
 
-[![Version](https://img.shields.io/badge/version-0.0.12-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
+[![Version](https://img.shields.io/badge/version-0.0.13-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
 [![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
 
 </div>
 
-[中文 Version](README_中文.md)
+[中文 Version](docs/README_CN.md)
 
 ## ⚠️ Important Notice
 
@@ -38,6 +38,7 @@ Use intuitive command tags anywhere in your blog posts (all tags support `<bb-xx
 - `<bb-mmd:diagram description>` - Generate Mermaid diagrams (fenced code block)
 - `<bb-kwd:keyword focus>` - Extract keywords
 - `<bb-tag>` - Add BlogBuddy attribution badge
+- `<bb-render-blog:>` / `<bb-render-skim:>` / `<bb-render-expl:>` / `<bb-render:custom prompt>` - **AI Reader View** — see below
 
 ### Seamless Workflow Integration
 
@@ -70,6 +71,20 @@ Open the BB Editor via:
 
 - Right-click a `.md` file in the explorer → **BlogBuddy: Open BB Editor**
 - Or use `Cmd+B` (Mac) / `Ctrl+B` (Win/Linux) when a `.md` file is selected in the explorer
+
+### AI Reader View
+
+Trigger `<bb-render-*:>` tags to have the AI re-interpret your Markdown as a full HTML "reading artifact" rendered in a side panel:
+
+- **Four presets**: Blog View (polished article with TOC and callouts), Skim Mode (TL;DR + collapsibles), Explainer (SVG diagrams + teaching annotations), and Custom (your own prompt drives entirely)
+- **Live streaming preview**: the HTML renders incrementally inside a sandboxed iframe as the AI generates it; final canonical document replaces the streamed buffer on completion
+- **Editable prompt + Regenerate**: tweak the refinement prompt inline and re-run without re-typing the tag
+- **Export to self-contained `.html`**: single-file output with images base64-inlined (toggle `blogbuddy.reader.inlineAssets` to keep relative paths instead)
+- **`.bbreader.md` style reference** (optional): drop a `.bbreader.md` at your workspace root describing your blog's typography, colors, components, etc. — every Reader render uses it as authoritative style guidance. Run **BlogBuddy: Create .bbreader.md Template** to scaffold a starter
+- **BB credit footer**: every generated page (preview and exported) carries a small `created with BB` badge linking back to the repo
+- **Cost guard**: large source files (~25k input tokens) prompt before kicking off a render
+
+Trigger from any Markdown editor — type `<bb-render-blog:>` then press `Cmd+B Cmd+B`. Inside BB Editor, the `/` slash menu has a **Render** group with the four presets prefilled.
 
 ### Document Statistics
 
@@ -147,6 +162,7 @@ BlogBuddy needs an API key and a model. Everything else has a sensible default.
 | `blogbuddy.baseURL` | OpenAI-compatible base URL. Falls back to `BLOGBUDDY_BASE_URL` → `OPENAI_BASE_URL` env vars, then `https://api.openai.com/v1` |
 | `blogbuddy.model` | Model id. Recommended: run **BlogBuddy: Select Model** to pick from the provider's list |
 | `blogbuddy.assetDir` | Relative subdirectory for BB Editor asset uploads (e.g. `assets`). Empty = alongside the document |
+| `blogbuddy.reader.inlineAssets` | When exporting from BB Reader, inline local images as base64 to produce a single self-contained HTML file. Default `true` |
 
 ### Commands
 
