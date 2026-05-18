@@ -389,7 +389,7 @@ function readFlagCost(flag: string): number {
 // ---- Style reference (.bbreader.md) auto-load ----
 
 const STYLE_REFERENCE_FILENAME = '.bbreader.md';
-const STYLE_REFERENCE_MAX_CHARS = 8000;   // ~2k tokens, keeps prompt overhead bounded
+const STYLE_REFERENCE_MAX_CHARS = 10000;   // ~2.5k tokens, keeps prompt overhead bounded
 
 /**
  * Look for a .bbreader.md file in the workspace folder containing the source

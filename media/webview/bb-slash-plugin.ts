@@ -223,11 +223,15 @@ class SlashMenuController {
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
-                this.setActive((this.activeIndex + 1) % this.itemEls.length);
+                // Clamp at the last item instead of wrapping to the top. With
+                // ~19 items now, the old modulo wrap felt like a teleport and
+                // was indistinguishable from "I just hit the bottom of what I
+                // can see" — confusing in a long scrollable list.
+                this.setActive(Math.min(this.activeIndex + 1, this.itemEls.length - 1));
                 return true;
             case 'ArrowUp':
                 e.preventDefault();
-                this.setActive((this.activeIndex - 1 + this.itemEls.length) % this.itemEls.length);
+                this.setActive(Math.max(this.activeIndex - 1, 0));
                 return true;
             case 'Enter':
                 e.preventDefault();
