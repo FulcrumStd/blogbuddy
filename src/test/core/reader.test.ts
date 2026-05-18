@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { BBCmd } from '../../core/types';
-import { buildReaderMessages, getPresetDisplayName, isRenderCmd } from '../../core/reader';
+import { buildReaderMessages, getPresetDisplayName, isRenderCmd, appendBBTag } from '../../core/reader';
 
 suite('reader.buildReaderMessages', () => {
     test('Blog View preset uses BLOG system prompt', () => {
@@ -175,5 +175,41 @@ suite('reader.isRenderCmd', () => {
         assert.strictEqual(isRenderCmd('bb'), false);
         assert.strictEqual(isRenderCmd('bb-expd'), false);
         assert.strictEqual(isRenderCmd('bb-renderer'), false);  // not in our enum
+    });
+});
+
+suite('reader.appendBBTag', () => {
+    test('inserts the tag before </body>', () => {
+        const out = appendBBTag('<!DOCTYPE html><html><body><h1>Hi</h1></body></html>');
+        assert.ok(out.includes('created_with-BB'));
+        // The tag must sit BEFORE </body>, not after.
+        const tagIdx = out.indexOf('created_with-BB');
+        const bodyCloseIdx = out.indexOf('</body>');
+        assert.ok(tagIdx >= 0 && bodyCloseIdx > tagIdx);
+    });
+
+    test('links to the BlogBuddy GitHub repo', () => {
+        const out = appendBBTag('<body></body>');
+        assert.ok(out.includes('https://github.com/FulcrumStd/blogbuddy'));
+    });
+
+    test('appends the tag when no </body> is present', () => {
+        const out = appendBBTag('<h1>fragment</h1>');
+        assert.ok(out.includes('created_with-BB'));
+        assert.ok(out.indexOf('created_with-BB') > out.indexOf('<h1>'));
+    });
+
+    test('uses the LAST </body> as the insertion point', () => {
+        // Defensive: if a doc happens to contain "</body>" earlier (e.g. inside
+        // a code block as an example), inject before the real closing tag.
+        const html = '<body><pre>&lt;/body&gt;</pre><p>real content</p></body>';
+        const out = appendBBTag(html);
+        const tagIdx = out.indexOf('created_with-BB');
+        const lastBodyClose = out.lastIndexOf('</body>');
+        assert.ok(tagIdx >= 0 && lastBodyClose > tagIdx);
+    });
+
+    test('empty input returns empty (no spurious tag)', () => {
+        assert.strictEqual(appendBBTag(''), '');
     });
 });

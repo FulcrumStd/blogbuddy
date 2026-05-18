@@ -134,6 +134,38 @@ export function buildReaderMessages(input: BuildMessagesInput): ChatCompletionMe
     ];
 }
 
+// ---- "Created with BB" tag injection ----
+
+/**
+ * The HTML credit tag that every AI-generated Reader output carries. Mirrors
+ * the Markdown badge in core/bb.ts (shields.io image linked to the repo) but
+ * wrapped in a discreet centered block so it sits cleanly at the foot of any
+ * generated document. The shields.io URL is allowed by the Reader webview's
+ * CSP (img-src https:) and survives export to a standalone HTML file.
+ */
+const BB_TAG_HTML = `
+<div style="margin:48px auto 24px;padding:12px 16px;text-align:center;font-family:system-ui,-apple-system,sans-serif;">
+    <a href="https://github.com/FulcrumStd/blogbuddy" target="_blank" rel="noopener noreferrer" style="display:inline-block;text-decoration:none;">
+        <img src="https://img.shields.io/badge/created_with-BB-FFD900" alt="created with BlogBuddy" style="height:20px;vertical-align:middle;">
+    </a>
+</div>
+`.trim();
+
+/**
+ * Inject the BB credit tag into a generated HTML document. Inserts just before
+ * the LAST `</body>` close (in case the AI accidentally emitted nested body
+ * tags inside CDATA/strings — unlikely but cheap to handle). Falls back to
+ * appending at the end if no `</body>` is present. Empty input returns empty.
+ */
+export function appendBBTag(html: string): string {
+    if (!html) { return html; }
+    const idx = html.lastIndexOf('</body>');
+    if (idx === -1) {
+        return html + '\n' + BB_TAG_HTML;
+    }
+    return html.slice(0, idx) + BB_TAG_HTML + '\n' + html.slice(idx);
+}
+
 // ---- Streaming call wrapper ----
 
 /**

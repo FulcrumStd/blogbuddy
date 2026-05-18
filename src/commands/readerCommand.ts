@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { getPresetDisplayName, RenderCmd, runReaderStream } from '../core/reader';
+import { getPresetDisplayName, RenderCmd, runReaderStream, appendBBTag } from '../core/reader';
 import { AIService } from '../services/AIService';
 import { extractFrontmatter } from '../utils/frontmatter';
 import { inlineImageAssets } from '../utils/assetInliner';
@@ -216,6 +216,13 @@ export class ReaderPanel implements vscode.Disposable {
                 this.post({ type: 'reader-chunk', text: chunk });
             }
             if (myId !== this.generationId) { return; }
+
+            // Inject the "Created with BB" credit into the canonical output once
+            // streaming completes. Mid-stream chunks don't carry it (the
+            // injection point — before </body> — only exists at the very end),
+            // so we only do this once. handleExport reads this.fullText, so the
+            // exported file inherits the tag automatically.
+            this.fullText = appendBBTag(this.fullText);
 
             // Compute the delta for this render.
             const tokensUsed = readFlagTokens('render') - baseTokens;
