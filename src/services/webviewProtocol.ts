@@ -155,7 +155,10 @@ export type HostMessage =
 
 // Webview → Host
 export interface ReaderReadyMessage { type: 'reader-ready'; }
-export interface ReaderRegenerateMessage { type: 'reader-regenerate'; }
+export interface ReaderRegenerateMessage {
+    type: 'reader-regenerate';
+    userPrompt?: string;   // if present, replaces the current prompt before regen
+}
 export interface ReaderExportMessage { type: 'reader-export'; }
 
 export type ReaderWebviewMessage =

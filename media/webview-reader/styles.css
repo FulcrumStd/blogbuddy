@@ -6,7 +6,10 @@
     --bb-accent: var(--vscode-button-background, #0e639c);
     --bb-accent-fg: var(--vscode-button-foreground, #ffffff);
     --bb-muted: var(--vscode-descriptionForeground, #999);
-    --bb-progress-bg: var(--vscode-progressBar-background, #0e639c);
+    --bb-input-bg: var(--vscode-input-background, #3c3c3c);
+    --bb-input-fg: var(--vscode-input-foreground, #cccccc);
+    --bb-input-border: var(--vscode-input-border, transparent);
+    --bb-focus-border: var(--vscode-focusBorder, #007fd4);
 }
 
 * { box-sizing: border-box; }
@@ -28,6 +31,8 @@ body {
     height: 100vh;
 }
 
+/* ---- Top bar ---- */
+
 .bb-reader__topbar {
     flex: 0 0 auto;
     padding: 8px 12px;
@@ -35,63 +40,72 @@ body {
     border-bottom: 1px solid var(--bb-bar-border);
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
 .bb-reader__row1 {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-height: 20px;
+    gap: 8px;
+    min-height: 24px;
 }
 .bb-reader__phase {
     font-weight: 600;
     flex: 0 0 auto;
 }
-.bb-reader__tail {
-    flex: 1 1 auto;
+.bb-reader__gen-tokens {
     color: var(--bb-muted);
-    font-style: italic;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    font-size: 12px;
 }
+.bb-reader__spacer { flex: 1 1 auto; }
+
+/* ---- Spinner ---- */
+
+.bb-reader__spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--bb-bar-border);
+    border-top-color: var(--bb-accent);
+    border-radius: 50%;
+    animation: bb-reader-spin 0.8s linear infinite;
+}
+.bb-reader__spinner--hidden { display: none; }
+
+@keyframes bb-reader-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---- Prompt input row ---- */
 
 .bb-reader__row2 {
-    height: 4px;
-}
-.bb-reader__progress {
-    height: 4px;
-    background: var(--bb-bar-border);
-    border-radius: 2px;
-    overflow: hidden;
-}
-.bb-reader__progress-fill {
-    height: 100%;
-    width: 0;
-    background: var(--bb-progress-bg);
-    transition: width 0.2s ease-out;
-}
-
-.bb-reader__row3 {
     display: flex;
     align-items: center;
     gap: 8px;
-    min-height: 28px;
 }
-.bb-reader__user-prompt {
+.bb-reader__preset-label {
     color: var(--bb-muted);
     font-size: 12px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 50%;
+    flex: 0 0 auto;
+    font-weight: 600;
 }
-.bb-reader__spacer { flex: 1 1 auto; }
-.bb-reader__cost {
-    color: var(--bb-muted);
+.bb-reader__prompt-input {
+    flex: 1 1 auto;
+    background: var(--bb-input-bg);
+    color: var(--bb-input-fg);
+    border: 1px solid var(--bb-input-border);
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-family: inherit;
     font-size: 12px;
+    outline: none;
 }
+.bb-reader__prompt-input:focus {
+    border-color: var(--bb-focus-border);
+}
+
+/* ---- Buttons ---- */
+
 .bb-reader__btn {
     background: transparent;
     color: var(--bb-fg);
@@ -117,8 +131,9 @@ body {
     filter: brightness(1.1);
 }
 
+/* ---- Source-changed banner ---- */
+
 .bb-reader__banner {
-    margin-top: 8px;
     padding: 6px 10px;
     background: var(--vscode-inputValidation-warningBackground, #5a4a00);
     border: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
@@ -151,18 +166,32 @@ body {
     margin-left: auto;
 }
 
-.bb-reader__output {
+/* ---- Content area: iframe overlaid with a status placeholder ---- */
+
+.bb-reader__content {
     flex: 1 1 auto;
-    overflow: auto;
-    /* AI-generated HTML gets injected here — it brings its own styling */
-    background: #ffffff;
-    color: #111;
+    position: relative;
+    overflow: hidden;
 }
 
-.bb-reader__empty {
-    padding: 40px;
-    text-align: center;
-    font-style: italic;
-    background: var(--bb-bg);
-    color: var(--bb-fg);
+.bb-reader__iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #ffffff;
 }
+.bb-reader__iframe--hidden { display: none; }
+
+.bb-reader__status-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bb-muted);
+    font-style: italic;
+    text-align: center;
+    padding: 40px;
+    background: var(--bb-bg);
+}
+.bb-reader__status-overlay--hidden { display: none; }

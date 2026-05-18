@@ -19,17 +19,22 @@ const appHtml = `
     <div class="bb-reader__topbar">
         <div class="bb-reader__row1">
             <span id="phase" class="bb-reader__phase">Idle</span>
-            <span id="tail" class="bb-reader__tail"></span>
-        </div>
-        <div class="bb-reader__row2">
-            <div class="bb-reader__progress"><div id="progress-fill" class="bb-reader__progress-fill"></div></div>
-        </div>
-        <div class="bb-reader__row3">
-            <span id="user-prompt-echo" class="bb-reader__user-prompt"></span>
+            <span id="spinner" class="bb-reader__spinner bb-reader__spinner--hidden" aria-hidden="true"></span>
+            <span id="gen-tokens" class="bb-reader__gen-tokens"></span>
             <span class="bb-reader__spacer"></span>
-            <span id="cost" class="bb-reader__cost"></span>
             <button id="btn-regenerate" class="bb-reader__btn" disabled>↻ Regenerate</button>
             <button id="btn-export" class="bb-reader__btn bb-reader__btn--primary" disabled>⬇ Export</button>
+        </div>
+        <div class="bb-reader__row2">
+            <span id="preset-label" class="bb-reader__preset-label"></span>
+            <input
+                id="prompt-input"
+                class="bb-reader__prompt-input"
+                type="text"
+                placeholder="Refine the prompt, then press Enter or click Regenerate…"
+                autocomplete="off"
+                spellcheck="false"
+            />
         </div>
         <div id="source-banner" class="bb-reader__banner bb-reader__banner--hidden">
             <span id="banner-msg">Source changed</span>
@@ -37,8 +42,14 @@ const appHtml = `
             <button id="banner-dismiss" class="bb-reader__banner-btn-icon" aria-label="Dismiss">×</button>
         </div>
     </div>
-    <div id="ai-output" class="bb-reader__output">
-        <div class="bb-reader__empty">Waiting for source…</div>
+    <div id="content-area" class="bb-reader__content">
+        <div id="status-overlay" class="bb-reader__status-overlay">Waiting for source…</div>
+        <iframe
+            id="ai-frame"
+            class="bb-reader__iframe bb-reader__iframe--hidden"
+            sandbox="allow-scripts"
+            srcdoc=""
+        ></iframe>
     </div>
 </div>
 `;
@@ -47,6 +58,8 @@ document.body.innerHTML = appHtml;
 // ---- State ----
 
 let baseUri = '';
+let preset = '';
+let currentUserPrompt = '';
 
 // ---- Helpers ----
 
@@ -57,17 +70,28 @@ function $(id: string): HTMLElement {
 }
 
 function setPhase(text: string): void { $('phase').textContent = text; }
-function setTail(text: string): void { $('tail').textContent = text; }
-function setProgress(percent: number): void {
-    $('progress-fill').style.width = `${Math.min(100, Math.max(0, percent))}%`;
+function setSpinner(on: boolean): void {
+    $('spinner').classList.toggle('bb-reader__spinner--hidden', !on);
 }
-function setUserPromptEcho(text: string): void {
-    $('user-prompt-echo').textContent = text ? `↳ Custom: "${text}"` : '';
+function setGenTokens(text: string): void { $('gen-tokens').textContent = text; }
+function setPresetLabel(name: string): void { $('preset-label').textContent = name; }
+function setPromptValue(text: string): void {
+    ($('prompt-input') as HTMLInputElement).value = text;
 }
-function setCost(tokens: number, cost?: number): void {
-    const tokStr = tokens ? `${tokens.toLocaleString()} tok` : '';
-    const costStr = cost !== undefined ? `· $${cost.toFixed(4)}` : '';
-    $('cost').textContent = `${tokStr} ${costStr}`.trim();
+function getPromptValue(): string {
+    return ($('prompt-input') as HTMLInputElement).value;
+}
+function showStatus(text: string | null): void {
+    const overlay = $('status-overlay');
+    if (text === null) {
+        overlay.classList.add('bb-reader__status-overlay--hidden');
+    } else {
+        overlay.textContent = text;
+        overlay.classList.remove('bb-reader__status-overlay--hidden');
+    }
+}
+function showFrame(on: boolean): void {
+    $('ai-frame').classList.toggle('bb-reader__iframe--hidden', !on);
 }
 
 // ---- Image src rewriting ----
@@ -76,9 +100,9 @@ function setCost(tokens: number, cost?: number): void {
  * Replace local-path <img src="..."> with webview URIs. Skips https:, data:,
  * and vscode-webview:. Mirrors the host-side rewrite used in BB Editor.
  */
-function rewriteImageSrcs(html: string, baseUri: string): string {
-    if (!baseUri) { return html; }
-    const encodedBase = baseUri.replace(/\+/g, '%2B');
+function rewriteImageSrcs(html: string, base: string): string {
+    if (!base) { return html; }
+    const encodedBase = base.replace(/\+/g, '%2B');
     return html.replace(
         /(<img\b[^>]*\bsrc=)("([^"]*)"|'([^']*)')/gi,
         (match, before: string, _quoted: string, dq?: string, sq?: string) => {
@@ -91,34 +115,48 @@ function rewriteImageSrcs(html: string, baseUri: string): string {
     );
 }
 
-// ---- Tail preview buffer ----
+// ---- Iframe srcdoc with throttled updates ----
+//
+// Each chunk arrives ~50ms apart. Setting srcdoc reloads the iframe; doing it
+// on every chunk causes flicker. Throttle to one update per animation frame so
+// the iframe re-renders at most 60fps regardless of chunk arrival rate.
 
-const TAIL_MAX = 80;
-let tailBuffer = '';
+let accumulatedHtml = '';
+let pendingFrameUpdate = false;
 
-function pushTail(chunk: string): void {
-    // Strip tags and squash whitespace to get a clean preview.
-    const text = chunk.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ');
-    tailBuffer = (tailBuffer + text).slice(-TAIL_MAX);
-    setTail(tailBuffer);
+function scheduleFrameUpdate(html: string): void {
+    accumulatedHtml = html;
+    if (pendingFrameUpdate) { return; }
+    pendingFrameUpdate = true;
+    requestAnimationFrame(() => {
+        pendingFrameUpdate = false;
+        const frame = $('ai-frame') as HTMLIFrameElement;
+        frame.srcdoc = rewriteImageSrcs(accumulatedHtml, baseUri);
+    });
+}
+
+function setFrameNow(html: string): void {
+    // Used for the canonical reader-done payload — bypass throttle so the
+    // final HTML lands immediately without an extra animation-frame delay.
+    accumulatedHtml = html;
+    pendingFrameUpdate = false;
+    const frame = $('ai-frame') as HTMLIFrameElement;
+    frame.srcdoc = rewriteImageSrcs(html, baseUri);
 }
 
 // ---- Streaming state ----
 
-let estInputTokens = 0;
 let receivedChars = 0;
-let preset = '';
-let currentUserPrompt = '';
 
 function resetForNewGeneration(): void {
-    tailBuffer = '';
+    accumulatedHtml = '';
     receivedChars = 0;
-    setTail('');
-    setProgress(0);
-    setCost(0);
+    setGenTokens('');
     $('btn-regenerate').setAttribute('disabled', 'true');
     $('btn-export').setAttribute('disabled', 'true');
-    $('ai-output').innerHTML = '<div class="bb-reader__empty">Streaming…</div>';
+    showFrame(false);
+    showStatus('Generating…');
+    setSpinner(true);
     $('source-banner').classList.add('bb-reader__banner--hidden');
 }
 
@@ -134,9 +172,10 @@ function handleHost(msg: ReaderHostMessage): void {
             baseUri = msg.baseUri;
             preset = msg.preset;
             currentUserPrompt = msg.userPrompt;
-            estInputTokens = msg.estInputTokens;
-            setUserPromptEcho(currentUserPrompt);
+            setPresetLabel(`${preset}:`);
+            setPromptValue(currentUserPrompt);
             setPhase(`Ready (${preset})`);
+            setSpinner(false);
             break;
 
         case 'reader-start':
@@ -145,32 +184,28 @@ function handleHost(msg: ReaderHostMessage): void {
             break;
 
         case 'reader-chunk': {
-            if ($('ai-output').querySelector('.bb-reader__empty')) {
-                $('ai-output').innerHTML = '';
+            // Switch from status overlay to the iframe as soon as the first
+            // chunk arrives. Subsequent chunks throttle into the same iframe.
+            if (!$('status-overlay').classList.contains('bb-reader__status-overlay--hidden')) {
+                showStatus(null);
+                showFrame(true);
             }
-            const rewritten = rewriteImageSrcs(msg.text, baseUri);
-            // Append by inserting an adjacent HTML span. innerHTML += would
-            // re-parse the whole accumulated string each chunk, which is O(n²)
-            // on long docs. insertAdjacentHTML appends.
-            $('ai-output').insertAdjacentHTML('beforeend', rewritten);
+            scheduleFrameUpdate(accumulatedHtml + msg.text);
             receivedChars += msg.text.length;
             const approxTok = Math.ceil(receivedChars / 4);
-            const pct = estInputTokens > 0
-                ? Math.min(99, (approxTok / estInputTokens) * 100)
-                : 0;
-            setCost(approxTok);
-            setProgress(pct);
-            pushTail(msg.text);
+            setGenTokens(`${approxTok.toLocaleString()} tok generated`);
             break;
         }
 
         case 'reader-done': {
-            // Re-render the canonical final HTML by replacing innerHTML once.
-            const rewritten = rewriteImageSrcs(msg.fullHtml, baseUri);
-            $('ai-output').innerHTML = rewritten;
-            setProgress(100);
-            setTail(`Rendered in ${(msg.durationMs / 1000).toFixed(1)}s`);
-            setCost(msg.tokensUsed, msg.costUsd);
+            setFrameNow(msg.fullHtml);
+            showStatus(null);
+            showFrame(true);
+            setSpinner(false);
+            const seconds = (msg.durationMs / 1000).toFixed(1);
+            const tokens = msg.tokensUsed.toLocaleString();
+            const costStr = msg.costUsd !== undefined ? ` · $${msg.costUsd.toFixed(4)}` : '';
+            setGenTokens(`${tokens} tok · ${seconds}s${costStr}`);
             setPhase(`Done (${preset})`);
             $('btn-regenerate').removeAttribute('disabled');
             $('btn-export').removeAttribute('disabled');
@@ -178,8 +213,10 @@ function handleHost(msg: ReaderHostMessage): void {
         }
 
         case 'reader-error':
+            setSpinner(false);
             setPhase('Error');
-            setTail(msg.message);
+            showFrame(false);
+            showStatus(msg.message);
             $('btn-regenerate').removeAttribute('disabled');
             break;
 
@@ -196,13 +233,12 @@ function handleHost(msg: ReaderHostMessage): void {
             break;
 
         case 'reader-export-result':
-            // Toast-style: flash the phase area briefly.
             if (msg.success) {
                 setPhase('Exported');
                 setTimeout(() => setPhase(`Done (${preset})`), 2000);
             } else if (msg.error && msg.error !== 'Cancelled') {
                 setPhase('Export failed');
-                setTail(msg.error);
+                setGenTokens(msg.error);
             }
             break;
 
@@ -215,20 +251,32 @@ function handleHost(msg: ReaderHostMessage): void {
     }
 }
 
-// ---- Button wiring ----
+// ---- Regenerate (top bar + banner + Enter in prompt input) ----
 
-$('btn-regenerate').addEventListener('click', () => {
-    vscode.postMessage({ type: 'reader-regenerate' });
-});
+function fireRegenerate(): void {
+    currentUserPrompt = getPromptValue();
+    vscode.postMessage({ type: 'reader-regenerate', userPrompt: currentUserPrompt });
+}
+
+$('btn-regenerate').addEventListener('click', () => fireRegenerate());
 $('btn-export').addEventListener('click', () => {
     vscode.postMessage({ type: 'reader-export' });
 });
 $('banner-regen').addEventListener('click', () => {
     $('source-banner').classList.add('bb-reader__banner--hidden');
-    vscode.postMessage({ type: 'reader-regenerate' });
+    fireRegenerate();
 });
 $('banner-dismiss').addEventListener('click', () => {
     $('source-banner').classList.add('bb-reader__banner--hidden');
+});
+
+// Enter in the prompt input fires Regenerate (unless the button is disabled,
+// e.g. while a generation is in flight).
+$('prompt-input').addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key !== 'Enter') { return; }
+    e.preventDefault();
+    if ($('btn-regenerate').hasAttribute('disabled')) { return; }
+    fireRegenerate();
 });
 
 // ---- Bootstrap ----

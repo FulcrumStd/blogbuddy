@@ -128,6 +128,12 @@ export class ReaderPanel implements vscode.Disposable {
                 }
                 break;
             case 'reader-regenerate':
+                if (msg.userPrompt !== undefined) {
+                    this.userPrompt = msg.userPrompt;
+                    // Re-emit init so the webview state stays in sync (preset
+                    // label, prompt echo). startGeneration will follow.
+                    this.sendInit();
+                }
                 void this.startGeneration();
                 break;
             case 'reader-export':
