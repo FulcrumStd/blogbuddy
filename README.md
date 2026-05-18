@@ -110,9 +110,9 @@ A small BlogBuddy item in the status bar shows which source your `apiKey` is cur
 
 4. **Watch BB work its magic** — the command tag and surrounding text are replaced with AI-generated content (streaming in real time)
 
-### Menu Access
+### Finding all commands
 
-Use `Cmd+Shift+B` (Mac) or `Ctrl+Shift+B` (Windows/Linux) to open the BB menu (usage statistics, help, etc.).
+Every BlogBuddy command is available from the VS Code command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) — type `BlogBuddy:` to filter, including **Usage Statistics**, **Help**, **Select Model**, **Create .bbreader.md Template**, etc.
 
 ### 📚 Detailed Documentation
 
@@ -124,7 +124,6 @@ For comprehensive feature documentation, examples, and advanced usage tips, see 
 | Shortcut | Action |
 |----------|--------|
 | `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | Execute BB command on the current block / selection |
-| `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | Open BB menu |
 | `Cmd+B` (Mac)<br>`Ctrl+B` (Win/Linux) | Open BB Editor for the selected `.md` file (in Explorer) |
 
 Inside the BB Editor:
@@ -155,7 +154,9 @@ BlogBuddy needs an API key and a model. Everything else has a sensible default.
 |---------|--------------|
 | `BlogBuddy: Select Model` | Fetches `/v1/models` from the configured base URL and opens a picker. Also offers "Enter custom model…" if the list is empty or missing your model |
 | `BlogBuddy: Show Config Diagnostics` | Opens a masked report showing what the extension actually resolves for each field (settings vs env vs default) — useful for debugging "I set the env var but it doesn't work" on macOS |
-| `BlogBuddy: Show Menu` | Usage stats, help, etc. |
+| `BlogBuddy: Show Usage Statistics` | View token usage, request counts, and (when pricing data is available) per-model cost |
+| `BlogBuddy: Show Help` | Open the bundled help document |
+| `BlogBuddy: Create .bbreader.md Template` | Scaffold the style-reference template at the workspace root for AI Reader |
 | `BlogBuddy: Hi BB` | Execute BB command on current text |
 | `BlogBuddy: Open BB Editor` | Open the current `.md` in BB Editor |
 

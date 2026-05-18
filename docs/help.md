@@ -20,7 +20,7 @@ BlogBuddy is a VS Code extension that enhances your Markdown writing workflow wi
 
 1. **Inline BB commands** — embed tags in your text, press the hotkey (`Cmd+B Cmd+B`)
 2. **BB Editor** — a built-in WYSIWYG Markdown editor with frontmatter Properties panel, syntax highlighting, and slash menu (`Cmd+B` on a `.md` file in the Explorer)
-3. **Menu** — `Cmd+Shift+B` opens a palette for usage stats, help, etc.
+3. **Command palette** — every BB feature (usage stats, help, model picker, .bbreader.md template, …) is available via `Cmd+Shift+P` / `Ctrl+Shift+P` and the `BlogBuddy:` prefix
 
 Word count for Markdown files is always shown in the status bar (no toggle — it's on for every `.md` file).
 
@@ -244,12 +244,11 @@ Hover the item for a per-field source table (apiKey, baseURL, model) and quick l
 
 ---
 
-## 🎛️ Menu (Ctrl+Shift+B)
+## 📊 Usage Statistics & Help
 
-Opens an interactive menu:
+Run `BlogBuddy: Show Usage Statistics` from the command palette for request counts, token usage, per-flag / per-model breakdown, and (when pricing data is available) cost estimates. The dialog offers **Open in Editor** (full markdown table), **Reset Statistics**, and **Refresh Pricing**.
 
-- **Usage Statistics** — request counts, token usage, per-flag / per-model breakdown; cost estimate when pricing data is available
-- **Help Information** — opens this document
+Run `BlogBuddy: Show Help` to open this document.
 
 ---
 
@@ -280,7 +279,9 @@ Open the command palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and type `BlogBuddy:`
 |---------|---------|
 | `BlogBuddy: Select Model` | Fetch the provider's `/v1/models` list and pick (or enter) a model id. Surfaces auth / network errors directly if the fetch fails |
 | `BlogBuddy: Show Config Diagnostics` | Open a masked report showing what the extension actually resolves for `apiKey`, `baseURL`, `model` — settings value, env var source, or default. Great for debugging "my env var isn't picked up" |
-| `BlogBuddy: Show Menu` | Usage stats and help |
+| `BlogBuddy: Show Usage Statistics` | Token usage, request counts, per-flag / per-model breakdown; offers Open in Editor / Reset / Refresh Pricing |
+| `BlogBuddy: Show Help` | Open this document |
+| `BlogBuddy: Create .bbreader.md Template` | Scaffold the style-reference template at the workspace root for AI Reader |
 | `BlogBuddy: Hi BB` | Execute the BB command on current cursor / selection (same as `Cmd+B Cmd+B`) |
 | `BlogBuddy: Open BB Editor` | Open the current `.md` in the BB Editor |
 
@@ -350,10 +351,12 @@ More content here...
 | Action | Shortcut | Command |
 |--------|----------|---------|
 | Execute BB command | `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | `blogbuddy.bb` |
-| Open main menu | `Cmd+Shift+B` (Mac)<br>`Ctrl+Shift+B` (Win/Linux) | `blogbuddy.menu` |
 | Open BB Editor | `Cmd+B` (Mac)<br>`Ctrl+B` (Win/Linux) — Explorer focus on `.md` | `blogbuddy.openEditor` |
 | Select model | Command palette | `blogbuddy.selectModel` |
 | Show diagnostics | Command palette | `blogbuddy.showDiagnostics` |
+| Show usage statistics | Command palette | `blogbuddy.showUsageStats` |
+| Show help | Command palette | `blogbuddy.showHelp` |
+| Create .bbreader.md template | Command palette | `blogbuddy.createReaderTemplate` |
 
 ---
 

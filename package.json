@@ -22,10 +22,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "blogbuddy.menu",
-        "title": "BlogBuddy: Show Menu"
-      },
-      {
         "command": "blogbuddy.bb",
         "title": "BlogBuddy: Hi BB"
       },
@@ -48,6 +44,14 @@
       {
         "command": "blogbuddy.createReaderTemplate",
         "title": "BlogBuddy: Create .bbreader.md Template"
+      },
+      {
+        "command": "blogbuddy.showUsageStats",
+        "title": "BlogBuddy: Show Usage Statistics"
+      },
+      {
+        "command": "blogbuddy.showHelp",
+        "title": "BlogBuddy: Show Help"
       }
     ],
     "menus": {
@@ -67,11 +71,6 @@
       ]
     },
     "keybindings": [
-      {
-        "command": "blogbuddy.menu",
-        "key": "ctrl+shift+b",
-        "mac": "cmd+shift+b"
-      },
       {
         "command": "blogbuddy.bb",
         "key": "ctrl+b ctrl+b",
