@@ -44,6 +44,10 @@
           "light": "images/icon.png",
           "dark": "images/icon.png"
         }
+      },
+      {
+        "command": "blogbuddy.createReaderTemplate",
+        "title": "BlogBuddy: Create .bbreader.md Template"
       }
     ],
     "menus": {
