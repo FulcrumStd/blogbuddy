@@ -91,15 +91,26 @@ export interface BuildMessagesInput {
     frontmatter: string;   // raw frontmatter block (with delimiters) or ''
     body: string;          // Markdown body (frontmatter already stripped)
     sourceFileName: string;
+    styleReference?: string;  // optional .bbreader.md content for style/conventions
 }
 
 export function buildReaderMessages(input: BuildMessagesInput): ChatCompletionMessageParam[] {
     const preset = getSystemPromptForPreset(input.cmd);
     const userPrompt = input.userPrompt.trim();
+    const styleRef = input.styleReference?.trim();
 
-    // System message: hard constraints + preset (if any) + user steering (custom or "Additionally:")
+    // System message: hard constraints + preset (if any) + style ref (if any)
+    // + user steering (custom or "Additionally:")
     const systemParts: string[] = [HARD_CONSTRAINTS];
     if (preset) { systemParts.push(preset); }
+    if (styleRef) {
+        systemParts.push(
+            'Style reference — match the visual language and conventions described below. ' +
+            'This is the user\'s house style; treat it as authoritative for layout, typography, ' +
+            'colors, component patterns, and any other guidance it contains:\n\n' +
+            styleRef
+        );
+    }
     if (input.cmd === BBCmd.RENDER) {
         // Custom render: userPrompt IS the primary creative direction.
         // Fall back to a sensible default if the user provided none, so the

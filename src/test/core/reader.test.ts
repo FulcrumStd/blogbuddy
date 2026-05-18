@@ -109,6 +109,50 @@ suite('reader.buildReaderMessages', () => {
         const userContent = typeof msgs[1].content === 'string' ? msgs[1].content : '';
         assert.ok(userContent.includes('Content (Markdown):'));
     });
+
+    test('styleReference is appended to the system message when provided', () => {
+        const msgs = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG,
+            userPrompt: '',
+            frontmatter: '',
+            body: '# Hi',
+            sourceFileName: 'a.md',
+            styleReference: 'Use serif body, sans-serif headings. Body width 720px.',
+        });
+        const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
+        assert.ok(systemContent.includes('Style reference'));
+        assert.ok(systemContent.includes('serif body, sans-serif headings'));
+        // Body content should still be in the user message, not the system one.
+        const userContent = typeof msgs[1].content === 'string' ? msgs[1].content : '';
+        assert.ok(userContent.includes('# Hi'));
+    });
+
+    test('empty or whitespace styleReference is silently skipped', () => {
+        const msgs = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG,
+            userPrompt: '',
+            frontmatter: '',
+            body: '# Hi',
+            sourceFileName: 'a.md',
+            styleReference: '   \n\n  ',
+        });
+        const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
+        assert.ok(!/Style reference/i.test(systemContent));
+    });
+
+    test('styleReference is preserved verbatim (model sees the actual file content)', () => {
+        const ref = '## Header\n\n- Bullet 1\n- Bullet 2\n\nCode: `const x = 1;`';
+        const msgs = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG,
+            userPrompt: '',
+            frontmatter: '',
+            body: 'doc',
+            sourceFileName: 'a.md',
+            styleReference: ref,
+        });
+        const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
+        assert.ok(systemContent.includes(ref));
+    });
 });
 
 suite('reader.getPresetDisplayName', () => {
