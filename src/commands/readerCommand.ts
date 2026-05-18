@@ -56,6 +56,7 @@ export class ReaderPanel implements vscode.Disposable {
     private hasRenderedOnce = false;
     private startTime = 0;
     private fullText = '';
+    private styleReferenceName?: string;   // basename of the loaded .bbreader.md, if any
 
     private constructor(
         private readonly context: vscode.ExtensionContext,
@@ -148,7 +149,17 @@ export class ReaderPanel implements vscode.Disposable {
 
     private async startGeneration(): Promise<void> {
         const fullSource = this.sourceDoc.getText();
-        const estInputTokens = Math.ceil(fullSource.length / 4);
+
+        // Load the optional .bbreader.md style reference. Each generation re-reads
+        // it so edits propagate to subsequent renders without restarting the panel.
+        const styleRef = await loadStyleReference(this.sourceDoc.uri);
+        const refChars = styleRef?.content.length ?? 0;
+        this.styleReferenceName = styleRef?.name;
+        // Push an updated init message so the webview's preset label can show the
+        // active reference indicator before the stream starts.
+        if (this.webviewReady) { this.sendInit(); }
+
+        const estInputTokens = Math.ceil((fullSource.length + refChars) / 4);
         if (estInputTokens > ReaderPanel.LARGE_INPUT_TOKEN_THRESHOLD) {
             const proceed = await vscode.window.showWarningMessage(
                 `This file is large (~${estInputTokens.toLocaleString()} input tokens). Render anyway?`,
@@ -183,6 +194,7 @@ export class ReaderPanel implements vscode.Disposable {
                 frontmatter,
                 body,
                 sourceFileName: path.basename(this.sourceDoc.uri.fsPath),
+                styleReference: styleRef?.content,
             });
         } catch (err) {
             if (myId === this.generationId) {
@@ -290,6 +302,7 @@ export class ReaderPanel implements vscode.Disposable {
             userPrompt: this.userPrompt,
             baseUri,
             estInputTokens,
+            styleReferenceName: this.styleReferenceName,
         });
         this.postTheme(vscode.window.activeColorTheme.kind);
     }
@@ -364,4 +377,30 @@ function readFlagTokens(flag: string): number {
 function readFlagCost(flag: string): number {
     const all = AIService.getInstance().getUsageStats();
     return all.flagStats.get(flag)?.cost ?? 0;
+}
+
+// ---- Style reference (.bbreader.md) auto-load ----
+
+const STYLE_REFERENCE_FILENAME = '.bbreader.md';
+const STYLE_REFERENCE_MAX_CHARS = 8000;   // ~2k tokens, keeps prompt overhead bounded
+
+/**
+ * Look for a .bbreader.md file in the workspace folder containing the source
+ * document. If present, return its content (truncated to STYLE_REFERENCE_MAX_CHARS
+ * with a marker if larger). Returns undefined when no file exists or no
+ * workspace folder applies.
+ */
+async function loadStyleReference(sourceUri: vscode.Uri): Promise<{ name: string; content: string } | undefined> {
+    const folder = vscode.workspace.getWorkspaceFolder(sourceUri);
+    if (!folder) { return undefined; }
+    const refPath = path.join(folder.uri.fsPath, STYLE_REFERENCE_FILENAME);
+    try {
+        let content = await fs.readFile(refPath, 'utf-8');
+        if (content.length > STYLE_REFERENCE_MAX_CHARS) {
+            content = content.slice(0, STYLE_REFERENCE_MAX_CHARS) + '\n\n[... truncated]';
+        }
+        return { name: STYLE_REFERENCE_FILENAME, content };
+    } catch {
+        return undefined;
+    }
 }

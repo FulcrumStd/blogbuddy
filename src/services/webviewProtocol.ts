@@ -174,6 +174,7 @@ export interface ReaderInitMessage {
     userPrompt: string;            // empty string if not provided
     baseUri: string;               // webview URI to source's directory (for image rewriting)
     estInputTokens: number;        // heuristic chars/4
+    styleReferenceName?: string;   // basename of the loaded .bbreader.md, if any
 }
 export interface ReaderStartMessage { type: 'reader-start'; }
 export interface ReaderChunkMessage { type: 'reader-chunk'; text: string; }

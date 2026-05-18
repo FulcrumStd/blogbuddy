@@ -186,16 +186,18 @@ window.addEventListener('message', (event: MessageEvent<ReaderHostMessage>) => {
 
 function handleHost(msg: ReaderHostMessage): void {
     switch (msg.type) {
-        case 'reader-init':
+        case 'reader-init': {
             baseUri = msg.baseUri;
             preset = msg.preset;
             currentUserPrompt = msg.userPrompt;
-            setPresetLabel(`${preset}:`);
+            const refSuffix = msg.styleReferenceName ? ` · ${msg.styleReferenceName}` : '';
+            setPresetLabel(`${preset}${refSuffix}:`);
             setPromptValue(currentUserPrompt);
             setPhase(`Ready (${preset})`);
             setSpinner(false);
             setCheck(false);
             break;
+        }
 
         case 'reader-start':
             resetForNewGeneration();
