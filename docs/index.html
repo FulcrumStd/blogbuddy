@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlogBuddy — A VS Code Dossier for Markdown Writers</title>
+<meta name="description" content="BlogBuddy puts AI commands inside your Markdown. Write a tag, press a chord, watch it resolve in place.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT,WONK@0,9..144,300..900,0..100,0..1;1,9..144,300..900,0..100,0..1&family=Vollkorn:ital,wght@0,400..900;1,400..900&family=JetBrains+Mono:ital,wght@0,300..800;1,300..800&family=Major+Mono+Display&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F4EFE5;
+    --paper-dark: #EBE3D2;
+    --ink: #0F0E0C;
+    --ink-soft: #2A2620;
+    --faded: #8C8579;
+    --rule: #1A1815;
+    --yellow: #FFD900;
+    --wine: #6B1F1F;
+    --teal: #1F4B47;
+    --col-gap: 2.5rem;
+    --max: 1280px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #14120E;
+      --paper-dark: #1B1815;
+      --ink: #F0E9D8;
+      --ink-soft: #C9C1AE;
+      --faded: #756E61;
+      --rule: #E8E1CF;
+      --wine: #C7765C;
+      --teal: #79B4AC;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Vollkorn', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.55;
+    font-feature-settings: 'kern' 1, 'liga' 1, 'onum' 1;
+    background-image:
+      radial-gradient(circle at 10% 0%, rgba(255, 217, 0, 0.04) 0%, transparent 35%),
+      radial-gradient(circle at 90% 100%, rgba(107, 31, 31, 0.03) 0%, transparent 40%);
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body::before { mix-blend-mode: screen; opacity: 0.25; }
+  }
+
+  ::selection { background: var(--yellow); color: var(--ink); }
+
+  /* —— Type ladder —— */
+
+  .display {
+    font-family: 'Fraunces', Georgia, serif;
+    font-variation-settings: 'opsz' 144, 'SOFT' 0, 'WONK' 0;
+    font-weight: 380;
+    line-height: 0.92;
+    letter-spacing: -0.025em;
+  }
+
+  .display em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100, 'WONK' 1;
+    font-weight: 380;
+    color: var(--wine);
+  }
+
+  .kicker {
+    font-family: 'Major Mono Display', 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--faded);
+  }
+
+  .lede {
+    font-family: 'Fraunces', Georgia, serif;
+    font-variation-settings: 'opsz' 36, 'SOFT' 50, 'WONK' 0;
+    font-weight: 380;
+    font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+    line-height: 1.32;
+    letter-spacing: -0.012em;
+  }
+
+  .lede em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 36, 'SOFT' 100, 'WONK' 1;
+    color: var(--wine);
+  }
+
+  h2.section {
+    font-family: 'Fraunces', Georgia, serif;
+    font-variation-settings: 'opsz' 80, 'SOFT' 30, 'WONK' 0;
+    font-weight: 420;
+    font-size: clamp(2rem, 4.5vw, 3.4rem);
+    line-height: 1;
+    letter-spacing: -0.025em;
+    margin: 0 0 0.5em;
+  }
+
+  h2.section em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 80, 'SOFT' 100, 'WONK' 1;
+    color: var(--wine);
+  }
+
+  h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-variation-settings: 'opsz' 30, 'SOFT' 0, 'WONK' 0;
+    font-weight: 540;
+    font-size: 1.35rem;
+    line-height: 1.15;
+    letter-spacing: -0.012em;
+    margin: 0 0 0.4em;
+  }
+
+  code, kbd, .mono {
+    font-family: 'JetBrains Mono', 'Menlo', monospace;
+    font-feature-settings: 'liga' 0, 'calt' 1;
+    font-size: 0.92em;
+  }
+
+  /* —— Layout shell —— */
+
+  .frame {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* —— Masthead —— */
+
+  .masthead {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 2rem;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .masthead .lockup {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+  }
+
+  .masthead .bb-mark {
+    display: inline-block;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 0.25rem 0.5rem 0.2rem;
+    font-family: 'Major Mono Display', monospace;
+    letter-spacing: 0.1em;
+    font-size: 0.9rem;
+  }
+
+  .masthead .meta { color: var(--faded); }
+  .masthead .meta span + span { margin-left: 1.4rem; }
+
+  /* —— Hero —— */
+
+  .hero {
+    padding-top: clamp(4rem, 9vw, 7.5rem);
+    padding-bottom: clamp(3rem, 8vw, 6rem);
+    position: relative;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 3fr);
+    gap: var(--col-gap);
+    align-items: end;
+  }
+
+  .hero-title {
+    font-size: clamp(4rem, 13vw, 12rem);
+    margin: 0;
+  }
+
+  .hero-title .line2 { display: block; padding-left: 0.6em; }
+
+  .hero-bar {
+    margin-top: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+  }
+
+  .yellow-tag {
+    display: inline-flex;
+    align-items: center;
+    background: var(--yellow);
+    color: var(--ink);
+    padding: 0.5rem 0.85rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    box-shadow: 4px 4px 0 var(--ink);
+    position: relative;
+  }
+
+  .yellow-tag .cursor {
+    display: inline-block;
+    width: 0.6ch;
+    height: 1.05em;
+    background: var(--ink);
+    margin-left: 0.2ch;
+    animation: blink 1.05s steps(2, start) infinite;
+    vertical-align: middle;
+    transform: translateY(-1px);
+  }
+
+  @keyframes blink { to { background: transparent; } }
+
+  .hero-aside {
+    border-left: 1px solid var(--rule);
+    padding-left: 1.4rem;
+    color: var(--ink-soft);
+    font-family: 'Vollkorn', serif;
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .hero-aside p { margin: 0 0 0.7rem; }
+  .hero-aside strong { color: var(--ink); font-weight: 600; }
+
+  /* —— Section header (numbered, with rule) —— */
+
+  .section-head {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+    border-top: 1px solid var(--rule);
+    margin-top: 4.5rem;
+    margin-bottom: 2.2rem;
+  }
+
+  .roman {
+    font-family: 'Major Mono Display', monospace;
+    color: var(--wine);
+    font-size: 0.85rem;
+    letter-spacing: 0.15em;
+  }
+
+  .section-head .kicker { justify-self: end; }
+
+  /* —— Premise (two-col with drop cap) —— */
+
+  .premise {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 3fr);
+    gap: var(--col-gap);
+  }
+
+  .premise p {
+    margin: 0 0 1.1em;
+    font-size: 1.05rem;
+    line-height: 1.6;
+  }
+
+  .premise .col-1 > p:first-child::first-letter {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 144, 'SOFT' 100, 'WONK' 1;
+    font-weight: 420;
+    float: left;
+    font-size: 5.2em;
+    line-height: 0.82;
+    margin: 0.05em 0.12em -0.05em 0;
+    color: var(--wine);
+  }
+
+  .premise .col-2 {
+    border-left: 1px solid var(--rule);
+    padding-left: 1.4rem;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+
+  .premise .col-2 h4 {
+    font-family: 'Major Mono Display', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--faded);
+    margin: 0 0 0.6rem;
+  }
+
+  .premise pre {
+    margin: 0;
+    padding: 1rem 1.1rem;
+    background: var(--paper-dark);
+    border-left: 3px solid var(--yellow);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    overflow-x: auto;
+  }
+
+  .premise pre .tag {
+    background: var(--yellow);
+    color: var(--ink);
+    padding: 0.1em 0.25em;
+  }
+
+  /* —— Vocabulary specimen —— */
+
+  .vocab {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .vocab .row {
+    display: grid;
+    grid-template-columns: minmax(220px, 1.4fr) minmax(0, 2.6fr) auto;
+    align-items: baseline;
+    gap: 1.8rem;
+    padding: 1.1rem 0;
+    border-bottom: 1px dotted var(--rule);
+    transition: background 0.2s ease;
+  }
+
+  .vocab .row:hover {
+    background: linear-gradient(90deg, transparent 0%, var(--yellow) 4%, var(--yellow) 96%, transparent 100%);
+    background-size: 6px 100%, 100% 100%;
+  }
+
+  .vocab .row:hover .tagname { transform: translateX(0.4rem); }
+  .vocab .tagname {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.02rem;
+    color: var(--ink);
+    transition: transform 0.25s cubic-bezier(.2,.7,.3,1);
+  }
+
+  .vocab .tagname .lt, .vocab .tagname .gt { color: var(--faded); }
+  .vocab .tagname .cmd { color: var(--ink); font-weight: 600; }
+  .vocab .tagname .arg { color: var(--wine); font-style: italic; }
+
+  .vocab .descr {
+    font-family: 'Vollkorn', serif;
+    font-size: 1.02rem;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  .vocab .descr em {
+    color: var(--ink);
+    font-style: italic;
+    font-weight: 500;
+  }
+
+  .vocab .scope {
+    font-family: 'Major Mono Display', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    color: var(--faded);
+    white-space: nowrap;
+    justify-self: end;
+  }
+
+  .vocab-foot {
+    padding: 1.5rem 0;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.4rem;
+    border-top: 2px solid var(--ink);
+    margin-top: 0.8rem;
+  }
+
+  .vocab-foot div {
+    border-left: 2px solid var(--yellow);
+    padding-left: 0.9rem;
+  }
+
+  .vocab-foot strong {
+    display: block;
+    font-family: 'Major Mono Display', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.15em;
+    margin-bottom: 0.3rem;
+    color: var(--ink);
+  }
+
+  /* —— Editor feature block —— */
+
+  .editor-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: var(--col-gap);
+    align-items: start;
+  }
+
+  .editor-lede {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 30, 'SOFT' 50, 'WONK' 0;
+    font-size: 1.15rem;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  .editor-lede em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 30, 'SOFT' 100, 'WONK' 1;
+    color: var(--wine);
+  }
+
+  .feature-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    columns: 2;
+    column-gap: var(--col-gap);
+  }
+
+  .feature-list li {
+    break-inside: avoid;
+    padding: 0.85rem 0;
+    border-bottom: 1px dotted var(--rule);
+    font-size: 0.95rem;
+    line-height: 1.42;
+  }
+
+  .feature-list li strong {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 20, 'SOFT' 0;
+    font-weight: 560;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 0.15rem;
+  }
+
+  .feature-list li code {
+    background: var(--paper-dark);
+    padding: 0.05em 0.3em;
+    border-radius: 2px;
+    font-size: 0.82rem;
+  }
+
+  /* —— Reader presets —— */
+
+  .presets {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .preset {
+    background: var(--paper-dark);
+    padding: 1.6rem 1.6rem 1.4rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s cubic-bezier(.2,.7,.3,1);
+  }
+
+  .preset:hover { transform: translate(-3px, -3px); box-shadow: 6px 6px 0 var(--ink); }
+
+  .preset .num {
+    position: absolute;
+    top: 1rem;
+    right: 1.2rem;
+    font-family: 'Major Mono Display', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--faded);
+  }
+
+  .preset .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--wine);
+    margin-bottom: 0.4rem;
+  }
+
+  .preset h4 {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 40, 'SOFT' 30, 'WONK' 0;
+    font-weight: 480;
+    font-size: 1.7rem;
+    margin: 0 0 0.3rem;
+    line-height: 1;
+  }
+
+  .preset h4 em {
+    font-style: italic;
+    font-variation-settings: 'opsz' 40, 'SOFT' 100, 'WONK' 1;
+    color: var(--wine);
+  }
+
+  .preset p {
+    margin: 0.6rem 0 0;
+    font-size: 0.93rem;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  .preset::after {
+    content: '';
+    position: absolute;
+    inset: auto -10% -40% auto;
+    width: 50%;
+    height: 60%;
+    background: var(--yellow);
+    opacity: 0;
+    transform: rotate(8deg);
+    transition: opacity 0.4s ease;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .preset:hover::after { opacity: 0.15; }
+  .preset > * { position: relative; z-index: 1; }
+
+  .reader-extras {
+    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.6rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .reader-extras h5 {
+    font-family: 'Major Mono Display', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+    margin: 0 0 0.5rem;
+  }
+
+  .reader-extras p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  /* —— Quick start —— */
+
+  .qs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    counter-reset: qs;
+  }
+
+  .qs .step {
+    counter-increment: qs;
+    padding: 1.6rem 1.4rem 1.6rem 1.4rem;
+    border-left: 1px solid var(--rule);
+    position: relative;
+  }
+
+  .qs .step:first-child { border-left: 2px solid var(--ink); }
+
+  .qs .step::before {
+    content: counter(qs, decimal-leading-zero);
+    display: block;
+    font-family: 'Major Mono Display', monospace;
+    color: var(--yellow);
+    -webkit-text-stroke: 0.5px var(--ink);
+    font-size: 2.2rem;
+    line-height: 1;
+    margin-bottom: 0.7rem;
+  }
+
+  .qs .step h4 {
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 24, 'SOFT' 0;
+    font-weight: 540;
+    font-size: 1.05rem;
+    margin: 0 0 0.4rem;
+    line-height: 1.2;
+  }
+
+  .qs .step p {
+    margin: 0;
+    font-size: 0.87rem;
+    line-height: 1.45;
+    color: var(--ink-soft);
+  }
+
+  .qs .step code {
+    background: var(--paper-dark);
+    padding: 0.05em 0.3em;
+    font-size: 0.78rem;
+  }
+
+  /* —— Reference tables —— */
+
+  .ref-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--col-gap);
+  }
+
+  .ref-grid h3 {
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 0.5rem;
+    margin-bottom: 0;
+  }
+
+  .ref-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .ref-table td {
+    padding: 0.7rem 0.4rem;
+    border-bottom: 1px dotted var(--rule);
+    vertical-align: top;
+    line-height: 1.45;
+  }
+
+  .ref-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    color: var(--wine);
+    padding-right: 1rem;
+  }
+
+  /* —— Colophon —— */
+
+  .colophon {
+    margin-top: 6rem;
+    padding: 3rem 0 3rem;
+    border-top: 4px double var(--ink);
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .colophon p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  .colophon a { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  .colophon a:hover { background: var(--yellow); color: var(--ink); text-decoration: none; }
+
+  .colophon .marque {
+    font-family: 'Major Mono Display', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    color: var(--ink);
+  }
+
+  .colophon .center {
+    text-align: center;
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 30, 'SOFT' 70, 'WONK' 1;
+    font-style: italic;
+    font-size: 1.05rem;
+    color: var(--wine);
+  }
+
+  .colophon .right { text-align: right; }
+
+  .ornament {
+    text-align: center;
+    margin: 4rem 0 1rem;
+    font-family: 'Major Mono Display', monospace;
+    letter-spacing: 0.4em;
+    color: var(--faded);
+    font-size: 0.8rem;
+  }
+
+  /* —— Reveal animation —— */
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s cubic-bezier(.2,.7,.3,1);
+  }
+
+  .reveal.in {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* —— Pull-quote band —— */
+
+  .quote-band {
+    margin: 5rem -2rem 5rem;
+    padding: 3rem 2rem;
+    background: var(--ink);
+    color: var(--paper);
+    text-align: center;
+    position: relative;
+  }
+
+  .quote-band::before, .quote-band::after {
+    content: '';
+    position: absolute;
+    height: 8px;
+    left: 0;
+    right: 0;
+    background-image: repeating-linear-gradient(90deg, var(--yellow) 0 8px, transparent 8px 16px);
+  }
+  .quote-band::before { top: 0; }
+  .quote-band::after { bottom: 0; }
+
+  .quote-band blockquote {
+    margin: 0 auto;
+    max-width: 800px;
+    font-family: 'Fraunces', serif;
+    font-variation-settings: 'opsz' 60, 'SOFT' 80, 'WONK' 1;
+    font-style: italic;
+    font-weight: 380;
+    font-size: clamp(1.4rem, 3vw, 2.1rem);
+    line-height: 1.25;
+  }
+
+  .quote-band blockquote::before { content: '“'; color: var(--yellow); margin-right: 0.05em; }
+  .quote-band blockquote::after { content: '”'; color: var(--yellow); margin-left: 0.05em; }
+
+  .quote-band .attrib {
+    margin-top: 1.2rem;
+    font-family: 'Major Mono Display', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    color: var(--yellow);
+  }
+
+  /* —— CTA panel —— */
+
+  .cta {
+    margin-top: 4rem;
+    padding: 2.5rem;
+    background: var(--paper-dark);
+    border: 2px solid var(--ink);
+    box-shadow: 8px 8px 0 var(--yellow);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: center;
+  }
+
+  .cta h3 {
+    margin: 0 0 0.3rem;
+    font-size: 1.8rem;
+  }
+
+  .cta p {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--ink-soft);
+  }
+
+  .cta-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.85rem 1.2rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    text-decoration: none;
+    border: 2px solid var(--ink);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .btn.primary {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .btn.primary:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--yellow);
+  }
+
+  .btn.secondary {
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .btn.secondary:hover {
+    background: var(--yellow);
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+
+  /* —— Responsive —— */
+
+  @media (max-width: 980px) {
+    .hero-grid, .premise, .editor-grid, .ref-grid, .presets {
+      grid-template-columns: 1fr;
+    }
+    .qs { grid-template-columns: repeat(2, 1fr); }
+    .qs .step { border-left: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+    .vocab .row { grid-template-columns: 1fr; gap: 0.3rem; padding: 1rem 0; }
+    .vocab .scope { justify-self: start; }
+    .vocab-foot, .reader-extras { grid-template-columns: 1fr; }
+    .colophon { grid-template-columns: 1fr; text-align: left; }
+    .colophon .center, .colophon .right { text-align: left; }
+    .cta { grid-template-columns: 1fr; }
+    .feature-list { columns: 1; }
+    .hero-title { font-size: clamp(3rem, 14vw, 6rem); }
+  }
+
+  @media (max-width: 600px) {
+    body { font-size: 16px; }
+    .frame { padding: 0 1.2rem; }
+    .qs { grid-template-columns: 1fr; }
+    .masthead { flex-direction: column; align-items: flex-start; gap: 0.6rem; }
+    .quote-band { margin-left: -1.2rem; margin-right: -1.2rem; }
+  }
+
+</style>
+</head>
+<body>
+
+<header class="frame masthead">
+  <div class="lockup">
+    <span class="bb-mark">BB</span>
+    <span>BlogBuddy · A Dossier</span>
+  </div>
+  <div class="meta">
+    <span>Issue 0.13</span>
+    <span>MAY · MMXXVI</span>
+    <span>VS Code Extension</span>
+  </div>
+</header>
+
+<main class="frame">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="kicker" style="margin-bottom:1.6rem;">No. 0.13 — A Markdown Apparatus</div>
+        <h1 class="display hero-title">
+          Blog<em>Buddy</em>
+          <span class="line2">writes <em>with</em> you.</span>
+        </h1>
+        <div class="hero-bar">
+          <span class="yellow-tag">
+            <span>&lt;bb-expd:add concrete examples</span><span class="cursor"></span><span>&gt;</span>
+          </span>
+          <span class="mono" style="color:var(--faded); font-size:0.85rem;">→ press <kbd style="background:var(--paper-dark);padding:0.15em 0.4em;border:1px solid var(--rule);">⌘B ⌘B</kbd></span>
+        </div>
+      </div>
+      <aside class="hero-aside">
+        <p><strong>An idea, sharply put.</strong></p>
+        <p>BlogBuddy puts the verbs of AI writing — <em>expand, polish, translate, summarise, diagram</em> — directly into your Markdown as tags. The tag is the command.</p>
+        <p>No tab-switching. No chat window. No copy-paste shuttle. Just <em>syntax that resolves</em>, in place, where you typed it.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- I. THE PREMISE -->
+  <section class="reveal">
+    <div class="section-head">
+      <span class="roman">I</span>
+      <h2 class="section">The <em>premise</em></h2>
+      <span class="kicker">a working theory</span>
+    </div>
+
+    <div class="premise">
+      <div class="col-1">
+        <p>You are writing Markdown. You want AI help — to expand a thin paragraph, polish a clumsy sentence, translate a section, summon a Mermaid diagram from a paragraph of prose. Most tools yank you out to a chat window, then back, then out again. Context erodes; flow disappears.</p>
+        <p>BlogBuddy refuses the round trip. It makes AI a piece of syntax. A tag like <code>&lt;bb-expd:focus on practical use&gt;</code> sits in your document like any other Markdown construct. The chord <code>⌘B ⌘B</code> resolves it. Output streams in, token by token, exactly where the tag was.</p>
+        <p>That is the entire thesis. Everything that follows — the WYSIWYG editor, the AI-rendered reading view, the configuration ergonomics — is the work of doing this idea well.</p>
+      </div>
+      <div class="col-2">
+        <h4>One screen, one resolution</h4>
+        <pre>Machine learning is changing
+how software gets written.
+<span class="tag">&lt;bb-expd:add concrete examples&gt;</span></pre>
+        <p style="margin-top:0.9rem; font-size:0.88rem;">Place the cursor in the paragraph. Press the chord. The tag is removed; the paragraph expands; words arrive as the model writes them. The scope — <em>line, block, document</em> — is inferred from where the tag sits.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- II. THE VOCABULARY -->
+  <section class="reveal">
+    <div class="section-head">
+      <span class="roman">II</span>
+      <h2 class="section">The <em>vocabulary</em></h2>
+      <span class="kicker">eight verbs + a renderer</span>
+    </div>
+
+    <p class="lede" style="max-width:780px; margin:0 0 2rem;">A small, deliberate set of commands. Each accepts an optional refinement after the colon, e.g. <code style="font-size:0.95em;">&lt;bb-foo:say more about X&gt;</code>. The shape is the contract — terse syntax, predictable behaviour.</p>
+
+    <div class="vocab">
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb</span><span>:</span><span class="arg">any instruction</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Free-form.</em> Hand BB any task; it works on the current scope. The flexible escape hatch — and the most token-hungry.</span>
+        <span class="scope">block / doc</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-expd</span><span>:</span><span class="arg">focus</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Expand.</em> Elaborate on existing content while keeping tone and structure. Reads full-document context so additions fit.</span>
+        <span class="scope">block</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-impv</span><span>:</span><span class="arg">style</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Improve.</em> Polish clarity, grammar, rhythm. Inline rewrites the block; standalone tag rewrites the whole document into <code>*_improved.md</code>.</span>
+        <span class="scope">block / doc</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-tslt</span><span>:</span><span class="arg">target language</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Translate.</em> Outputs a new file with a language suffix (e.g. <code>myblog_日本語.md</code>) and inserts a link. Code blocks preserved.</span>
+        <span class="scope">document</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-tldr</span><span>:</span><span class="arg">style</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Summarise.</em> Inline TL;DR for the surrounding text. Tight by default; refinement bends tone.</span>
+        <span class="scope">block</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-mmd</span><span>:</span><span class="arg">diagram description</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Diagram.</em> Generates a fenced Mermaid block. Auto-picks <span class="mono">flowchart · sequence · class · state · ER · gantt · pie</span>. Validated for a recognised prefix.</span>
+        <span class="scope">block</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-kwd</span><span>:</span><span class="arg">focus</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Keywords.</em> Extracts 8–12 SEO-friendly keywords from the document, scoped to the focus you set.</span>
+        <span class="scope">block</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-tag</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Attribution.</em> Inserts the "created with BB" shield, in the canonical yellow.</span>
+        <span class="scope">inline</span>
+      </div>
+
+      <div class="row">
+        <span class="tagname"><span class="lt">&lt;</span><span class="cmd">bb-render-*</span><span class="gt">&gt;</span></span>
+        <span class="descr"><em>Reader.</em> Four presets and a custom prompt. Generates a full HTML reading artifact in a side panel. <strong>Never modifies your source.</strong></span>
+        <span class="scope">document</span>
+      </div>
+
+    </div>
+
+    <div class="vocab-foot">
+      <div><strong>Streaming · default</strong>Output appears as the model writes it. Cancel any time.</div>
+      <div><strong>Context · aware</strong>BB reads the surrounding document, not just the selection.</div>
+      <div><strong>Scope · inferred</strong>Cursor position alone selects line, block, or document.</div>
+    </div>
+  </section>
+
+  <!-- PULL QUOTE BAND -->
+  <div class="quote-band reveal">
+    <blockquote>The tag is the command. The cursor is the argument. The chord is the verb.</blockquote>
+    <div class="attrib">— design principle, BlogBuddy ⁄ 0.0.13</div>
+  </div>
+
+  <!-- III. THE EDITOR -->
+  <section class="reveal">
+    <div class="section-head">
+      <span class="roman">III</span>
+      <h2 class="section">The <em>editor</em></h2>
+      <span class="kicker">a WYSIWYG that respects Markdown</span>
+    </div>
+
+    <div class="editor-grid">
+      <div class="editor-lede">
+        <p style="margin:0 0 1rem;">A built-in rich-text editor for <code>.md</code> files, powered by <em>Milkdown</em>. It reads and writes plain Markdown — <em>no proprietary format, no lock-in</em>. Open from the Explorer with <code>⌘B</code>.</p>
+        <p style="margin:0;">It is the canvas where the slash menu lives, where AI blocks stream into place, and where frontmatter becomes typed UI rather than YAML you have to remember.</p>
+      </div>
+      <ul class="feature-list">
+        <li><strong>Slash menu</strong><code>/</code> opens block types and every BB command, pre-filled.</li>
+        <li><strong>Inline chord</strong><code>⌘B ⌘B</code> fires any <code>&lt;bb-*&gt;</code> tag without leaving the canvas.</li>
+        <li><strong>Streaming AI blocks</strong>Results appear inline as a typed ProseMirror node.</li>
+        <li><strong>Frontmatter as UI</strong>Typed controls for <code>title · date · tags · author · draft</code> — raw YAML fallback below.</li>
+        <li><strong>Prism highlighting</strong>20+ languages, palette tracks VS Code light / dark / high-contrast.</li>
+        <li><strong>IME-safe</strong>CJK composition guards auto-save and BB triggers.</li>
+        <li><strong>Arrow ligatures</strong><code>-&gt;</code> → <code>→</code>, <code>=&gt;</code> → <code>⇒</code>; never inside code.</li>
+        <li><strong>Compact save</strong>Bullets to <code>-</code>, blank lines collapsed, entities decoded. Git diffs stay quiet.</li>
+        <li><strong>External-change banner</strong>Choose Reload or Keep when the file shifts under your feet.</li>
+        <li><strong>Paste-to-disk assets</strong>Files write to the document folder (or <code>assetDir</code>) and link as relative paths.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- IV. THE READER -->
+  <section class="reveal">
+    <div class="section-head">
+      <span class="roman">IV</span>
+      <h2 class="section">The <em>reader</em></h2>
+      <span class="kicker">your markdown, redesigned</span>
+    </div>
+
+    <p class="lede" style="max-width:820px; margin:0 0 2rem;">Trigger <code>&lt;bb-render-*&gt;</code> and the AI re-interprets your document as a complete HTML "reading artifact" — rendered in a side panel, exported as a self-contained file, <em>never touching your source</em>.</p>
+
+    <div class="presets">
+
+      <article class="preset">
+        <span class="num">No. I</span>
+        <div class="label">&lt;bb-render-blog:&gt;</div>
+        <h4>Blog <em>View</em></h4>
+        <p>Polished article — sticky TOC, callouts, syntax-highlighted code, comfortable measure. The default literary treatment.</p>
+      </article>
+
+      <article class="preset">
+        <span class="num">No. II</span>
+        <div class="label">&lt;bb-render-skim:&gt;</div>
+        <h4>Skim <em>Mode</em></h4>
+        <p>TL;DR at the top, dense visual structure, <code>&lt;details&gt;</code> collapsibles for skippable depth. Built for the impatient.</p>
+      </article>
+
+      <article class="preset">
+        <span class="num">No. III</span>
+        <div class="label">&lt;bb-render-expl:&gt;</div>
+        <h4>The <em>Explainer</em></h4>
+        <p>A teaching artifact — SVG diagrams for concepts, annotated code, "why this matters" sidebars. For tutorials.</p>
+      </article>
+
+      <article class="preset">
+        <span class="num">No. IV</span>
+        <div class="label">&lt;bb-render:your prompt&gt;</div>
+        <h4><em>Custom</em></h4>
+        <p>Your prompt is the brief. Override the preset entirely and ask for what you actually want. A blank canvas, AI-aided.</p>
+      </article>
+
+    </div>
+
+    <div class="reader-extras">
+      <div>
+        <h5>Live preview</h5>
+        <p>HTML composes itself in a sandboxed iframe as the AI writes it. Phase indicator, token counter, editable refinement prompt.</p>
+      </div>
+      <div>
+        <h5>Self-contained export</h5>
+        <p>Single-file <code>.html</code>, local images base64-inlined by default. Toggle <code>inlineAssets</code> to keep relative paths.</p>
+      </div>
+      <div>
+        <h5>.bbreader.md style ref</h5>
+        <p>Drop a style guide at the workspace root; every render uses it as authoritative guidance on type, color, components.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- V. QUICK START -->
+  <section class="reveal">
+    <div class="section-head">
+      <span class="roman">V</span>
+      <h2 class="section">Quick <em>start</em></h2>
+      <span class="kicker">five steps · five minutes</span>
+    </div>
+
+    <div class="qs">
+      <div class="step">
+        <h4>Install</h4>
+        <p>BlogBuddy from the <em>VS Code Marketplace</em>.</p>
+      </div>
+      <div class="step">
+        <h4>Set credentials</h4>
+        <p><code>blogbuddy.apiKey</code> in settings, or export <code>BLOGBUDDY_API_KEY</code>.</p>
+      </div>
+      <div class="step">
+        <h4>(Optional) base URL</h4>
+        <p>For OpenAI-compatible providers — <em>OpenRouter, DeepSeek, your own proxy</em>.</p>
+      </div>
+      <div class="step">
+        <h4>Pick a model</h4>
+        <p>Run <code>BlogBuddy: Select Model</code> in the palette.</p>
+      </div>
+      <div class="step">
+        <h4>Open · tag · chord</h4>
+        <p>Open any <code>.md</code>, drop a tag, press <code>⌘B ⌘B</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- VI. REFERENCE -->
+  <section class="reveal">
+    <div class="section-head">
+      <span class="roman">VI</span>
+      <h2 class="section">The <em>apparatus</em></h2>
+      <span class="kicker">reference tables</span>
+    </div>
+
+    <div class="ref-grid">
+      <div>
+        <h3>Keybindings</h3>
+        <table class="ref-table">
+          <tbody>
+            <tr><td>⌘B ⌘B</td><td>Execute BB command on the current block or selection</td></tr>
+            <tr><td>⌘B (Explorer)</td><td>Open BB Editor on the selected <code>.md</code></td></tr>
+            <tr><td>/ (in BB Editor)</td><td>Slash menu — BB commands + block types</td></tr>
+            <tr><td>⌘S (in BB Editor)</td><td>Flush save immediately</td></tr>
+            <tr><td>⌫ (start of heading)</td><td>Convert heading directly to paragraph</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div>
+        <h3>Settings</h3>
+        <table class="ref-table">
+          <tbody>
+            <tr><td>apiKey</td><td>Falls back to <code>$BLOGBUDDY_API_KEY</code> → <code>$OPENAI_API_KEY</code></td></tr>
+            <tr><td>baseURL</td><td>Falls back to env vars, then <code>api.openai.com/v1</code></td></tr>
+            <tr><td>model</td><td>Pick via <code>BlogBuddy: Select Model</code></td></tr>
+            <tr><td>assetDir</td><td>Where pasted files land. Empty = alongside doc</td></tr>
+            <tr><td>reader.inlineAssets</td><td>Base64-inline images on export. Default <code>true</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="ref-grid" style="margin-top:3rem;">
+      <div>
+        <h3>Commands</h3>
+        <table class="ref-table">
+          <tbody>
+            <tr><td>Hi BB</td><td>Execute on current scope</td></tr>
+            <tr><td>Open BB Editor</td><td>Open the current <code>.md</code> in the WYSIWYG editor</td></tr>
+            <tr><td>Select Model</td><td>Fetch <code>/v1/models</code> and pick</td></tr>
+            <tr><td>Show Config Diagnostics</td><td>Masked report of what the extension resolves</td></tr>
+            <tr><td>Show Usage Statistics</td><td>Token usage, requests, per-model cost</td></tr>
+            <tr><td>Reset Usage Statistics</td><td>Clear counters</td></tr>
+            <tr><td>Refresh Pricing Data</td><td>Re-fetch provider pricing</td></tr>
+            <tr><td>Create .bbreader.md Template</td><td>Scaffold the Reader style reference</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3>Status bar</h3>
+        <table class="ref-table">
+          <tbody>
+            <tr><td>word count</td><td>Chinese chars + English words, summed. Markdown-only.</td></tr>
+            <tr><td>BB · cfg</td><td>Using <code>blogbuddy.apiKey</code></td></tr>
+            <tr><td>BB · env</td><td>Using <code>$BLOGBUDDY_API_KEY</code> or <code>$OPENAI_API_KEY</code></td></tr>
+            <tr><td>BB · default</td><td>Falling back to <code>api.openai.com/v1</code></td></tr>
+            <tr><td>BB: no key/model</td><td>Required config missing (yellow warning)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta reveal">
+    <div>
+      <h3 class="display"><em>Try it.</em> Then make it yours.</h3>
+      <p>BlogBuddy is open source and in active development. Install, write a few tags, file an issue when something annoys you.</p>
+    </div>
+    <div class="cta-buttons">
+      <a class="btn primary" href="https://marketplace.visualstudio.com/items?itemName=FulcrumStudio.blogbuddy">Install ⌃</a>
+      <a class="btn secondary" href="https://github.com/FulcrumStd/blogbuddy">GitHub →</a>
+      <a class="btn secondary" href="help.md">Full guide →</a>
+    </div>
+  </section>
+
+  <div class="ornament">❦ · ✦ · ❦ · ✦ · ❦</div>
+
+  <!-- COLOPHON -->
+  <footer class="colophon">
+    <div>
+      <p class="marque">COLOPHON</p>
+      <p>Set in <em>Fraunces</em>, <em>Vollkorn</em>, <em>JetBrains&nbsp;Mono</em> and <em>Major&nbsp;Mono&nbsp;Display</em>. Yellow is <code>#FFD900</code>.</p>
+    </div>
+    <div class="center">
+      Built with care for people who write in Markdown.
+    </div>
+    <div class="right">
+      <p>
+        <a href="../README.md">English README</a><br>
+        <a href="README_CN.md">中文 README</a><br>
+        <a href="../CHANGELOG.md">Changelog</a><br>
+        <a href="https://github.com/FulcrumStd/blogbuddy/issues">Open an issue</a>
+      </p>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+  // Reveal-on-scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        e.target.classList.add('in');
+        io.unobserve(e.target);
+      }
+    });
+  }, { rootMargin: '0px 0px -10% 0px', threshold: 0.1 });
+
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // Caret blink already handled by CSS; nothing else needed.
+</script>
+</body>
+</html>

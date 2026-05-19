@@ -1,203 +1,191 @@
-# BlogBuddy - 你的 AI 驱动的博客写作助手
-
 <div align="center">
 
-<img src="images/logo.png" alt="BlogBuddy 徽标" width="200">
+<img src="../images/logo.png" alt="BlogBuddy" width="180">
 
-**BlogBuddy** 通过 AI 驱动的写作助手让 Markdown 变得神奇！
+# BlogBuddy
+
+**让 AI 指令活在你的 Markdown 里。**
+写一个标签，敲一组快捷键，看它原地解析。
 
 [![版本](https://img.shields.io/badge/version-0.0.13-FFD900.svg)](https://github.com/FulcrumStd/blogbuddy)
-[![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=blogbuddy.blogbuddy)
+[![VS Code](https://img.shields.io/badge/VS%20Code-Extension-007ACC.svg)](https://marketplace.visualstudio.com/items?itemName=FulcrumStudio.blogbuddy)
 [![BB](https://img.shields.io/badge/created_with-BB-FFD900)](https://github.com/FulcrumStd/blogbuddy)
+
+[English README](../README.md) · [完整用户指南](help_CN.md) · [更新日志](../CHANGELOG.md)
 
 </div>
 
-[English Version](../README.md)
+---
 
-## ⚠️ 重要提示
+## 一句话说清楚
 
-> **🚧 开发状态**：本项目目前处于积极开发中。功能可能存在缺陷，且在未来更新中可能发生变化。请在生产环境中谨慎使用。
+你在写 Markdown，需要 AI 帮忙——扩写、润色、翻译、摘要、画图。市面上的工具大多把你拽出去开个对话窗口，然后再回来，然后再出去。
 
-> **🧪 实验性功能**：`bb` 命令（AI Agent 模式）目前正在开发中，属于实验阶段。此功能可能无法按预期工作，并可能经历重大更改。
+**BlogBuddy 把这些"动词"直接搬进你的正文。** 在段落里写下 `<bb-expd:补充具体例子>` 这样的标签，按 `Cmd+B Cmd+B`，标签连同周围的文本块会被流式 AI 输出原地替换——光标都不用挪。
 
-## ✨ 什么是 BlogBuddy？
-
-BlogBuddy (BB) 是一款为 VS Code 设计的扩展，旨在在不打断创作流程的前提下增强你的博客写作工作流。你无需切换上下文或打开外部工具，只需在 Markdown 内容中直接插入 BB 命令标签，并通过快捷键触发它们。就是这么简单！
-
-## 🚀 主要功能
-
-### 智能命令标签
-
-在博客文章中的任意位置使用直观的命令标签（所有标签均支持 `<bb-xxx:自定义指令>` 格式）：
-
-- `<bb:任务描述>` - 直接 AI agent 模式，给 BB 下达任何任务
-- `<bb-expd:扩展要求>` - 扩展并详述周围文本内容
-- `<bb-impv:改进重点>` - 润色文本质量（内联用于局部文本，独立用于整个文档）
-- `<bb-tslt:目标语言>` - 翻译内容（必须指定目标语言）
-- `<bb-tldr:摘要风格>` - 生成 TL;DR 摘要
-- `<bb-mmd:图表描述>` - 生成 Mermaid 图表（围栏代码块）
-- `<bb-kwd:关键词重点>` - 提取关键词
-- `<bb-tag>` - 添加 BlogBuddy 署名徽章
-- `<bb-render-blog:>` / `<bb-render-skim:>` / `<bb-render-expl:>` / `<bb-render:自定义指令>` - **AI Reader View** — 见下方介绍
-
-### 无缝工作流集成
-
-- **非侵入式**：命令直接嵌入内容中
-- **键盘驱动**：通过简单的按键组合激活
-- **上下文感知**：AI 理解你完整的文档上下文
-- **默认流式**：输出跟随 AI 生成逐 token 实时显示
-- **即时结果**：命令执行并在原位替换内容
-
-### BB 编辑器（所见即所得）
-
-内置基于 [Milkdown](https://milkdown.dev) 的富文本 Markdown 编辑器，专为沉浸式写作体验设计：
-
-- **富文本编辑**：所见即所得，实时预览，无需分屏
-- **GFM 支持**：表格、删除线、任务列表、自动链接
-- **内置 BB 命令**：通过 `/` 斜杠菜单或 `Cmd+B Cmd+B` 触发任意 BB 命令
-- **AI 流式输出**：AI 处理结果以内联块的形式实时显示
-- **代码块语法高亮**：围栏代码块基于 Prism 显示彩色 token（20+ 种语言，配色自适应 VS Code 明暗主题）
-- **Frontmatter 类型化面板**：YAML 字段（`title`、`date`、`tags`、`categories`、`author`、`slug`、`draft`、`description`）渲染为类型化控件 — 日期选择器、chip 输入框、开关等。原始 YAML 仍作为可折叠兜底保留
-- **IME 友好**：CJK 输入法组合事件受保护，半成品拼音不会触发自动保存或 BB 命令
-- **Arrow 连字**：`->` 自动转 `→`，`=>` 转 `⇒`；代码块内和 IME 组合期间不触发
-- **保存时 Markdown 规范化**：bullet 统一为 `-`、紧凑列表、HTML 实体解码、多余空行合并 — 降低 Git diff 噪声
-- **外部文件冲突检测**：编辑期间文件被外部修改时，显示黄色横幅让你选择 Reload 或 Keep my version，不再静默覆盖
-- **View source 按钮**：随时在侧边 VS Code 编辑器中打开原始 `.md`
-- **图片与附件粘贴**：粘贴或拖入 — 文件保存到文档目录（或通过 `blogbuddy.assetDir` 配置的子目录），以相对路径插入
-- **自动保存**：防抖自动保存；`Cmd+S` 可立即 flush
-- **主题同步**：编辑器主题跟随 VS Code 配色方案
-
-打开 BB 编辑器：
-
-- 在文件管理器中右键点击 `.md` 文件 → **BlogBuddy: Open BB Editor**
-- 或在文件管理器中选中 `.md` 后按 `Cmd+B` (Mac) / `Ctrl+B` (Win/Linux)
-
-### AI 阅读视图
-
-触发 `<bb-render-*:>` 标签，让 AI 把你的 Markdown 重新诠释成一份完整的 HTML "阅读 artifact"，渲染在侧边面板里：
-
-- **四种预设**：Blog View（带 TOC 和 callout 的精致博客文章）、Skim Mode（开头 TL;DR + 折叠详情）、Explainer（SVG 图示 + 教学注释）、Custom（完全由你的提示词主导）
-- **流式实时预览**：HTML 在沙盒 iframe 里逐步渲染；完成时用规范完整文档替换流式 buffer
-- **可编辑提示词 + Regenerate**：行内调整 prompt 重跑，不用重新打标签
-- **导出为单文件 `.html`**：默认把本地图片 base64 内嵌成 self-contained HTML（设 `blogbuddy.reader.inlineAssets` 为 `false` 可保留相对路径）
-- **`.bbreader.md` 样式参考**（可选）：在工作区根放一个 `.bbreader.md`，描述你博客的字体、配色、组件规范等；之后每次 render 都会把它作为权威样式指南。跑 **BlogBuddy: Create .bbreader.md Template** 一键生成模板
-- **BB 徽章脚注**：每一次生成的页面（预览和导出）底部都会带一个小的 `created with BB` 链接回仓库
-- **成本守门**：源文件过大（约 25k 输入 token）时弹确认对话框
-
-从任意 Markdown 编辑器都可触发——打 `<bb-render-blog:>` 按 `Cmd+B Cmd+B`。在 BB 编辑器里，`/` 斜杠菜单有 **Render** 分组，四个预设都列在里面。
-
-### 文档统计
-
-当前 Markdown 文件的字数会一直显示在 VS Code 状态栏：
-
-- **智能计数**：中文字符和英文单词分别计数
-- **状态栏显示**：右侧一个不显眼的小项
-- **仅限 Markdown**：非 Markdown 文件下自动隐藏
-
-### 配置来源指示器
-
-状态栏还有一个 BlogBuddy 小项，显示你当前 `apiKey` 的解析来源（`cfg` / `env` / `default`）。Hover 看每个字段的来源，点击打开完整诊断。
-
-## 📖 如何使用
-
-### 快速开始
-
-1. 从 VS Code Marketplace 安装 BlogBuddy
-2. 设置 API key — 两种方式之一：
-   - 在 VS Code 设置里配置 `blogbuddy.apiKey`，**或**
-   - 以环境变量形式 `export BLOGBUDDY_API_KEY` / `OPENAI_API_KEY`
-3. 如果用的不是 OpenAI（比如 OpenRouter / DeepSeek / 自己的代理），设置 `blogbuddy.baseURL`。留空会依次回退到 `BLOGBUDDY_BASE_URL` / `OPENAI_BASE_URL` 环境变量，再回退到 `https://api.openai.com/v1`
-4. 在命令面板运行 **BlogBuddy: Select Model** — 命令会从 provider 的 `/v1/models` 拉模型列表让你选（列表不全时也可输入自定义 id）
-5. 开始写作，在需要 AI 协助的地方插入 BB 命令
-
-### 基本用法
-
-1. **在文本中插入命令标签**：
-
-   ```markdown
-   Here's a brief overview of machine learning.
-   <bb-expd:focus on practical applications>
-   ```
-
-2. **把光标停在包含标签的段落中**（或手动选中一段精确控制范围）
-
-3. **按激活键**：`Cmd+B Cmd+B` (Mac) 或 `Ctrl+B Ctrl+B` (Win/Linux)
-
-4. **见证 BB 魔法** — 命令标签和周围文本会被 AI 生成的内容替换（流式实时显示）
-
-### 找到所有命令
-
-所有 BlogBuddy 命令都在 VS Code 命令面板（`Cmd+Shift+P` / `Ctrl+Shift+P`）里——输入 `BlogBuddy:` 即可筛出，包括 **使用统计**、**帮助**、**选择模型**、**Create .bbreader.md Template** 等。
-
-### 📚 详细文档
-
-完整功能说明、示例和进阶技巧，请看：
-**➡️ [完整用户指南](help_CN.md)**
-
-## ⌨️ 键盘快捷键
-
-| 快捷键 | 操作 |
-|----------|--------|
-| `Cmd+B Cmd+B` (Mac)<br>`Ctrl+B Ctrl+B` (Win/Linux) | 在当前文本块/所选文本上执行 BB 命令 |
-| `Cmd+B` (Mac)<br>`Ctrl+B` (Win/Linux) | 在文件管理器选中 `.md` 时打开 BB Editor |
-
-BB Editor 内：
-
-| 快捷键 | 操作 |
-|----------|--------|
-| `/` | 打开斜杠菜单（BB 命令 + 块类型） |
-| `Cmd+B Cmd+B` | 内联触发 `<bb-*>` 标签 |
-| `Cmd+S` | 立即保存 |
-| `Backspace`（位于标题行开头） | 把标题转回普通段落 |
-
-## ⚙️ 配置
-
-BlogBuddy 只需要一个 API key 和一个模型；其他配置都有合理默认值。
-
-### Settings
-
-| Key | 说明 |
-|-----|------|
-| `blogbuddy.apiKey` | API key。留空时依次回退到 `BLOGBUDDY_API_KEY` → `OPENAI_API_KEY` 环境变量 |
-| `blogbuddy.baseURL` | OpenAI 兼容的 base URL。留空时依次回退到 `BLOGBUDDY_BASE_URL` → `OPENAI_BASE_URL` 环境变量，再回退到 `https://api.openai.com/v1` |
-| `blogbuddy.model` | 模型 id。推荐：跑 **BlogBuddy: Select Model** 从 provider 列表里挑 |
-| `blogbuddy.assetDir` | BB Editor 资源上传的相对子目录（如 `assets`）。留空 = 保存在文档同目录 |
-| `blogbuddy.reader.inlineAssets` | BB Reader 导出时，是否将本地图片以 base64 内嵌生成单文件 HTML。默认 `true` |
-
-### 命令
-
-| 命令 | 用途 |
-|------|------|
-| `BlogBuddy: Select Model` | 从配置的 base URL 拉 `/v1/models` 列表弹选择器；列表为空或没想要的还可以 "Enter custom model…" 手动输入 |
-| `BlogBuddy: Show Config Diagnostics` | 打开一份脱敏报告，显示扩展**实际**读到的每个字段来源（settings / env / default） — 用来排查"我设了环境变量但没生效"这种 macOS 坑 |
-| `BlogBuddy: Show Usage Statistics` | 查看 token 用量、请求次数、按模型分类的费用 |
-| `BlogBuddy: Reset Usage Statistics` | 清空计数器（带确认） |
-| `BlogBuddy: Refresh Pricing Data` | 重新从 provider 拉取定价数据 |
-| `BlogBuddy: Create .bbreader.md Template` | 在工作区根创建 AI Reader 样式参考模板 |
-| `BlogBuddy: Hi BB` | 在当前文本上执行 BB 命令 |
-| `BlogBuddy: Open BB Editor` | 用 BB Editor 打开当前 `.md` |
-
-### macOS 环境变量坑
-
-如果你把 `OPENAI_API_KEY` 写在 `~/.zshrc` 里但从 Dock 启动的 VS Code 读不到，这是因为 Dock 启动的 GUI 应用不会读 shell 配置。两个办法：
-
-- **从终端启动 VS Code**：`source ~/.zshrc && code .`
-- 或者在终端跑 `launchctl setenv OPENAI_API_KEY 'sk-...'`，然后 ⌘Q 彻底退出再从 Dock 重启
-
-跑一下 **BlogBuddy: Show Config Diagnostics** 就能确认扩展实际读到什么。
-
-## 🎯 适合人群
-
-- **博客写作者** 希望在不离开编辑器的情况下获得 AI 帮助
-- **内容创作者** 希望增强写作工作流
-- **技术作者** 需要生成图表和扩展内容
-- **多语言博主** 需要翻译辅助
-- **任何人** 重视无缝、键盘驱动的高效工作方式
-
-## 🐛 问题与反馈
-
-发现 bug 或有功能建议？请在 GitHub 仓库 [提交 issue](https://github.com/FulcrumStd/blogbuddy/issues)。
+这就是核心想法。剩下的事，是把它做扎实。
 
 ---
 
-**祝使用 BB 写博客愉快！ 🎉**
+## 一屏看懂
+
+```markdown
+机器学习正在改变软件的写法。
+<bb-expd:面向资深工程师读者扩写>
+```
+
+把光标停在这段，按 `Cmd+B Cmd+B`。标签消失，段落扩展，文字逐 token 流入。处理范围由光标位置自动推断——当前行、整段、或整个文档。
+
+---
+
+## BB 标签词汇表
+
+八条内联命令 + 四个 Reader 预设。所有标签都接受冒号后的可选指令，例如 `<bb-foo:换个角度说说 X>`。
+
+| 标签 | 作用 |
+|---|---|
+| `<bb:任意指令>` | 自由模式。把任务直接交给 BB，它在当前范围内处理。最灵活的兜底 |
+| `<bb-expd:重点>` | 在当前文风下扩写、补例 |
+| `<bb-impv:风格要求>` | 润色。内联模式重写当前块；标签独立成块时重写整篇为 `*_improved.md` |
+| `<bb-tslt:目标语言>` | 翻译整篇。输出 `myblog_日本語.md` 并附链接 |
+| `<bb-tldr:摘要风格>` | 内联生成 TL;DR |
+| `<bb-mmd:图表类型>` | 生成 ` ```mermaid ` 围栏代码块。自动挑选 flowchart / sequence / class / state / ER / gantt / pie |
+| `<bb-kwd:重点>` | 提取 8–12 个 SEO 友好的关键词 |
+| `<bb-tag>` | 插入一枚 "created with BB" 署名徽章 |
+| `<bb-render-blog:>` `<bb-render-skim:>` `<bb-render-expl:>` `<bb-render:prompt>` | AI 阅读视图——下面详述 |
+
+> **始终流式。** 输出随模型生成实时显示。**上下文感知。** BB 读取整篇文档，不只是选中的几行。**智能范围。** 仅凭光标位置就能判断是改一行、改一段、还是改全文。
+
+---
+
+## BB 编辑器 —— 一个尊重 Markdown 的 WYSIWYG
+
+基于 [Milkdown](https://milkdown.dev) 的内置富文本 `.md` 编辑器。从文件管理器（在 `.md` 上按 `Cmd+B`）或编辑器标题栏打开。落盘是干净的 Markdown，规范化方式可预测。
+
+- **WYSIWYG + 完整 GFM** —— 表格、删除线、任务列表、自动链接、引用块、围栏代码
+- **斜杠菜单（`/`）** —— 块类型 + 全部 BB 命令，预填好
+- **内联 `Cmd+B Cmd+B`** —— 不切上下文触发任意 `<bb-*>` 标签
+- **流式 AI 块** —— 结果以一个 ProseMirror 类型节点的形式内联出现
+- **Frontmatter 类型化面板** —— `title` · `date` · `tags` · `categories` · `author` · `slug` · `draft` · `description` 渲染为类型化控件（日期选择器、chip、开关、textarea）。原始 YAML 仍作为可折叠兜底保留
+- **Prism 语法高亮** —— 20+ 种语言；配色跟随 VS Code 明/暗/高对比度主题
+- **IME 友好** —— CJK 组合事件期间禁用自动保存和 BB 触发
+- **Arrow 连字** —— 代码块和 IME 之外，`->` → `→`，`=>` → `⇒`
+- **紧凑保存** —— bullet 统一为 `-`、多余空行合并、HTML 实体解码——Git diff 保持安静
+- **外部修改横幅** —— 你有未保存编辑时文件被外部改动，提示 Reload 或 Keep
+- **粘贴即落盘** —— 图片和文件粘贴/拖入会写到文档同目录（或 `blogbuddy.assetDir`），以相对路径插入
+- **自动保存** + `Cmd+S` 立即 flush
+
+---
+
+## AI 阅读视图 —— 重新设计你的 Markdown
+
+触发 `<bb-render-*>`，AI 把你的文档重新诠释为一份完整 HTML "阅读 artifact"，渲染在侧边面板，永远不动你的源文件。
+
+| 预设 | 给模型的简报 |
+|---|---|
+| `<bb-render-blog:>` | 精致博客文 —— 黏性 TOC、callout、舒适行宽 |
+| `<bb-render-skim:>` | 顶端 TL;DR、密集的视觉结构、`<details>` 折叠可跳过的细节 |
+| `<bb-render-expl:>` | 教学 artifact —— SVG 图示、代码注释、"why this matters" 侧栏 |
+| `<bb-render:你的 prompt>` | 自定义 —— 你的 prompt 主导整个创作方向 |
+
+- **沙盒 iframe 内的流式实时预览** —— 看着 HTML 自己长出来
+- **可编辑的提示词 + Regenerate** —— 改 prompt 不用重写标签
+- **导出为单文件 `.html`** —— 默认把本地图片 base64 内嵌（设 `blogbuddy.reader.inlineAssets` 为 `false` 可保留相对路径）
+- **`.bbreader.md` 样式参考**（可选）—— 在工作区根放一份，描述你博客的字体、配色、组件等；每次 render 都会作为权威样式指南被读入。跑 **BlogBuddy: Create .bbreader.md Template** 生成模板
+- **源文件改动横幅** —— 按需手动重渲，绝不自动触发（render 又慢又费 token）
+- **成本守门**（约 25k 输入 token）—— 大文件先弹确认再花钱
+
+---
+
+## 快速开始
+
+1. 从 VS Code Marketplace 安装 **BlogBuddy**。
+2. 配置凭证 —— 在设置里填 `blogbuddy.apiKey`，**或者**导出 `BLOGBUDDY_API_KEY`（或 `OPENAI_API_KEY`）。
+3. *（可选）* 设置 `blogbuddy.baseURL` 切换到 OpenAI 兼容的 provider（OpenRouter、DeepSeek、自建代理）。默认值：`https://api.openai.com/v1`。
+4. 在命令面板跑 **BlogBuddy: Select Model** —— 从 `/v1/models` 列表选一个，或手动输入。
+5. 打开任意 `.md` 文件，插入标签，按 `Cmd+B Cmd+B`。
+
+---
+
+## 参考
+
+### 快捷键
+
+| 场景 | 快捷键 | 操作 |
+|---|---|---|
+| Markdown 编辑器 | `Cmd+B Cmd+B` / `Ctrl+B Ctrl+B` | 在当前块或选区上执行 BB 命令 |
+| 文件管理器（选中 `.md`） | `Cmd+B` / `Ctrl+B` | 打开 BB 编辑器 |
+| BB 编辑器 | `/` | 斜杠菜单（BB 命令 + 块类型） |
+| BB 编辑器 | `Cmd+B Cmd+B` | 触发内联 `<bb-*>` 标签 |
+| BB 编辑器 | `Cmd+S` | 立即保存 |
+| BB 编辑器 | `Backspace`（标题行开头） | 把标题转回普通段落 |
+
+### 设置
+
+只有 `apiKey` 和 `model` 是必填，其余都有合理默认值。
+
+| Key | 说明 |
+|---|---|
+| `blogbuddy.apiKey` | API key。依次回退到 `$BLOGBUDDY_API_KEY` → `$OPENAI_API_KEY` |
+| `blogbuddy.baseURL` | OpenAI 兼容 base URL。依次回退到 `$BLOGBUDDY_BASE_URL` → `$OPENAI_BASE_URL` → `https://api.openai.com/v1` |
+| `blogbuddy.model` | 模型 id。推荐跑 **BlogBuddy: Select Model** 从 provider 列表里选 |
+| `blogbuddy.assetDir` | BB 编辑器资源上传的相对子目录（如 `assets`）。留空 = 保存在文档同目录 |
+| `blogbuddy.reader.inlineAssets` | Reader 导出时是否把本地图片 base64 内嵌成单文件 HTML。默认 `true` |
+
+### 命令
+
+打开命令面板（`Cmd+Shift+P` / `Ctrl+Shift+P`），输入 `BlogBuddy:`。
+
+| 命令 | 用途 |
+|---|---|
+| `BlogBuddy: Hi BB` | 在当前范围执行 BB 命令（等同于快捷键） |
+| `BlogBuddy: Open BB Editor` | 用 BB 编辑器打开当前 `.md` |
+| `BlogBuddy: Select Model` | 拉 `/v1/models` 列表，选一个或输入自定义 id |
+| `BlogBuddy: Show Config Diagnostics` | 脱敏报告——扩展实际读到每个字段的值和来源 |
+| `BlogBuddy: Show Usage Statistics` | Token 用量、请求次数、按模型计费（有定价数据时） |
+| `BlogBuddy: Reset Usage Statistics` | 清空计数器（带确认） |
+| `BlogBuddy: Refresh Pricing Data` | 重新拉定价数据 |
+| `BlogBuddy: Create .bbreader.md Template` | 在工作区根创建 AI Reader 样式参考模板 |
+
+### 状态栏
+
+右侧两个小项，仅 Markdown 文件可见：
+
+- **字数统计** —— 中文字符与英文单词分别计数后求和
+- **配置来源** —— `$(key) BB · cfg | env | default` 显示 `apiKey` 的来源；缺 key 或缺 model 时变黄。Hover 看每字段来源表，点击打开诊断
+
+---
+
+## 备注
+
+> **开发状态。** BlogBuddy 处于积极开发中。功能可能在版本之间移动、损坏或变更。生产工作流中请谨慎使用。
+>
+> **实验性。** 自由模式 `<bb:>` 最灵活也最耗 token——能用专用标签解决就别用 `<bb>`。
+
+<details>
+<summary><strong>macOS —— 环境变量没读到？</strong></summary>
+
+从 Dock 或 Spotlight 启动的 App 不会继承你的 shell 配置。两个办法：
+
+- **从终端启动**：`source ~/.zshrc && code .`
+- **持久化**：`launchctl setenv OPENAI_API_KEY 'sk-...'`，然后 ⌘Q 彻底退出再重启 VS Code
+
+跑 **BlogBuddy: Show Config Diagnostics** 看扩展实际读到了什么。
+
+</details>
+
+---
+
+## 适合谁
+
+博客作者和内容创作者 · 需要图表和翻译的技术写作者 · 多语言博主 · 比起开新标签页更愿意按个快捷键的人。
+
+## 反馈
+
+发现 bug 或想要新功能 → [提交 issue](https://github.com/FulcrumStd/blogbuddy/issues)。
+
+---
+
+<div align="center">
+<sub>为在 Markdown 里写作的人精心打造。</sub>
+</div>
