@@ -30,6 +30,7 @@ export class WebviewBridge implements vscode.Disposable {
     private pendingConflictContent?: string;
 
     private onReaderDispatch?: (cmd: string, msg: string, content: string) => Promise<void>;
+    private onToggleWideMode?: () => void;
 
     constructor(
         private panel: vscode.WebviewPanel,
@@ -39,12 +40,14 @@ export class WebviewBridge implements vscode.Disposable {
             onDirtyChange?: (isDirty: boolean) => void;
             onReady?: () => void;
             onReaderDispatch?: (cmd: string, msg: string, content: string) => Promise<void>;
+            onToggleWideMode?: () => void;
         }
     ) {
         this.filePath = options?.filePath;
         this.onDirtyChange = options?.onDirtyChange;
         this.onReady = options?.onReady;
         this.onReaderDispatch = options?.onReaderDispatch;
+        this.onToggleWideMode = options?.onToggleWideMode;
 
         this.disposables.push(
             this.panel.webview.onDidReceiveMessage((msg: WebviewMessage) => {
@@ -110,28 +113,16 @@ export class WebviewBridge implements vscode.Disposable {
                 this.isDirty = msg.isDirty;
                 this.onDirtyChange?.(msg.isDirty);
                 break;
-            case 'open-source':
-                await this.handleOpenSource();
-                break;
             case 'conflict-resolve':
                 await this.handleConflictResolve(msg);
                 break;
             case 'reader-dispatch':
                 await this.onReaderDispatch?.(msg.cmd, msg.msg, msg.content);
                 break;
+            case 'toggle-wide-mode':
+                this.onToggleWideMode?.();
+                break;
         }
-    }
-
-    private async handleOpenSource(): Promise<void> {
-        if (!this.filePath) {
-            vscode.window.showInformationMessage('Save the file first to view its source.');
-            return;
-        }
-        await vscode.commands.executeCommand(
-            'vscode.open',
-            vscode.Uri.file(this.filePath),
-            { viewColumn: vscode.ViewColumn.Beside },
-        );
     }
 
     private async handleConflictResolve(msg: WebviewConflictResolveMessage): Promise<void> {

@@ -223,7 +223,29 @@ window.addEventListener('message', (event) => {
             }
             break;
         }
+        case 'set-wide-mode': {
+            // Host is the source of truth for this global preference; we
+            // never flip the class locally — only mirror what the host says.
+            const wide = !!msg.wide;
+            document.body.classList.toggle('bb-wide', wide);
+            // Tooltip names the destination so users understand what a click
+            // will do, even though the visible letter labels the current mode.
+            const btn = document.getElementById('wide-toggle');
+            if (btn) {
+                btn.title = wide
+                    ? 'Read mode — click for Zen mode'
+                    : 'Zen mode — click for Read mode';
+            }
+            break;
+        }
     }
+});
+
+// Wide-mode toggle: send a request to the host, which persists the flip and
+// broadcasts the new value back via 'set-wide-mode'. This indirection keeps
+// multiple BB Editor panels in sync (they all receive the same broadcast).
+document.getElementById('wide-toggle')?.addEventListener('click', () => {
+    vscode.postMessage({ type: 'toggle-wide-mode' });
 });
 
 // Keyboard shortcuts
@@ -406,15 +428,6 @@ function initConflictBanner(): void {
     });
 }
 
-// ---- View Source ----
-
-function initViewSourceButton(): void {
-    const btn = document.getElementById('view-source');
-    btn?.addEventListener('click', () => {
-        vscode.postMessage({ type: 'open-source' });
-    });
-}
-
 // Click on #editor padding area delegates focus to the editor
 document.getElementById('editor')?.addEventListener('mousedown', (e) => {
     if (e.target === e.currentTarget && editor) {
@@ -431,7 +444,6 @@ onFrontmatterChange(() => {
     vscode.postMessage({ type: 'dirty', isDirty: true });
 });
 initConflictBanner();
-initViewSourceButton();
 initEditor().then(() => {
     vscode.postMessage({ type: 'ready' });
 });

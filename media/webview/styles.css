@@ -6,6 +6,70 @@
     box-sizing: border-box;
 }
 
+/* ===== Wide mode (full-viewport reading layout) =====
+ * Toggle on body by the wide-mode button. Overrides the centered 860px
+ * "page" feel on every banded element. The side borders that create the
+ * book-spine look are removed too — they only make sense when the editor
+ * is a narrow column floating on a wider background. */
+body.bb-wide .conflict-banner,
+body.bb-wide .frontmatter-panel,
+body.bb-wide #editor {
+    max-width: none;
+}
+body.bb-wide .frontmatter-panel,
+body.bb-wide #editor {
+    border-left: none;
+    border-right: none;
+}
+
+/* ===== Wide-mode toggle button =====
+ * Fixed at the top-right corner. Lives outside the normal flow so it never
+ * collides with frontmatter/editor content. Ghosted by default; brightens
+ * on hover. The two SVG icons swap based on body.bb-wide — we show the
+ * ACTION the click will perform (expand-outward when in page mode,
+ * contract-inward when in wide mode). */
+.bb-wide-toggle {
+    position: fixed;
+    top: 6px;
+    right: 10px;
+    z-index: 50;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    background: transparent;
+    color: var(--vscode-descriptionForeground, #888);
+    border: 1px solid transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+
+.bb-wide-toggle:hover {
+    opacity: 1;
+    background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.15));
+    border-color: var(--vscode-button-border, rgba(128, 128, 128, 0.25));
+}
+
+/* Letter labels — "Z" while in Zen (page-centered) mode, "R" while in Read
+ * (full-width) mode. Convention is "label = current state"; the tooltip
+ * spells out the destination. Monospace + small caps give the letter
+ * a deliberate, glyph-like feel rather than looking like accidental text. */
+.bb-wide-toggle__label {
+    font-family: var(--vscode-editor-font-family, ui-monospace, SFMono-Regular, Menlo, monospace);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.02em;
+}
+
+.bb-wide-toggle__label-read { display: none; }
+body.bb-wide .bb-wide-toggle__label-zen { display: none; }
+body.bb-wide .bb-wide-toggle__label-read { display: inline; }
+
 html, body {
     height: 100%;
     overflow: hidden;
@@ -85,25 +149,6 @@ html, body {
     align-items: center;
     padding: 4px 12px;
     gap: 8px;
-}
-
-.frontmatter-spacer {
-    flex: 1;
-}
-
-.view-source-btn {
-    background: none;
-    border: 1px solid var(--vscode-button-border, rgba(128, 128, 128, 0.3));
-    color: var(--vscode-descriptionForeground, #888);
-    cursor: pointer;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 3px;
-}
-
-.view-source-btn:hover {
-    color: var(--vscode-editor-foreground);
-    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.1));
 }
 
 .frontmatter-toggle {

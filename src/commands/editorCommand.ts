@@ -62,6 +62,12 @@ export function registerEditorCommand(context: vscode.ExtensionContext) {
 class EditorPanel implements vscode.Disposable {
     private static panels = new Map<string, EditorPanel>();
 
+    // Wide-mode is a global UI preference — once the user toggles, every
+    // open BB Editor panel reflects the same layout so they don't end up
+    // with one wide and one narrow editor side-by-side. Stored in globalState
+    // under this key; loaded once at panel creation and broadcast on toggle.
+    private static readonly WIDE_MODE_KEY = 'blogbuddy.editorWideMode';
+
     private panel: vscode.WebviewPanel;
     private bridge: WebviewBridge;
     private filePath?: string;
@@ -116,6 +122,7 @@ class EditorPanel implements vscode.Disposable {
             onDirtyChange: (dirty) => this.setDirty(dirty),
             onReady: () => this.onWebviewReady(),
             onReaderDispatch: (cmd, msgText, content) => this.handleReaderDispatch(cmd, msgText, content),
+            onToggleWideMode: () => this.toggleWideMode(),
         });
 
         this.panel.webview.html = this.getWebviewHtml();
@@ -147,6 +154,14 @@ class EditorPanel implements vscode.Disposable {
                 : themeKind === vscode.ColorThemeKind.HighContrast || themeKind === vscode.ColorThemeKind.HighContrastLight
                     ? 'highContrast'
                     : 'dark',
+        });
+
+        // Send current wide-mode preference so the webview applies it before
+        // the user sees anything (avoids a flash of narrow layout when the
+        // saved preference is wide).
+        this.bridge.post({
+            type: 'set-wide-mode',
+            wide: this.context.globalState.get<boolean>(EditorPanel.WIDE_MODE_KEY, false),
         });
 
         // 加载文件内容
@@ -189,6 +204,20 @@ class EditorPanel implements vscode.Disposable {
         this.panel.title = dirty ? `● ${baseName}` : baseName;
     }
 
+    /**
+     * Flip the wide-mode preference, persist it, and push the new state to
+     * every open BB Editor panel so they all stay in sync. Called when the
+     * webview clicks the toggle button.
+     */
+    private async toggleWideMode(): Promise<void> {
+        const current = this.context.globalState.get<boolean>(EditorPanel.WIDE_MODE_KEY, false);
+        const next = !current;
+        await this.context.globalState.update(EditorPanel.WIDE_MODE_KEY, next);
+        for (const p of EditorPanel.panels.values()) {
+            p.bridge.post({ type: 'set-wide-mode', wide: next });
+        }
+    }
+
     private getWebviewHtml(): string {
         const webview = this.panel.webview;
         const scriptUri = webview.asWebviewUri(
@@ -214,6 +243,10 @@ class EditorPanel implements vscode.Disposable {
     <title>BB Editor</title>
 </head>
 <body>
+    <button id="wide-toggle" class="bb-wide-toggle" title="Zen mode — click for Read mode" aria-label="Toggle layout mode">
+        <span class="bb-wide-toggle__label bb-wide-toggle__label-zen">Z</span>
+        <span class="bb-wide-toggle__label bb-wide-toggle__label-read">R</span>
+    </button>
     <div id="conflict-banner" class="conflict-banner hidden">
         <span class="conflict-msg">This file changed on disk. Reload from disk, or keep your current edits?</span>
         <button id="conflict-reload" class="conflict-btn">Reload</button>
@@ -224,10 +257,6 @@ class EditorPanel implements vscode.Disposable {
             <button id="frontmatter-toggle" class="frontmatter-toggle" title="Toggle frontmatter">
                 <span class="frontmatter-icon">&#9654;</span>
                 <span>Frontmatter</span>
-            </button>
-            <div class="frontmatter-spacer"></div>
-            <button id="view-source" class="view-source-btn" title="Open the raw Markdown source in VS Code">
-                View source
             </button>
         </div>
         <div class="frontmatter-body">

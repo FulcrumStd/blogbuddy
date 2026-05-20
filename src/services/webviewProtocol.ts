@@ -57,10 +57,6 @@ export interface WebviewFrontmatterUpdateMessage {
     frontmatter: string;
 }
 
-export interface WebviewOpenSourceMessage {
-    type: 'open-source';
-}
-
 export interface WebviewConflictResolveMessage {
     type: 'conflict-resolve';
     choice: 'reload' | 'keep';
@@ -71,6 +67,10 @@ export interface WebviewReaderDispatchMessage {
     cmd: string;
     msg: string;
     content: string;   // full Markdown with the render tag already removed
+}
+
+export interface WebviewToggleWideModeMessage {
+    type: 'toggle-wide-mode';
 }
 
 export type WebviewMessage =
@@ -84,9 +84,9 @@ export type WebviewMessage =
     | WebviewAutoSaveMessage
     | WebviewFileUploadMessage
     | WebviewFrontmatterUpdateMessage
-    | WebviewOpenSourceMessage
     | WebviewConflictResolveMessage
-    | WebviewReaderDispatchMessage;
+    | WebviewReaderDispatchMessage
+    | WebviewToggleWideModeMessage;
 
 // ===== Extension Host → Webview =====
 
@@ -141,6 +141,11 @@ export interface HostConflictMessage {
     type: 'conflict';
 }
 
+export interface HostSetWideModeMessage {
+    type: 'set-wide-mode';
+    wide: boolean;
+}
+
 export type HostMessage =
     | HostLoadMessage
     | HostChunkMessage
@@ -149,7 +154,8 @@ export type HostMessage =
     | HostSavedMessage
     | HostThemeMessage
     | HostFileUploadedMessage
-    | HostConflictMessage;
+    | HostConflictMessage
+    | HostSetWideModeMessage;
 
 // ===== Reader Webview ↔ Extension Host =====
 

@@ -217,6 +217,7 @@ A WYSIWYG Markdown editor built into the extension. Open via the Explorer contex
 - **Prism syntax highlighting** — 20+ languages including TypeScript, JavaScript, Python, Bash, YAML, Rust, Go, SQL; palette tracks VS Code light / dark / high-contrast themes
 - **Arrow ligatures** — `->` → `→`, `=>` → `⇒`; skipped inside code blocks and during IME composition
 - **Heading-to-paragraph** — `Backspace` at the start of a heading converts it directly to a paragraph (no step-down through `h2 → h1 → p`)
+- **Zen / Read layout toggle** — small `Z` / `R` button at the top-right flips between **Zen mode** (centered 860px, focused on writing) and **Read mode** (full-viewport, comfortable for long reads). State is global and persists across sessions; multiple open BB Editor panels stay in sync
 
 ### Frontmatter Properties panel
 
@@ -225,6 +226,7 @@ YAML frontmatter is exposed as a typed panel at the top of the editor:
 - **Typed fields** — `title` (text), `date` (date picker), `tags` / `categories` (chip input), `author` / `slug` (text), `draft` (toggle), `description` (textarea)
 - **Add field** — dropdown to add a known field not yet in the YAML
 - **Raw YAML fallback** — collapsible `<details>` at the bottom for direct editing (useful for custom fields or comments)
+- **Collapsed by default** — the panel opens collapsed; click the header to expand. Most editing happens in the body, so the panel stays out of the way until you need it
 - Changes round-trip to disk on auto-save alongside the body
 
 ### Saving and reliability
@@ -234,7 +236,6 @@ YAML frontmatter is exposed as a typed panel at the top of the editor:
 - **IME composition guard** — CJK input (Chinese / Japanese / Korean Pinyin etc.) suspends auto-save and BB triggers until composition commits; no more half-composed pinyin leaking into saves
 - **Compact Markdown normalisation** on save — bullets normalised to `-`, tight lists, HTML entities decoded, bold-marker whitespace moved outside, 3+ consecutive blank lines collapsed to 2. Fenced code block contents are left untouched
 - **External-change detection** — if the file changes on disk while you have unsaved edits, a banner offers **Reload** or **Keep my version** (no silent overwrite)
-- **View source** — a button in the Properties panel header opens the raw `.md` in a side VS Code editor
 
 ---
 

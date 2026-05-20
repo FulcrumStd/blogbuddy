@@ -16,6 +16,22 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.15] - 2026-05-20
+
+### Added
+
+- **Zen / Read layout toggle** in BB Editor — a small `Z` / `R` button at the top-right flips the editor between Zen mode (the existing 860px centered "page" layout, focused on writing) and Read mode (full-viewport, more comfortable for long reads). State is global and persists across sessions; multiple open BB Editor panels stay in sync.
+
+### Changed
+
+- **Frontmatter Properties panel** now opens collapsed by default. The toggle in the panel header still expands it on demand. Most edits happen in the body — the prior expand-on-load behaviour stole vertical space on every document open.
+
+### Removed
+
+- **"View source" button** in the Frontmatter Properties header. It only appeared when the document had frontmatter, which made discoverability inconsistent for users who had come to rely on it. Open the raw source via VS Code's regular Markdown editor (`Open With…` → Text Editor) when needed.
+
+---
+
 ## [0.0.14] - 2026-05-20
 
 ### Changed

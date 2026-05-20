@@ -354,7 +354,11 @@ export function updateFrontmatterPanel(frontmatter: string): void {
 
     if (frontmatter) {
         panel.classList.remove('frontmatter-hidden');
-        panel.classList.remove('frontmatter-collapsed');
+        // Collapsed by default — the user reaches for frontmatter
+        // intentionally when they need it; leaving it expanded eats
+        // vertical space on every doc load. The toggle button still flips
+        // state on demand.
+        panel.classList.add('frontmatter-collapsed');
     } else {
         panel.classList.add('frontmatter-hidden');
     }
