@@ -16,6 +16,20 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.14] - 2026-05-20
+
+### Changed
+
+- **AI Reader prompt restructured into four layers** — technical safety, aesthetic core, per-preset structural function, and user/style-reference overrides. The new aesthetic core carries a 12-tone catalog (editorial-magazine, brutalist, retro-futuristic, didactic-clinical, …), an explicit **Forbidden list** (Inter / Roboto / Arial / purple-on-white gradients / uniform `border-radius:8px` / "Tailwind default" feel), an anti-convergence rule, and a Self-check (no overflow at 1280px/380px, AA contrast in both schemes, SVG > ~8 nodes → HTML+CSS fallback). Adapted from Anthropic's `frontend-design` skill, tuned for the Reader webview's no-network CSP. Output is measurably less generic and has fewer layout glitches.
+- **Reader Regenerate** now feeds the previous attempts' Design Briefs back to the model with a "pick a meaningfully different tone AND font AND palette" steer. Queue is capped at the last 3 attempts; resets on a new `<bb-render-*:>` trigger or when the user changes the refinement prompt between attempts. Earlier regenerates were sampling-temperature rerolls with no signal — this gives concrete avoidance.
+- **`.bbreader.md` template** gains an **Aesthetic direction** section (Tone / Feel / Reference sites). Example fonts updated away from Inter (now flagged by the Forbidden list).
+
+### Fixed
+
+- **Slash menu nav in BB Editor** — pressing ↓ past the visible viewport no longer jumps the active highlight back near the top. Root cause: `scrollIntoView` on the active item triggers synthetic `mouseenter` events on items sliding under a stationary cursor, which our hover handler then promoted to active. We now gate `mouseenter` on actual mouse motion (`mousemove`), so scroll-induced enters are ignored while real hover still works.
+
+---
+
 ## [0.0.13] - 2026-05-18
 
 ### Added

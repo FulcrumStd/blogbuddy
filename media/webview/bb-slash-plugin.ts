@@ -157,6 +157,15 @@ class SlashMenuController {
     private activeIndex = 0;
     visible = false;
 
+    // True while keyboard is the active input device. When the keyboard scrolls
+    // the menu via scrollIntoView, items slide under a stationary mouse cursor
+    // and the browser fires synthetic `mouseenter` events on whichever items
+    // pass under it — which would otherwise yank the active highlight to the
+    // wrong index. We ignore mouseenter in this mode, then clear it the moment
+    // the mouse actually moves (mousemove only fires on real motion, not on
+    // scroll-induced layout shifts).
+    private keyboardNavMode = false;
+
     constructor(
         private items: SlashItem[],
         private view: EditorView,
@@ -166,6 +175,13 @@ class SlashMenuController {
     buildDOM(): HTMLElement {
         const menu = document.createElement('div');
         menu.className = 'bb-slash-menu';
+
+        // Real mouse motion releases keyboard-nav mode. We listen on the menu
+        // root (one listener, not N) — a mousemove anywhere over the menu means
+        // the user is back to mouse-driven selection.
+        menu.addEventListener('mousemove', () => {
+            this.keyboardNavMode = false;
+        });
 
         let prevGroup: string | null = null;
 
@@ -197,6 +213,9 @@ class SlashMenuController {
                 this.items[idx].onSelect(this.view, this.slashProvider);
             });
             el.addEventListener('mouseenter', () => {
+                // Ignore mouseenter triggered by scrollIntoView during keyboard
+                // navigation — the mouse hasn't actually moved.
+                if (this.keyboardNavMode) { return; }
                 this.setActive(idx);
             });
 
@@ -227,10 +246,12 @@ class SlashMenuController {
                 // ~19 items now, the old modulo wrap felt like a teleport and
                 // was indistinguishable from "I just hit the bottom of what I
                 // can see" — confusing in a long scrollable list.
+                this.keyboardNavMode = true;
                 this.setActive(Math.min(this.activeIndex + 1, this.itemEls.length - 1));
                 return true;
             case 'ArrowUp':
                 e.preventDefault();
+                this.keyboardNavMode = true;
                 this.setActive(Math.max(this.activeIndex - 1, 0));
                 return true;
             case 'Enter':

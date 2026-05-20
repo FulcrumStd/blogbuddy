@@ -12,13 +12,38 @@ const TEMPLATE_CONTENT = `# BB Reader Style Reference
 
 This file is read by BlogBuddy's AI Reader (\`<bb-render-*:>\`) and used as
 authoritative guidance on visual style and conventions. Edit each section to
-describe your blog's look. Leave any section blank if you don't have an opinion.
+describe your blog's look. Leave any section blank if you don't have an opinion
+— anything you leave blank is decided per-render by the Reader's own design
+philosophy.
+
+## Aesthetic direction
+
+The single most important section. Pick a tone and the Reader will lean into
+it across every render. Leave blank to let the AI pick a tone per document.
+
+- **Tone:** one keyword is enough. Examples — editorial-magazine, refined-minimal,
+  retro-futuristic, luxury-refined, didactic-clinical, brutalist, organic-natural,
+  industrial-utilitarian, art-deco-geometric, zine-handmade. Or describe in
+  your own words ("muted Wired-magazine, dense").
+- **What it should feel like:** one sentence. e.g. "a finished printed object",
+  "a terminal session", "an art-book end-paper", "a museum wall label".
+- **Reference sites or print artifacts:** e.g. "subtraction.com", "Apple
+  developer docs", "Wired print layouts", "The New Yorker online". The Reader
+  cannot fetch these, but the names act as priors.
 
 ## Visual style
 
-- **Typography:** e.g. "Serif body (Charter, Source Serif Pro), sans-serif display headings (Inter)."
-- **Body width:** e.g. "max 720px, centered."
-- **Color scheme:** e.g. "Warm off-white #fafaf7 background, #2a2a2a body text, #c2410c accent."
+Fonts must be system-available — the Reader has no network access, so Google
+Fonts and other web-font CDNs do not load. Inter, Roboto, Arial, and stock
+system-ui are explicitly avoided by the Reader (they're the generic-AI look);
+prefer characterful system fonts (Iowan Old Style, Charter, Palatino, Hoefler
+Text, Avenir Next, Optima, Futura, Gill Sans, SF Mono, Menlo, …).
+
+- **Typography:** e.g. "Serif body (Iowan Old Style, Charter, Palatino fallback),
+  geometric sans display (Futura, Avenir Next fallback)."
+- **Body width:** e.g. "max 720px, centered." Leave blank to let the tone decide.
+- **Color scheme:** e.g. "Warm off-white #fafaf7 background, #2a2a2a body text,
+  #c2410c accent."
 - **Headings:** e.g. "Left-aligned. h2 has a thin underline. Generous space-above."
 - **Code blocks:** e.g. "Monospace, light gray background, no border, soft rounded corners."
 - **Callouts / pull quotes:** e.g. "Left-border tinted blocks, italic body."

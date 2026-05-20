@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { BBCmd } from '../../core/types';
-import { buildReaderMessages, getPresetDisplayName, isRenderCmd, appendBBTag } from '../../core/reader';
+import { buildReaderMessages, getPresetDisplayName, isRenderCmd, appendBBTag, extractDesignBrief } from '../../core/reader';
 
 suite('reader.buildReaderMessages', () => {
     test('Blog View preset uses BLOG system prompt', () => {
@@ -152,6 +152,81 @@ suite('reader.buildReaderMessages', () => {
         });
         const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
         assert.ok(systemContent.includes(ref));
+    });
+
+    test('previousBriefs appends a REGENERATION STEERING block with each brief', () => {
+        const msgs = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG,
+            userPrompt: '',
+            frontmatter: '',
+            body: 'doc',
+            sourceFileName: 'a.md',
+            previousBriefs: [
+                'tone=editorial-magazine | display=Hoefler Text | palette=#1a1a1a on #f5f1e8',
+                'tone=brutalist | display=Menlo | palette=#000 on #fff',
+            ],
+        });
+        const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
+        assert.ok(systemContent.includes('REGENERATION STEERING'));
+        assert.ok(systemContent.includes('Attempt 1:'));
+        assert.ok(systemContent.includes('Attempt 2:'));
+        assert.ok(systemContent.includes('editorial-magazine'));
+        assert.ok(systemContent.includes('brutalist'));
+    });
+
+    test('previousBriefs omits the steering block when empty or all-whitespace', () => {
+        const empty = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG, userPrompt: '', frontmatter: '', body: 'x', sourceFileName: 'a.md',
+            previousBriefs: [],
+        });
+        const whitespace = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG, userPrompt: '', frontmatter: '', body: 'x', sourceFileName: 'a.md',
+            previousBriefs: ['   ', '\n\n'],
+        });
+        const omitted = buildReaderMessages({
+            cmd: BBCmd.RENDER_BLOG, userPrompt: '', frontmatter: '', body: 'x', sourceFileName: 'a.md',
+        });
+        for (const msgs of [empty, whitespace, omitted]) {
+            const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
+            assert.ok(!/REGENERATION STEERING/i.test(systemContent));
+        }
+    });
+});
+
+suite('reader.extractDesignBrief', () => {
+    test('extracts the brief from a comment at the top of an HTML doc', () => {
+        const html = '<!DOCTYPE html><html>\n<!-- Design Brief: tone=editorial-magazine | display="Hoefler Text" | palette=#1a1a1a on #f5f1e8 -->\n<head></head><body></body></html>';
+        const brief = extractDesignBrief(html);
+        assert.ok(brief);
+        assert.ok(brief.includes('editorial-magazine'));
+        assert.ok(brief.includes('Hoefler Text'));
+    });
+
+    test('handles case-insensitive comment label and inline whitespace', () => {
+        const html = '<html><!--design brief:tone=brutalist-->';
+        const brief = extractDesignBrief(html);
+        assert.strictEqual(brief, 'tone=brutalist');
+    });
+
+    test('collapses multi-line briefs into a single normalized line', () => {
+        const html = '<!-- Design Brief: tone=retro-futuristic\n     display=Menlo\n     palette=neon -->';
+        const brief = extractDesignBrief(html);
+        assert.ok(brief);
+        assert.ok(!brief.includes('\n'));
+        assert.ok(brief.includes('retro-futuristic'));
+        assert.ok(brief.includes('Menlo'));
+    });
+
+    test('returns undefined when the comment is absent', () => {
+        assert.strictEqual(extractDesignBrief('<html><body>nothing here</body></html>'), undefined);
+    });
+
+    test('returns undefined for empty input', () => {
+        assert.strictEqual(extractDesignBrief(''), undefined);
+    });
+
+    test('returns undefined when the brief comment is empty', () => {
+        assert.strictEqual(extractDesignBrief('<!-- Design Brief:    -->'), undefined);
     });
 });
 

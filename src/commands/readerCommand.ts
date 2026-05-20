@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { getPresetDisplayName, RenderCmd, runReaderStream, appendBBTag } from '../core/reader';
+import { getPresetDisplayName, RenderCmd, runReaderStream, appendBBTag, extractDesignBrief } from '../core/reader';
 import { AIService } from '../services/AIService';
 import { extractFrontmatter } from '../utils/frontmatter';
 import { inlineImageAssets } from '../utils/assetInliner';
@@ -58,6 +58,22 @@ export class ReaderPanel implements vscode.Disposable {
     private fullText = '';
     private styleReferenceName?: string;   // basename of the loaded .bbreader.md, if any
 
+    // Regeneration session state. previousBriefs accumulates Design Briefs from
+    // prior attempts so the model is steered toward a meaningfully different
+    // direction on the next regenerate. The queue is FIFO-capped at MAX_PRIOR_BRIEFS
+    // to keep prompt overhead bounded — beyond 3 attempts the model has plenty
+    // of avoidance signal and additional history only bloats tokens.
+    //
+    // Reset rules:
+    //   - applyNewRequest (user fires a fresh <bb-render-*:> from source) → CLEAR
+    //   - reader-regenerate with prompt unchanged → KEEP (continued exploration)
+    //   - reader-regenerate with prompt changed   → CLEAR (new direction)
+    // lastUsedPrompt is the prompt as it was at the start of the last generation,
+    // used to detect "did the prompt change" on the next regenerate.
+    private static readonly MAX_PRIOR_BRIEFS = 3;
+    private previousBriefs: string[] = [];
+    private lastUsedPrompt = '';
+
     private constructor(
         private readonly context: vscode.ExtensionContext,
         private readonly sourceDoc: vscode.TextDocument,
@@ -109,6 +125,11 @@ export class ReaderPanel implements vscode.Disposable {
     private applyNewRequest(cmd: RenderCmd, userPrompt: string): void {
         this.cmd = cmd;
         this.userPrompt = userPrompt;
+        // Firing a fresh <bb-render-*:> from the source is the start of a new
+        // regeneration session — clear the brief queue so we don't drag previous
+        // attempts' avoidance signal into a context where the user is explicitly
+        // restarting.
+        this.previousBriefs = [];
         this.sendInit();
         void this.startGeneration();
     }
@@ -133,6 +154,14 @@ export class ReaderPanel implements vscode.Disposable {
                 break;
             case 'reader-regenerate':
                 if (msg.userPrompt !== undefined) {
+                    // Prompt-change detection: if the user altered the prompt
+                    // between attempts they are steering toward a new direction,
+                    // so we clear the avoidance queue. Repeated regenerates with
+                    // the same prompt keep accumulating, which is what gives the
+                    // model meaningful "don't go back to X" signal across rerolls.
+                    if (msg.userPrompt !== this.lastUsedPrompt) {
+                        this.previousBriefs = [];
+                    }
                     this.userPrompt = msg.userPrompt;
                     // Re-emit init so the webview state stays in sync (preset
                     // label, prompt echo). startGeneration will follow.
@@ -176,6 +205,11 @@ export class ReaderPanel implements vscode.Disposable {
         this.generating = true;
         this.startTime = Date.now();
         this.fullText = '';
+        // Snapshot the prompt used for THIS attempt so the next regenerate can
+        // detect whether the user changed it (which triggers a queue reset).
+        // Snapshotting here, not at the call site, keeps the source of truth
+        // adjacent to the AIService call below.
+        this.lastUsedPrompt = this.userPrompt;
 
         const { frontmatter, body } = extractFrontmatter(fullSource);
 
@@ -195,6 +229,7 @@ export class ReaderPanel implements vscode.Disposable {
                 body,
                 sourceFileName: path.basename(this.sourceDoc.uri.fsPath),
                 styleReference: styleRef?.content,
+                previousBriefs: this.previousBriefs.length > 0 ? this.previousBriefs : undefined,
             });
         } catch (err) {
             if (myId === this.generationId) {
@@ -223,6 +258,23 @@ export class ReaderPanel implements vscode.Disposable {
             // so we only do this once. handleExport reads this.fullText, so the
             // exported file inherits the tag automatically.
             this.fullText = appendBBTag(this.fullText);
+
+            // Capture this attempt's Design Brief so the NEXT regenerate (if it
+            // comes) can steer away from it. Extract from the raw output BEFORE
+            // the BB tag was injected — appendBBTag only modifies the </body>
+            // region, but extractDesignBrief looks at the <html> opening anyway
+            // so reading from this.fullText post-injection is also safe.
+            // Silently skip if the model omitted the brief comment.
+            const brief = extractDesignBrief(this.fullText);
+            if (brief) {
+                this.previousBriefs.push(brief);
+                if (this.previousBriefs.length > ReaderPanel.MAX_PRIOR_BRIEFS) {
+                    // FIFO: drop the oldest so we keep the most recent N. The
+                    // recent ones matter more — the user has just seen them and
+                    // is asking for something different from THOSE specifically.
+                    this.previousBriefs.splice(0, this.previousBriefs.length - ReaderPanel.MAX_PRIOR_BRIEFS);
+                }
+            }
 
             // Compute the delta for this render.
             const tokensUsed = readFlagTokens('render') - baseTokens;
