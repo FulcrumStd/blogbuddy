@@ -16,6 +16,19 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.16] - 2026-05-27
+
+### Changed
+
+- **Reader design intelligence, expanded.** The Reader's aesthetic prompt now carries a 20-tone catalog (up from 12), and every tone is pinned to a concrete starting point — a system-font pairing, a real-hex palette, and one signature layout move — so renders commit to a direction instead of drifting back to a generic default. Eight reading-friendly tones were added: swiss-international, glassmorphism, claymorphism, bento-grid, e-ink-paper, academia-scholarly, memphis-postmodern, and cyberpunk-terminal.
+- **Smarter tone selection.** A new "Choosing a tone" layer maps a document's subject and voice to a tone family (e.g. engineering docs → didactic / industrial / e-ink / terminal; essays → editorial / academia / organic / zine), giving the anti-convergence logic something concrete to vary against across regenerations. Fonts stay system-only (no network), and contrast-risky tones carry explicit AA guardrails. Distilled from the ui-ux-pro-max style library.
+
+### Fixed
+
+- CI publish workflow no longer trips the Node.js 20 deprecation warning — bumped `actions/checkout` and `actions/setup-node` to v5 (Node 24 runtime) and the build's Node from 20.x to 22.x LTS.
+
+---
+
 ## [0.0.15] - 2026-05-20
 
 ### Added

@@ -120,7 +120,9 @@ suite('reader.buildReaderMessages', () => {
             styleReference: 'Use serif body, sans-serif headings. Body width 720px.',
         });
         const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
-        assert.ok(systemContent.includes('Style reference'));
+        // Key on the injected block's unique header, not the loose phrase "Style
+        // reference" (which also appears in the Design Philosophy prose).
+        assert.ok(systemContent.includes("Style reference — the user's house style"));
         assert.ok(systemContent.includes('serif body, sans-serif headings'));
         // Body content should still be in the user message, not the system one.
         const userContent = typeof msgs[1].content === 'string' ? msgs[1].content : '';
@@ -137,7 +139,10 @@ suite('reader.buildReaderMessages', () => {
             styleReference: '   \n\n  ',
         });
         const systemContent = typeof msgs[0].content === 'string' ? msgs[0].content : '';
-        assert.ok(!/Style reference/i.test(systemContent));
+        // The injected block (identified by its unique header) must be absent.
+        // Note: the Design Philosophy prose mentions "Style reference" too, so
+        // we cannot assert on that loose phrase here.
+        assert.ok(!systemContent.includes("Style reference — the user's house style"));
     });
 
     test('styleReference is preserved verbatim (model sees the actual file content)', () => {
