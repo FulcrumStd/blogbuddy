@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
@@ -83,9 +83,9 @@
       },
       {
         "command": "blogbuddy.openEditor",
-        "key": "ctrl+b",
-        "mac": "cmd+b",
-        "when": "filesExplorerFocus && resourceExtname == .md"
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "(filesExplorerFocus && resourceExtname == .md) || editorLangId == markdown"
       }
     ],
     "configuration": {

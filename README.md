@@ -60,7 +60,7 @@ Eight inline commands plus a four-preset reader. All accept an optional refineme
 
 ## BB Editor — a WYSIWYG that respects Markdown
 
-A built-in rich-text editor for `.md` files, powered by [Milkdown](https://milkdown.dev). Open it from the Explorer (`Cmd+B` on a `.md` file) or the editor title bar. It saves as plain Markdown, with predictable normalisation.
+A built-in rich-text editor for `.md` files, powered by [Milkdown](https://milkdown.dev). Open it with `Cmd+Shift+B` / `Ctrl+Shift+B` — either on a `.md` file in the Explorer, or with a `.md` already open in VS Code's text editor to swap it for the BB Editor in place. The editor title bar's BB icon does the same. Saves as plain Markdown, with predictable normalisation.
 
 - **WYSIWYG with full GFM** — tables, strikethrough, task lists, autolinks, blockquotes, fenced code
 - **Slash menu (`/`)** — block types and every BB command, pre-filled
@@ -115,7 +115,7 @@ Trigger `<bb-render-*>` and the AI re-interprets your document as a complete HTM
 | Where | Shortcut | Action |
 |---|---|---|
 | Markdown editor | `Cmd+B Cmd+B` / `Ctrl+B Ctrl+B` | Execute BB on the current block or selection |
-| Explorer (on a `.md` file) | `Cmd+B` / `Ctrl+B` | Open BB Editor |
+| Explorer (on a `.md` file) or open Markdown editor | `Cmd+Shift+B` / `Ctrl+Shift+B` | Open BB Editor (swaps the active Markdown editor in place) |
 | BB Editor | `/` | Slash menu (BB commands + block types) |
 | BB Editor | `Cmd+B Cmd+B` | Fire an inline `<bb-*>` tag |
 | BB Editor | `Cmd+S` | Save immediately |

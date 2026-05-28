@@ -108,10 +108,17 @@ export function compactMarkdown(md: string): string {
 
 export function preprocessMarkdown(md: string, baseUri: string): string {
     if (!baseUri) { return md; }
-    return md.replace(
+    let out = md.replace(
         /(!?\[[^\]]*\])\((?!https?:\/\/|data:|vscode-webview:)([^)]+)\)/g,
         (_, prefix, relativePath) => `${prefix}(${baseUri}/${relativePath})`
     );
+    // HTML <img src="..."> — rewrite relative paths so the embedded image
+    // loads inside the webview. Round-trips back to relative via stripBaseUri.
+    out = out.replace(
+        /(<img\b[^>]*?\bsrc\s*=\s*)(["'])(?!https?:\/\/|data:|vscode-webview:)([^"'>]+)\2/gi,
+        (_, prefix, quote, relativePath) => `${prefix}${quote}${baseUri}/${relativePath}${quote}`
+    );
+    return out;
 }
 
 export function stripBaseUri(md: string, baseUri: string): string {

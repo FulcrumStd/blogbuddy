@@ -26,7 +26,7 @@ BlogBuddy 是一款 VS Code 扩展，让 AI"动词"直接活在你的 Markdown �
 | 入口 | 触发方式 | 适合 |
 |---|---|---|
 | **内联标签** | 文本里写 `<bb-*>` + `Cmd+B Cmd+B` | 快路径——AI 嵌在正文里，光标都不用挪 |
-| **BB 编辑器** | 在 Explorer 选中 `.md` 后按 `Cmd+B` | WYSIWYG 编辑，含 frontmatter 类型化面板、斜杠菜单、流式 AI 块 |
+| **BB 编辑器** | 在 Explorer 选中 `.md`，或正在编辑 `.md`，按 `Cmd+Shift+B` | WYSIWYG 编辑，含 frontmatter 类型化面板、斜杠菜单、流式 AI 块 |
 | **命令面板** | `Cmd+Shift+P` → `BlogBuddy:` | 其他所有功能——模型选择、诊断、使用统计、模板等 |
 
 ---
@@ -205,7 +205,7 @@ Reader iframe 通过 Blob URL 加载，会执行 AI 生成的内联脚本——�
 
 ## BB 编辑器
 
-扩展内置的 WYSIWYG Markdown 编辑器。从 Explorer 右键菜单（`.md` 上右键 → **BlogBuddy: Open BB Editor**）或选中后 `Cmd+B` 打开。读写均为纯 Markdown——没有私有格式。
+扩展内置的 WYSIWYG Markdown 编辑器。打开方式有三种：Explorer 右键菜单（`.md` 上右键 → **BlogBuddy: Open BB Editor**）、编辑器标题栏的 BB 图标，或 `Cmd+Shift+B` / `Ctrl+Shift+B` 快捷键。快捷键支持两种情景——Explorer 里选中了 `.md`，或者 VS Code 已经用文本编辑器打开了一个 `.md`（这时按一下就原地把 VS Code 编辑器换成 BB 编辑器）。读写均为纯 Markdown——没有私有格式。
 
 ### 核心编辑
 
@@ -374,7 +374,7 @@ launchctl setenv OPENAI_API_KEY 'sk-...'
 | 操作 | 快捷键 | 命令 id |
 |---|---|---|
 | 执行 BB 命令 | `Cmd+B Cmd+B` (Mac) / `Ctrl+B Ctrl+B` (Win/Linux) | `blogbuddy.bb` |
-| 打开 BB 编辑器 | `Cmd+B` (Mac) / `Ctrl+B` (Win/Linux) —— Explorer 选中 `.md` | `blogbuddy.openEditor` |
+| 打开 BB 编辑器 | `Cmd+Shift+B` (Mac) / `Ctrl+Shift+B` (Win/Linux) —— Explorer 选中 `.md` 或当前正在编辑 `.md` | `blogbuddy.openEditor` |
 | 选择模型 | 命令面板 | `blogbuddy.selectModel` |
 | 显示诊断 | 命令面板 | `blogbuddy.showDiagnostics` |
 | 显示使用统计 | 命令面板 | `blogbuddy.showUsageStats` |

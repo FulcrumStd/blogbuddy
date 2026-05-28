@@ -16,6 +16,20 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.17] - 2026-05-28
+
+### Changed
+
+- **Open-BB-Editor shortcut moved to `Cmd+Shift+B` / `Ctrl+Shift+B`**, and the scope expanded. The previous `Cmd+B` / `Ctrl+B` only fired when a `.md` was selected in the Explorer — too easy to overlook, and stole a key that VS Code users reach for as Bold or Toggle Sidebar. The new chord works in two places: a `.md` selected in the Explorer **and** a `.md` already open in VS Code's text editor (where one keystroke swaps the active editor for the BB Editor in place, matching the title-bar BB icon).
+- **Refreshed extension icon.** Replaced the noisy distressed-texture mark with a clean transparent-background BB icon downsized from the master artwork.
+
+### Fixed
+
+- **HTML `<img>` tags now render as actual images in BB Editor.** Previously a Markdown file with raw `<img src="…">` (very common in README hero blocks) showed the literal HTML source where the image should be. The webview now rewrites relative `<img src>` paths to webview URIs on load (and strips them back on save), and a small ProseMirror NodeView renders the `html` node as a real `<img>` when its value is a standalone `<img>` tag — the original source is preserved verbatim on save, so width/alt/etc. round-trip.
+- **Layout-only HTML wrappers are no longer surfaced as code.** `<div align="center">`, `</div>`, `<span>`, `<section>` and other structural tags used purely for alignment/grouping in Markdown are now rendered invisibly, and their wrapping paragraph collapses if it contained nothing else — the README's centered hero block no longer leaves visible HTML tags around the logo. As above, the source HTML is untouched on save.
+
+---
+
 ## [0.0.16] - 2026-05-27
 
 ### Changed

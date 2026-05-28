@@ -853,3 +853,15 @@ body:not([data-theme="light"]) .milkdown pre code .token.variable {
 #editor::-webkit-scrollbar-thumb:hover {
     background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
 }
+
+/* ===== HTML structural-wrapper hiding =====
+ * <div align="center">, </div>, <span>, etc. carry layout intent only. The
+ * raw source is preserved by Milkdown's html node (round-trips on save); here
+ * we just suppress visual rendering so the user isn't confronted with HTML
+ * tags in the WYSIWYG view. When the wrapping paragraph has nothing else
+ * inside, collapse it too so we don't leave a stray empty line.
+ */
+.bb-html-structural { display: none; }
+.ProseMirror p:has(> .bb-html-structural):not(:has(> :not(.bb-html-structural))) {
+    display: none;
+}

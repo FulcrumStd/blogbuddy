@@ -60,7 +60,7 @@
 
 ## BB 编辑器 —— 一个尊重 Markdown 的 WYSIWYG
 
-基于 [Milkdown](https://milkdown.dev) 的内置富文本 `.md` 编辑器。从文件管理器（在 `.md` 上按 `Cmd+B`）或编辑器标题栏打开。落盘是干净的 Markdown，规范化方式可预测。
+基于 [Milkdown](https://milkdown.dev) 的内置富文本 `.md` 编辑器。按 `Cmd+Shift+B` / `Ctrl+Shift+B` 打开 —— 在文件管理器选中 `.md`，或 VS Code 已经用文本编辑器打开了一个 `.md` 都可以（后者会原地把 VS Code 编辑器换成 BB 编辑器）。编辑器标题栏的 BB 图标也走同一个入口。落盘是干净的 Markdown，规范化方式可预测。
 
 - **WYSIWYG + 完整 GFM** —— 表格、删除线、任务列表、自动链接、引用块、围栏代码
 - **斜杠菜单（`/`）** —— 块类型 + 全部 BB 命令，预填好
@@ -115,7 +115,7 @@
 | 场景 | 快捷键 | 操作 |
 |---|---|---|
 | Markdown 编辑器 | `Cmd+B Cmd+B` / `Ctrl+B Ctrl+B` | 在当前块或选区上执行 BB 命令 |
-| 文件管理器（选中 `.md`） | `Cmd+B` / `Ctrl+B` | 打开 BB 编辑器 |
+| 文件管理器（选中 `.md`）或打开的 Markdown 编辑器 | `Cmd+Shift+B` / `Ctrl+Shift+B` | 打开 BB 编辑器（在 VS Code 编辑器里就原地切换） |
 | BB 编辑器 | `/` | 斜杠菜单（BB 命令 + 块类型） |
 | BB 编辑器 | `Cmd+B Cmd+B` | 触发内联 `<bb-*>` 标签 |
 | BB 编辑器 | `Cmd+S` | 立即保存 |

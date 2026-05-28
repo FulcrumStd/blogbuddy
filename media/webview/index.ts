@@ -12,6 +12,7 @@ import { bbSlashPlugin } from './bb-slash-plugin';
 import { headingKeymapPlugin } from './heading-keymap-plugin';
 import { arrowLigaturesPlugin } from './arrow-ligatures-plugin';
 import { codeHighlightPlugin } from './code-highlight-plugin';
+import { htmlRenderPlugin } from './html-render-plugin';
 import { preprocessMarkdown, serializeForSave } from './markdown-output';
 import { initFrontmatterPanel, updateFrontmatterPanel, onFrontmatterChange } from './frontmatter-panel';
 import './styles.css';
@@ -161,6 +162,7 @@ async function initEditor(): Promise<void> {
         .use(headingKeymapPlugin)
         .use(arrowLigaturesPlugin)
         .use(codeHighlightPlugin)
+        .use(htmlRenderPlugin)
         .use(aiBlockPlugin)
         .create();
 

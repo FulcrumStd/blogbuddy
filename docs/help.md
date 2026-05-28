@@ -26,7 +26,7 @@ Word count appears in the status bar for every Markdown file — no toggle.
 | Surface | Trigger | Best for |
 |---|---|---|
 | **Inline tags** | `<bb-*>` in your text + `Cmd+B Cmd+B` | The fast path — embedded AI assistance without leaving the cursor |
-| **BB Editor** | `Cmd+B` on a `.md` in Explorer | WYSIWYG editing with typed frontmatter, slash menu, streaming AI blocks |
+| **BB Editor** | `Cmd+Shift+B` on a `.md` (Explorer selection or active Markdown editor) | WYSIWYG editing with typed frontmatter, slash menu, streaming AI blocks |
 | **Command palette** | `Cmd+Shift+P` → `BlogBuddy:` | Everything else — model picker, diagnostics, usage stats, templates |
 
 ---
@@ -205,7 +205,7 @@ The Reader iframe is loaded via a Blob URL and executes inline scripts the AI em
 
 ## BB Editor
 
-A WYSIWYG Markdown editor built into the extension. Open via the Explorer context menu (right-click a `.md` → **BlogBuddy: Open BB Editor**) or `Cmd+B` with the file selected. The editor reads and writes plain Markdown — no proprietary format.
+A WYSIWYG Markdown editor built into the extension. Open via the Explorer context menu (right-click a `.md` → **BlogBuddy: Open BB Editor**), the BB icon in the editor title bar, or `Cmd+Shift+B` / `Ctrl+Shift+B`. The shortcut works two ways: with a `.md` selected in the Explorer, or with a `.md` already open in VS Code's text editor (it swaps that editor for the BB Editor in place). The editor reads and writes plain Markdown — no proprietary format.
 
 ### Core editing
 
@@ -374,7 +374,7 @@ More content here...
 | Action | Shortcut | Command id |
 |---|---|---|
 | Execute BB command | `Cmd+B Cmd+B` (Mac) / `Ctrl+B Ctrl+B` (Win/Linux) | `blogbuddy.bb` |
-| Open BB Editor | `Cmd+B` (Mac) / `Ctrl+B` (Win/Linux) — Explorer focus on `.md` | `blogbuddy.openEditor` |
+| Open BB Editor | `Cmd+Shift+B` (Mac) / `Ctrl+Shift+B` (Win/Linux) — Explorer selection on `.md` or active Markdown editor | `blogbuddy.openEditor` |
 | Select model | Palette | `blogbuddy.selectModel` |
 | Show diagnostics | Palette | `blogbuddy.showDiagnostics` |
 | Show usage statistics | Palette | `blogbuddy.showUsageStats` |
