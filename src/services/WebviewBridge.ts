@@ -6,6 +6,7 @@ import { BBCmd, ProcessRequest } from '../core/types';
 import { ConfigService } from './ConfigService';
 import { AppError } from '../utils/ErrorHandler';
 import { extractFrontmatter } from '../utils/frontmatter';
+import { preserveUnchangedBlocks } from '../utils/preserveUnchanged';
 import {
     WebviewMessage,
     HostMessage,
@@ -28,6 +29,7 @@ export class WebviewBridge implements vscode.Disposable {
     private frontmatterAutoSaveTimer?: ReturnType<typeof setTimeout>;
     private isDirty = false;
     private pendingConflictContent?: string;
+    private flushWaiters: Array<() => void> = [];
 
     private onReaderDispatch?: (cmd: string, msg: string, content: string) => Promise<void>;
     private onToggleWideMode?: () => void;
@@ -60,6 +62,34 @@ export class WebviewBridge implements vscode.Disposable {
 
     setFilePath(filePath: string): void {
         this.filePath = filePath;
+    }
+
+    get currentFilePath(): string | undefined {
+        return this.filePath;
+    }
+
+    /**
+     * Ask the webview to flush its (debounced) pending edits to disk and
+     * resolve once the write completes. Always requests a flush rather than
+     * gating on the dirty flag — the flag can lag the 500ms auto-save
+     * debounce, and rewriting identical content is harmless. A 1s timeout
+     * guards against a dead webview so callers can never hang.
+     */
+    flushEdits(): Promise<void> {
+        return new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, 1000);
+            this.flushWaiters.push(() => {
+                clearTimeout(timer);
+                resolve();
+            });
+            this.post({ type: 'request-save' });
+        });
+    }
+
+    private resolveFlushWaiters(): void {
+        const waiters = this.flushWaiters;
+        this.flushWaiters = [];
+        waiters.forEach(w => w());
     }
 
     post(message: HostMessage): void {
@@ -122,7 +152,20 @@ export class WebviewBridge implements vscode.Disposable {
             case 'toggle-wide-mode':
                 this.onToggleWideMode?.();
                 break;
+            case 'flush-noop':
+                this.resolveFlushWaiters();
+                break;
         }
+    }
+
+    /**
+     * Minimal-churn body treatment at write time: merge the serialized
+     * Markdown against the body currently on disk so blocks the user didn't
+     * edit keep their original bytes (the WYSIWYG round-trip alone would
+     * restyle the whole file — bullets, emphasis markers, escapes, wraps).
+     */
+    prepareBodyForWrite(content: string): string {
+        return preserveUnchangedBlocks(this.lastBodyContent, content);
     }
 
     private async handleConflictResolve(msg: WebviewConflictResolveMessage): Promise<void> {
@@ -194,15 +237,18 @@ export class WebviewBridge implements vscode.Disposable {
     }
 
     private async handleAutoSave(content: string): Promise<void> {
-        if (!this.filePath) { return; }
-        this.lastBodyContent = content;
         try {
+            if (!this.filePath) { return; }
+            content = this.prepareBodyForWrite(content);
+            this.lastBodyContent = content;
             const fullContent = this.storedFrontmatter + content;
             this.lastWrittenContent = fullContent;
             await fs.writeFile(this.filePath, fullContent, 'utf-8');
             this.onDirtyChange?.(false);
         } catch {
             // Auto-save failures are silent
+        } finally {
+            this.resolveFlushWaiters();
         }
     }
 
@@ -239,7 +285,9 @@ export class WebviewBridge implements vscode.Disposable {
                 this.watchFile();
             }
 
-            const fullContent = this.storedFrontmatter + msg.content;
+            const body = this.prepareBodyForWrite(msg.content);
+            this.lastBodyContent = body;
+            const fullContent = this.storedFrontmatter + body;
             this.lastWrittenContent = fullContent;
             await fs.writeFile(this.filePath, fullContent, 'utf-8');
             this.post({ type: 'saved', success: true, filePath: this.filePath });
@@ -247,6 +295,8 @@ export class WebviewBridge implements vscode.Disposable {
             const errMsg = error instanceof Error ? error.message : 'Save failed';
             vscode.window.showErrorMessage(`Failed to save file: ${errMsg}`);
             this.post({ type: 'saved', success: false });
+        } finally {
+            this.resolveFlushWaiters();
         }
     }
 

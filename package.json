@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
@@ -42,6 +42,11 @@
         }
       },
       {
+        "command": "blogbuddy.openSource",
+        "title": "BlogBuddy: Reopen as Markdown Source",
+        "icon": "$(code)"
+      },
+      {
         "command": "blogbuddy.createReaderTemplate",
         "title": "BlogBuddy: Create .bbreader.md Template"
       },
@@ -71,6 +76,11 @@
           "command": "blogbuddy.openEditor",
           "when": "resourceExtname == .md && resourceScheme == file",
           "group": "navigation@-10"
+        },
+        {
+          "command": "blogbuddy.openSource",
+          "when": "activeWebviewPanelId == 'blogbuddy.editor'",
+          "group": "navigation@-10"
         }
       ]
     },
@@ -86,6 +96,12 @@
         "key": "ctrl+shift+b",
         "mac": "cmd+shift+b",
         "when": "(filesExplorerFocus && resourceExtname == .md) || editorLangId == markdown"
+      },
+      {
+        "command": "blogbuddy.openSource",
+        "key": "ctrl+shift+b",
+        "mac": "cmd+shift+b",
+        "when": "activeWebviewPanelId == 'blogbuddy.editor'"
       }
     ],
     "configuration": {

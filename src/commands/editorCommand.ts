@@ -57,10 +57,24 @@ export function registerEditorCommand(context: vscode.ExtensionContext) {
             }
         })
     );
+
+    // Reverse of openEditor: swap the focused BB Editor panel back to a plain
+    // text editor in the same column. Wired to the panel's title-bar icon and
+    // Cmd+Shift+B (gated on activeWebviewPanelId), making the chord a toggle.
+    context.subscriptions.push(
+        vscode.commands.registerCommand('blogbuddy.openSource', () =>
+            EditorPanel.openSourceForActivePanel()
+        )
+    );
 }
 
 class EditorPanel implements vscode.Disposable {
     private static panels = new Map<string, EditorPanel>();
+
+    // The most recently focused BB Editor panel — the target of the
+    // blogbuddy.openSource command, whose editor/title contribution can only
+    // tell us "some BB Editor is active", not which one.
+    private static activePanel: EditorPanel | undefined;
 
     // Wide-mode is a global UI preference — once the user toggles, every
     // open BB Editor panel reflects the same layout so they don't end up
@@ -89,8 +103,37 @@ class EditorPanel implements vscode.Disposable {
 
         panel.panel.onDidDispose(() => {
             EditorPanel.panels.delete(key);
+            if (EditorPanel.activePanel === panel) {
+                EditorPanel.activePanel = undefined;
+            }
             panel.dispose();
         });
+    }
+
+    static async openSourceForActivePanel(): Promise<void> {
+        await EditorPanel.activePanel?.openSource();
+    }
+
+    /**
+     * Swap this panel back to a plain text editor in the same column —
+     * the mirror of openEditor's "replace" UX. Pending edits are flushed to
+     * disk first so the text editor opens with the latest content.
+     */
+    private async openSource(): Promise<void> {
+        const filePath = this.bridge.currentFilePath;
+        if (!filePath) {
+            vscode.window.showInformationMessage(
+                'This document has no file on disk yet — save it first (Cmd+S / Ctrl+S).'
+            );
+            return;
+        }
+        const column = this.panel.viewColumn;
+        await this.bridge.flushEdits();
+        await vscode.window.showTextDocument(vscode.Uri.file(filePath), {
+            viewColumn: column,
+            preview: false,
+        });
+        this.panel.dispose();
     }
 
     private constructor(
@@ -107,6 +150,7 @@ class EditorPanel implements vscode.Disposable {
             column ?? vscode.ViewColumn.One,
             {
                 enableScripts: true,
+                enableFindWidget: true,
                 retainContextWhenHidden: true,
                 localResourceRoots: [
                     vscode.Uri.joinPath(context.extensionUri, 'dist'),
@@ -116,6 +160,15 @@ class EditorPanel implements vscode.Disposable {
         );
 
         this.panel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'images', 'icon.png');
+
+        EditorPanel.activePanel = this;
+        this.disposables.push(
+            this.panel.onDidChangeViewState((e) => {
+                if (e.webviewPanel.active) {
+                    EditorPanel.activePanel = this;
+                }
+            })
+        );
 
         this.bridge = new WebviewBridge(this.panel, this.panel.webview, {
             filePath: this.filePath,
@@ -188,8 +241,10 @@ class EditorPanel implements vscode.Disposable {
         }
         try {
             // Write the tag-free Markdown to disk so the TextDocument the
-            // Reader opens reflects the user's current state.
-            await fs.writeFile(this.filePath, content, 'utf-8');
+            // Reader opens reflects the user's current state. Same
+            // minimal-churn treatment as the bridge's save paths.
+            const body = this.bridge.prepareBodyForWrite(content);
+            await fs.writeFile(this.filePath, body, 'utf-8');
             const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(this.filePath));
             await ReaderPanel.openForDocument(this.context, doc, cmd, msgText);
         } catch (err) {

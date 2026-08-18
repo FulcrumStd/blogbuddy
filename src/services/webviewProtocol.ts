@@ -73,6 +73,11 @@ export interface WebviewToggleWideModeMessage {
     type: 'toggle-wide-mode';
 }
 
+/** Reply to 'request-save' when nothing changed since load — no write needed. */
+export interface WebviewFlushNoopMessage {
+    type: 'flush-noop';
+}
+
 export type WebviewMessage =
     | WebviewReadyMessage
     | WebviewBBRequestMessage
@@ -86,7 +91,8 @@ export type WebviewMessage =
     | WebviewFrontmatterUpdateMessage
     | WebviewConflictResolveMessage
     | WebviewReaderDispatchMessage
-    | WebviewToggleWideModeMessage;
+    | WebviewToggleWideModeMessage
+    | WebviewFlushNoopMessage;
 
 // ===== Extension Host → Webview =====
 
@@ -146,6 +152,10 @@ export interface HostSetWideModeMessage {
     wide: boolean;
 }
 
+export interface HostRequestSaveMessage {
+    type: 'request-save';
+}
+
 export type HostMessage =
     | HostLoadMessage
     | HostChunkMessage
@@ -155,7 +165,8 @@ export type HostMessage =
     | HostThemeMessage
     | HostFileUploadedMessage
     | HostConflictMessage
-    | HostSetWideModeMessage;
+    | HostSetWideModeMessage
+    | HostRequestSaveMessage;
 
 // ===== Reader Webview ↔ Extension Host =====
 

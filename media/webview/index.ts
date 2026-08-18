@@ -1,5 +1,5 @@
 import { Editor } from '@milkdown/kit/core';
-import { rootCtx, defaultValueCtx, editorViewCtx, commandsCtx } from '@milkdown/kit/core';
+import { rootCtx, defaultValueCtx, editorViewCtx, commandsCtx, remarkStringifyOptionsCtx } from '@milkdown/kit/core';
 import { commonmark, toggleStrongCommand } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
@@ -36,6 +36,15 @@ const vscode = acquireVsCodeApi();
 let editor: Editor;
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 let baseUri = '';
+
+// Serialized snapshot taken right after 'load'. Milkdown's replaceAll fires
+// markdownUpdated just like a user edit would, and the parse→serialize
+// round-trip normalizes syntax — without this guard, merely opening a file
+// rewrites it on disk. While the baseline is set, saves whose content still
+// equals it are skipped; the first real divergence clears it (null), because
+// once the file on disk has changed, even an undo back to the original must
+// be written out again.
+let baselineSerialized: string | null = null;
 
 // ---- IME composition guard ----
 // During CJK IME composition, ProseMirror emits intermediate text that must not
@@ -124,6 +133,8 @@ function scheduleAutoSave(): void {
     autoSaveTimer = setTimeout(() => {
         if (!editor) { return; }
         const content = serializeForSave(editor, baseUri);
+        if (baselineSerialized !== null && content === baselineSerialized) { return; }
+        baselineSerialized = null;
         vscode.postMessage({ type: 'auto-save', content });
     }, 500);
 }
@@ -138,6 +149,14 @@ async function initEditor(): Promise<void> {
         .config(ctx => {
             ctx.set(rootCtx, editorRoot);
             ctx.set(defaultValueCtx, '');
+            // Low-churn serializer style: remark-stringify defaults to "*"
+            // bullets and "***" rules, which rewrites the far more common
+            // "-" style on every save. Match the common style instead.
+            ctx.update(remarkStringifyOptionsCtx, (opts) => ({
+                ...opts,
+                bullet: '-',
+                rule: '-',
+            }));
             ctx.get(listenerCtx).markdownUpdated(() => {
                 scheduleAutoSave();
             });
@@ -188,6 +207,7 @@ window.addEventListener('message', (event) => {
             if (msg.baseUri) { baseUri = msg.baseUri; }
             if (editor) {
                 editor.action(replaceAll(preprocessMarkdown(msg.content || '', baseUri)));
+                baselineSerialized = serializeForSave(editor, baseUri);
             }
             updateFrontmatterPanel(msg.frontmatter || '');
             hideConflictBanner();
@@ -222,6 +242,25 @@ window.addEventListener('message', (event) => {
             if (resolve) {
                 resolve(msg);
                 pendingUploads.delete(msg.uploadId);
+            }
+            break;
+        }
+        case 'request-save': {
+            // Host is about to swap this panel back to the text editor —
+            // flush the debounced auto-save immediately so the file on disk
+            // reflects the latest edits before the text editor loads it.
+            if (autoSaveTimer) {
+                clearTimeout(autoSaveTimer);
+                autoSaveTimer = null;
+            }
+            const content = editor ? serializeForSave(editor, baseUri) : null;
+            if (content !== null && (baselineSerialized === null || content !== baselineSerialized)) {
+                baselineSerialized = null;
+                vscode.postMessage({ type: 'auto-save', content });
+            } else {
+                // Nothing changed since load — tell the host so its flush
+                // resolves immediately instead of waiting out the timeout.
+                vscode.postMessage({ type: 'flush-noop' });
             }
             break;
         }
@@ -395,6 +434,9 @@ function triggerBB(): void {
 function saveFile(): void {
     if (!editor) { return; }
     const content = serializeForSave(editor, baseUri);
+    // Explicit Cmd+S always writes; the disk may now differ from the load
+    // baseline, so stop skipping baseline-equal auto-saves from here on.
+    baselineSerialized = null;
     vscode.postMessage({ type: 'save', content });
 }
 

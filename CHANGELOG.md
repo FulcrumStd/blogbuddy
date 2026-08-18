@@ -16,6 +16,20 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.18] - 2026-08-18
+
+### Added
+
+- **`Cmd+F` / `Ctrl+F` search in BB Editor.** The panel now enables VS Code's built-in find widget, so in-document search works like any text editor.
+- **Two-way switching between BB Editor and Markdown source.** A new `$(code)` title-bar button and the same `Cmd+Shift+B` / `Ctrl+Shift+B` chord (now a toggle) swap the active BB Editor back to a plain text editor in the same column — previously the only way back was reopening the file. Pending edits are flushed to disk before the swap (with a `flush-noop` fast path when nothing changed).
+
+### Fixed
+
+- **Opening a file in BB Editor no longer rewrites it on disk.** Loading content into Milkdown fired the same auto-save path as a user edit, so merely viewing a file dirtied it in git. A post-load serialization baseline now suppresses saves until the document actually diverges (explicit `Cmd+S` always writes; an undo back to the baseline after a real edit still writes).
+- **Saving no longer reformats the whole document.** The WYSIWYG round-trip used to restyle every line (bullets, `_emphasis_` → `*emphasis*`, punctuation escapes, soft-wrap joins, table padding). Saves now do a block-level merge against the on-disk body: blocks the user didn't edit are written back byte-identical; only genuinely edited blocks take the serializer's output. Guarded by unit tests against the dangerous inverse (a real edit — removing a hard break, converting code to a paragraph — must never be mistaken for a formatting difference and reverted). The serializer is also configured for low-churn `-` bullets and `---` rules, and the old `compactMarkdown` house-style pass is retired.
+
+---
+
 ## [0.0.17] - 2026-05-28
 
 ### Changed
