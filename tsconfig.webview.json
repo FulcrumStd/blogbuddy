@@ -9,7 +9,7 @@
 			"DOM.Iterable"
 		],
 		"sourceMap": true,
-		"rootDir": "media/webview",
+		"rootDir": ".",
 		"strict": true
 	},
 	"include": [

@@ -16,6 +16,33 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ---
 
+## [0.0.19] - 2026-10-27
+
+### Added
+
+- **Markdown source line numbers in BB Editor.** A gutter shows each block's line in the underlying `.md` file (frontmatter included), so positions match the text editor and error messages.
+- **Heading level hints.** Hovering an H1–H6 heading shows its level and source line.
+- **Live word count.** The status bar shows words, selected words, characters and lines for the focused BB Editor; plain Markdown editors use the same label and tooltip.
+- **Unsaved draft recovery.** If the BB Editor closes with edits that can't be written safely (external conflict, file deleted or read-only), the draft opens in a new untitled tab instead of being lost.
+
+### Changed
+
+- **`Cmd+B` / `Ctrl+B` bolds immediately.** It only waits for the `Cmd+B Cmd+B` chord when a BB tag is in reach, and the chord no longer touches formatting.
+- **Removed the Explorer context-menu entry** for opening the BB Editor (the title-bar icon and `Cmd+Shift+B` remain), and shortened the settings descriptions.
+- **Fixed transparent areas inside the extension icon.**
+
+### Fixed
+
+- **External edits are no longer overwritten by a stale auto-save.** Every save is checked against the file on disk and the document version; a clean editor follows external changes, a dirty one asks whether to reload or keep its version. Body and frontmatter are saved as one snapshot.
+- **Switching to the Markdown source no longer drops the latest keystrokes**, and AI processing no longer loses the original text — AI output is a separate suggestion that only replaces the source when accepted, and keeps streaming when the block is moved.
+- **Save As onto an existing file** no longer reports a false conflict after you confirmed the overwrite.
+- **A deleted or unreadable file** is reported once instead of a repeating "save failed".
+- **Using the AI Reader in an unsaved document** keeps the render tag and asks you to save first.
+- **BB tags spanning formatted text or several paragraphs** are located exactly, and IME composition no longer cancels a command by timing out.
+- **Less work per keystroke on long documents.** Drafts, statistics and saves share one serialization, and file watching uses a single watcher plus a metadata poll.
+
+---
+
 ## [0.0.18] - 2026-08-18
 
 ### Added

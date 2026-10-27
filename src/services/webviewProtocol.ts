@@ -8,6 +8,23 @@ export interface WebviewReadyMessage {
     type: 'ready';
 }
 
+export interface WebviewEditMetadata {
+    revision: number;
+    editVersion: number;
+}
+
+export interface EditorDocumentStats {
+    words: number;
+    characters: number;
+    lines: number;
+    selectedWords: number;
+}
+
+export interface WebviewStatsMessage {
+    type: 'document-stats';
+    stats: EditorDocumentStats;
+}
+
 export interface WebviewBBRequestMessage {
     type: 'bb-request';
     id: string;
@@ -21,9 +38,11 @@ export interface WebviewBBCancelMessage {
     id: string;
 }
 
-export interface WebviewSaveMessage {
+export interface WebviewSaveMessage extends WebviewEditMetadata {
     type: 'save';
     content: string;
+    frontmatter: string;
+    flushId?: string;
 }
 
 export interface WebviewOpenFileMessage {
@@ -34,14 +53,22 @@ export interface WebviewNewFileMessage {
     type: 'new-file';
 }
 
-export interface WebviewDirtyMessage {
+export interface WebviewDirtyMessage extends WebviewEditMetadata {
     type: 'dirty';
     isDirty: boolean;
 }
 
-export interface WebviewAutoSaveMessage {
+export interface WebviewAutoSaveMessage extends WebviewEditMetadata {
     type: 'auto-save';
     content: string;
+    frontmatter: string;
+    flushId?: string;
+}
+
+export interface WebviewDraftMessage extends WebviewEditMetadata {
+    type: 'document-change';
+    content: string;
+    frontmatter: string;
 }
 
 export interface WebviewFileUploadMessage {
@@ -52,21 +79,19 @@ export interface WebviewFileUploadMessage {
     dataBase64: string;
 }
 
-export interface WebviewFrontmatterUpdateMessage {
-    type: 'frontmatter-update';
-    frontmatter: string;
-}
-
 export interface WebviewConflictResolveMessage {
     type: 'conflict-resolve';
     choice: 'reload' | 'keep';
+    revision: number;
+    conflictId: number;
 }
 
-export interface WebviewReaderDispatchMessage {
+export interface WebviewReaderDispatchMessage extends WebviewEditMetadata {
     type: 'reader-dispatch';
     cmd: string;
     msg: string;
     content: string;   // full Markdown with the render tag already removed
+    frontmatter: string;
 }
 
 export interface WebviewToggleWideModeMessage {
@@ -76,6 +101,26 @@ export interface WebviewToggleWideModeMessage {
 /** Reply to 'request-save' when nothing changed since load — no write needed. */
 export interface WebviewFlushNoopMessage {
     type: 'flush-noop';
+    flushId: string;
+    revision: number;
+}
+
+export interface WebviewReloadAppliedMessage {
+    type: 'reload-applied';
+    reloadId: number;
+    revision: number;
+}
+
+export interface WebviewReloadRejectedMessage extends WebviewEditMetadata {
+    type: 'reload-rejected';
+    reloadId: number;
+    content: string;
+    frontmatter: string;
+}
+
+export interface WebviewFlushFailedMessage {
+    type: 'flush-failed';
+    flushId: string;
 }
 
 export type WebviewMessage =
@@ -87,12 +132,16 @@ export type WebviewMessage =
     | WebviewNewFileMessage
     | WebviewDirtyMessage
     | WebviewAutoSaveMessage
+    | WebviewDraftMessage
     | WebviewFileUploadMessage
-    | WebviewFrontmatterUpdateMessage
     | WebviewConflictResolveMessage
     | WebviewReaderDispatchMessage
     | WebviewToggleWideModeMessage
-    | WebviewFlushNoopMessage;
+    | WebviewFlushNoopMessage
+    | WebviewFlushFailedMessage
+    | WebviewReloadAppliedMessage
+    | WebviewReloadRejectedMessage
+    | WebviewStatsMessage;
 
 // ===== Extension Host → Webview =====
 
@@ -102,6 +151,10 @@ export interface HostLoadMessage {
     frontmatter?: string;
     filePath?: string;
     baseUri?: string;
+    revision: number;
+    reloadId?: number;
+    previousRevision?: number;
+    expectedEditVersion?: number;
 }
 
 export interface HostChunkMessage {
@@ -127,6 +180,10 @@ export interface HostSavedMessage {
     type: 'saved';
     success: boolean;
     filePath?: string;
+    revision: number;
+    editVersion: number;
+    content?: string;
+    message?: string;
 }
 
 export interface HostThemeMessage {
@@ -143,8 +200,21 @@ export interface HostFileUploadedMessage {
     fileName: string;
 }
 
+export interface HostFileUploadErrorMessage {
+    type: 'file-upload-error';
+    uploadId: string;
+    message: string;
+}
+
 export interface HostConflictMessage {
     type: 'conflict';
+    conflictId: number;
+    revision: number;
+}
+
+export interface HostRebaseMessage {
+    type: 'rebase';
+    revision: number;
 }
 
 export interface HostSetWideModeMessage {
@@ -154,7 +224,14 @@ export interface HostSetWideModeMessage {
 
 export interface HostRequestSaveMessage {
     type: 'request-save';
+    flushId: string;
+    freeze?: boolean;
 }
+
+export interface HostEditUnlockMessage { type: 'edit-unlock'; flushId?: string; }
+
+/** Status-only notice (e.g. the file became unreadable); never settles a pending save. */
+export interface HostNoticeMessage { type: 'notice'; message: string; }
 
 export type HostMessage =
     | HostLoadMessage
@@ -162,11 +239,15 @@ export type HostMessage =
     | HostDoneMessage
     | HostErrorMessage
     | HostSavedMessage
+    | HostNoticeMessage
     | HostThemeMessage
     | HostFileUploadedMessage
+    | HostFileUploadErrorMessage
     | HostConflictMessage
     | HostSetWideModeMessage
-    | HostRequestSaveMessage;
+    | HostRequestSaveMessage
+    | HostEditUnlockMessage
+    | HostRebaseMessage;
 
 // ===== Reader Webview ↔ Extension Host =====
 

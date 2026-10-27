@@ -2,7 +2,7 @@
   "name": "blogbuddy",
   "displayName": "Blog Buddy",
   "description": "Your AI-powered blog writing sidekick that makes Markdown magic happen!",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "icon": "images/icon.png",
   "publisher": "FulcrumStudio",
   "repository": {
@@ -64,13 +64,6 @@
       }
     ],
     "menus": {
-      "explorer/context": [
-        {
-          "command": "blogbuddy.openEditor",
-          "when": "resourceExtname == .md",
-          "group": "blogbuddy"
-        }
-      ],
       "editor/title": [
         {
           "command": "blogbuddy.openEditor",
@@ -111,31 +104,31 @@
         "blogbuddy.apiKey": {
           "type": "string",
           "default": "",
-          "markdownDescription": "API key. **Resolution order** (first non-empty wins):\n1. This setting\n2. `$BLOGBUDDY_API_KEY` environment variable\n3. `$OPENAI_API_KEY` environment variable\n\nLeave empty to rely on the env vars. Run [BlogBuddy: Show Config Diagnostics](command:blogbuddy.showDiagnostics) to see which source is currently in use.",
+          "description": "API 密钥，留空时读取环境变量。",
           "order": 1
         },
         "blogbuddy.baseURL": {
           "type": "string",
           "default": "",
-          "markdownDescription": "OpenAI-compatible base URL (e.g. `https://api.openai.com/v1`, `https://openrouter.ai/api/v1`). **Resolution order** (first non-empty wins):\n1. This setting\n2. `$BLOGBUDDY_BASE_URL` environment variable\n3. `$OPENAI_BASE_URL` environment variable\n4. Default: `https://api.openai.com/v1`\n\nLeave empty to use the env vars or the OpenAI official endpoint. Run [BlogBuddy: Show Config Diagnostics](command:blogbuddy.showDiagnostics) to verify.",
+          "description": "OpenAI 兼容接口地址，留空使用环境变量或默认地址。",
           "order": 2
         },
         "blogbuddy.model": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Model id used for all BB commands (e.g. `gpt-4o-mini`, `openai/gpt-4o-mini` on OpenRouter).\n\n**Recommended:** click [BlogBuddy: Select Model](command:blogbuddy.selectModel) to open a picker populated from the provider's model list (auto-fetched from the configured base URL).",
+          "description": "用于 AI 请求的模型 ID。",
           "order": 3
         },
         "blogbuddy.assetDir": {
           "type": "string",
           "default": "",
-          "description": "Relative subdirectory for uploaded assets in BB Editor (e.g. \"assets\" or \"images/uploads\"). Resolved from the document directory. Leave empty to save alongside the document.",
+          "description": "上传资源的相对子目录，留空与文档同目录。",
           "order": 4
         },
         "blogbuddy.reader.inlineAssets": {
           "type": "boolean",
           "default": true,
-          "description": "When exporting from BB Reader, inline local images as base64 to produce a single self-contained HTML file. Set false to keep relative image paths.",
+          "description": "导出 HTML 时嵌入本地图片，关闭则保留相对路径。",
           "order": 5
         }
       }
@@ -151,9 +144,10 @@
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit && tsc --noEmit -p tsconfig.webview.json",
     "lint": "eslint src",
     "test": "vscode-test",
+    "test:unit": "npm run compile-tests && mocha --ui tdd out/test/utils/frontmatter.test.js out/test/utils/preserveUnchanged.test.js out/test/utils/MarkdownStatsAnalyzer.test.js out/test/utils/bbCommandRange.test.js out/test/services/EditorDocumentStore.test.js",
     "deploy": "vsce publish"
   },
   "devDependencies": {
@@ -163,7 +157,7 @@
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
     "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.25.3",
     "eslint": "^9.25.1",

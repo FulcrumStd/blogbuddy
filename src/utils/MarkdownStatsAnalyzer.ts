@@ -116,6 +116,11 @@ export class MarkdownStatsAnalyzer {
             processed = processed.replace(this.LINK_REGEX, '$1');
         }
 
+        // Image sizing uses HTML in Markdown. Attributes and tag names are
+        // presentation metadata, not words in the document.
+        processed = processed.replace(/<!--[\s\S]*?-->/g, '')
+            .replace(/<\/?[a-z][\w:-]*(?:\s+(?:[^'"<>]|"[^"]*"|'[^']*')*)?\s*\/?>/gi, '');
+
         return processed;
     }
 

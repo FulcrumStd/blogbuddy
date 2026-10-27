@@ -1,5 +1,26 @@
-import { Editor } from '@milkdown/kit/core';
+import { Editor, editorViewCtx } from '@milkdown/kit/core';
 import { getMarkdown } from '@milkdown/kit/utils';
+import type { Node } from '@milkdown/kit/prose/model';
+import { preserveUnchangedBlocks } from '../../src/utils/preserveUnchanged';
+
+let sourceMarkdown = '';
+let normalizedSource = '';
+let cachedDoc: Node | undefined;
+let cachedUri = '';
+let cachedNormalized = '';
+let cachedSaveRaw: string | undefined;
+let cachedSaveSource = '';
+let cachedSave = '';
+export function setSourceMarkdown(markdown: string, normalized: string): void { sourceMarkdown = markdown; normalizedSource = normalized; }
+export function normalizedMarkdown(editor: Editor, baseUri: string): string {
+    const doc = editor.ctx.get(editorViewCtx).state.doc;
+    if (doc !== cachedDoc || cachedUri !== baseUri) {
+        cachedNormalized = stripBaseUri(editor.action(getMarkdown()), baseUri);
+        cachedDoc = doc;
+        cachedUri = baseUri;
+    }
+    return cachedNormalized;
+}
 
 // ---- Base URI handling ----
 
@@ -32,6 +53,13 @@ export function stripBaseUri(md: string, baseUri: string): string {
 // bytes; this function just serializes and restores relative paths.
 
 export function serializeForSave(editor: Editor, baseUri: string): string {
-    const raw = editor.action(getMarkdown());
-    return stripBaseUri(raw, baseUri);
+    const raw = normalizedMarkdown(editor, baseUri);
+    if (raw === normalizedSource) { return sourceMarkdown; }
+    // Drafts, stats and saves all ask for the same doc state; merge once.
+    if (raw !== cachedSaveRaw || sourceMarkdown !== cachedSaveSource) {
+        cachedSave = preserveUnchangedBlocks(sourceMarkdown, raw);
+        cachedSaveRaw = raw;
+        cachedSaveSource = sourceMarkdown;
+    }
+    return cachedSave;
 }

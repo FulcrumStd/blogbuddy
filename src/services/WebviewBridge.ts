@@ -1,12 +1,14 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { watch, FSWatcher } from 'fs';
 import { BB } from '../core/bb';
 import { BBCmd, ProcessRequest } from '../core/types';
 import { ConfigService } from './ConfigService';
 import { AppError } from '../utils/ErrorHandler';
 import { extractFrontmatter } from '../utils/frontmatter';
 import { preserveUnchangedBlocks } from '../utils/preserveUnchanged';
+import { EditorDocumentStore } from './EditorDocumentStore';
 import {
     WebviewMessage,
     HostMessage,
@@ -14,6 +16,10 @@ import {
     WebviewSaveMessage,
     WebviewFileUploadMessage,
     WebviewConflictResolveMessage,
+    WebviewAutoSaveMessage,
+    WebviewReaderDispatchMessage,
+    EditorDocumentStats,
+    HostLoadMessage,
 } from './webviewProtocol';
 
 export class WebviewBridge implements vscode.Disposable {
@@ -22,17 +28,28 @@ export class WebviewBridge implements vscode.Disposable {
     private filePath?: string;
     private onDirtyChange?: (isDirty: boolean) => void;
     private onReady?: () => void;
-    private lastWrittenContent?: string;
+    private readonly store: EditorDocumentStore;
     private lastBodyContent = '';
-    private fileWatcher?: vscode.FileSystemWatcher;
+    private nativeWatcher?: FSWatcher;
+    private externalTimer?: ReturnType<typeof setTimeout>;
+    private externalPoll?: ReturnType<typeof setInterval>;
+    private refreshDocument?: () => Promise<void>;
     private storedFrontmatter = '';
-    private frontmatterAutoSaveTimer?: ReturnType<typeof setTimeout>;
     private isDirty = false;
-    private pendingConflictContent?: string;
-    private flushWaiters: Array<() => void> = [];
+    private editVersion = 0;
+    private pendingConflict?: { content: string; id: number };
+    private conflictId = 0;
+    private reloadId = 0;
+    private pendingReload?: { id: number; content: string; revision: number; nextRevision: number; editVersion: number };
+    private disposed = false;
+    private latestDraft?: WebviewAutoSaveMessage;
+    private flushWaiters = new Map<string, (success: boolean) => void>();
+    private frozenFlushes = new Set<string>();
 
     private onReaderDispatch?: (cmd: string, msg: string, content: string) => Promise<void>;
     private onToggleWideMode?: () => void;
+    private onStatsChange?: (stats: EditorDocumentStats) => void;
+    private onRecoverDraft?: (content: string) => void;
 
     constructor(
         private panel: vscode.WebviewPanel,
@@ -43,18 +60,27 @@ export class WebviewBridge implements vscode.Disposable {
             onReady?: () => void;
             onReaderDispatch?: (cmd: string, msg: string, content: string) => Promise<void>;
             onToggleWideMode?: () => void;
+            onStatsChange?: (stats: EditorDocumentStats) => void;
+            onRecoverDraft?: (content: string) => void;
         }
     ) {
         this.filePath = options?.filePath;
+        this.store = new EditorDocumentStore(this.filePath || '');
         this.onDirtyChange = options?.onDirtyChange;
         this.onReady = options?.onReady;
         this.onReaderDispatch = options?.onReaderDispatch;
         this.onToggleWideMode = options?.onToggleWideMode;
+        this.onStatsChange = options?.onStatsChange;
+        this.onRecoverDraft = options?.onRecoverDraft;
 
         this.disposables.push(
-            this.panel.webview.onDidReceiveMessage((msg: WebviewMessage) => {
-                this.handleMessage(msg);
-            })
+            this.panel.webview.onDidReceiveMessage((msg: WebviewMessage) => this.handleMessage(msg).catch(error => {
+                this.setDirty(true);
+                this.post({ type: 'saved', success: false, revision: this.store.snapshot.revision, editVersion: this.editVersion,
+                    message: error instanceof Error ? error.message : '操作失败，请重试。' });
+                if ('flushId' in msg) { this.resolveFlush(msg.flushId, false); }
+                this.resumeEdits();
+            }))
         );
 
         this.watchFile();
@@ -62,45 +88,77 @@ export class WebviewBridge implements vscode.Disposable {
 
     setFilePath(filePath: string): void {
         this.filePath = filePath;
+        this.store.setPath(filePath);
+        this.watchFile();
     }
 
     get currentFilePath(): string | undefined {
         return this.filePath;
     }
 
+    refreshFromDisk(): void { void this.refreshDocument?.(); }
+
     /**
      * Ask the webview to flush its (debounced) pending edits to disk and
      * resolve once the write completes. Always requests a flush rather than
      * gating on the dirty flag — the flag can lag the 500ms auto-save
-     * debounce, and rewriting identical content is harmless. A 1s timeout
-     * guards against a dead webview so callers can never hang.
+     * debounce. A timeout or failed save keeps the editor available for recovery.
      */
-    flushEdits(): Promise<void> {
-        return new Promise<void>((resolve) => {
-            const timer = setTimeout(resolve, 1000);
-            this.flushWaiters.push(() => {
+    flushEdits(freeze = false): Promise<boolean> {
+        return new Promise<boolean>((resolve) => {
+            const id = crypto.randomUUID();
+            const timer = setTimeout(() => {
+                this.resolveFlush(id, false);
+            }, 5000);
+            this.flushWaiters.set(id, (success) => {
                 clearTimeout(timer);
-                resolve();
+                resolve(success);
             });
-            this.post({ type: 'request-save' });
+            if (freeze) { this.frozenFlushes.add(id); }
+            this.post({ type: 'request-save', flushId: id, freeze });
         });
     }
 
-    private resolveFlushWaiters(): void {
-        const waiters = this.flushWaiters;
-        this.flushWaiters = [];
-        waiters.forEach(w => w());
+    private resolveFlush(id: string | undefined, success: boolean): void {
+        if (!id) { return; }
+        this.flushWaiters.get(id)?.(success);
+        this.flushWaiters.delete(id);
+        if (this.frozenFlushes.delete(id) && !success) { this.resumeEdits(id); }
     }
 
+    resumeEdits(flushId?: string): void { this.post({ type: 'edit-unlock', flushId }); }
+
     post(message: HostMessage): void {
+        if (this.disposed) { return; }
         this.panel.webview.postMessage(message);
     }
 
     sendLoad(content: string, filePath?: string): void {
+        this.pendingReload = undefined;
+        this.post(this.adoptContent(content, filePath));
+    }
+
+    private adoptContent(content: string, filePath?: string): HostLoadMessage {
+        this.cancelAllRequests();
+        const { revision } = this.store.accept(content);
         const { frontmatter, body } = extractFrontmatter(content);
         this.storedFrontmatter = frontmatter;
         this.lastBodyContent = body;
-        this.post({ type: 'load', content: body, frontmatter, filePath, baseUri: this.getBaseUri() });
+        this.pendingConflict = undefined;
+        this.latestDraft = undefined;
+        this.editVersion = 0;
+        this.setDirty(false);
+        return { type: 'load', content: body, frontmatter, filePath, baseUri: this.getBaseUri(), revision };
+    }
+
+    private proposeReload(content: string): void {
+        if (this.pendingReload) { return; }
+        const revision = this.store.snapshot.revision;
+        const id = ++this.reloadId;
+        this.pendingReload = { id, content, revision, nextRevision: revision + 1, editVersion: this.editVersion };
+        const { frontmatter, body } = extractFrontmatter(content);
+        this.post({ type: 'load', content: body, frontmatter, filePath: this.filePath, baseUri: this.getBaseUri(),
+            revision: revision + 1, previousRevision: revision, expectedEditVersion: this.editVersion, reloadId: id });
     }
 
     private getBaseUri(): string | undefined {
@@ -111,6 +169,7 @@ export class WebviewBridge implements vscode.Disposable {
     }
 
     private async handleMessage(msg: WebviewMessage): Promise<void> {
+        if (this.disposed || !msg || typeof msg !== 'object') { return; }
         switch (msg.type) {
             case 'ready':
                 this.onReady?.();
@@ -131,29 +190,73 @@ export class WebviewBridge implements vscode.Disposable {
                 this.handleNewFile();
                 break;
             case 'auto-save':
-                await this.handleAutoSave(msg.content);
-                break;
-            case 'frontmatter-update':
-                this.handleFrontmatterUpdate(msg.frontmatter);
+                await this.persist(msg);
                 break;
             case 'file-upload':
                 await this.handleFileUpload(msg);
                 break;
             case 'dirty':
-                this.isDirty = msg.isDirty;
-                this.onDirtyChange?.(msg.isDirty);
+                if (msg.revision === this.store.snapshot.revision && msg.editVersion >= this.editVersion) {
+                    this.editVersion = msg.editVersion;
+                    this.setDirty(msg.isDirty);
+                }
+                break;
+            case 'document-change':
+                if (msg.revision === this.store.snapshot.revision && msg.editVersion >= this.editVersion
+                    && typeof msg.content === 'string' && typeof msg.frontmatter === 'string') {
+                    this.editVersion = msg.editVersion;
+                    this.latestDraft = { ...msg, type: 'auto-save' };
+                    this.setDirty(true);
+                }
                 break;
             case 'conflict-resolve':
                 await this.handleConflictResolve(msg);
                 break;
             case 'reader-dispatch':
-                await this.onReaderDispatch?.(msg.cmd, msg.msg, msg.content);
+                // Untitled documents: let the command layer explain that a saved file is required.
+                if (!this.filePath) { await this.onReaderDispatch?.(msg.cmd, msg.msg, msg.content); break; }
+                if (await this.persist(msg) && await this.flushEdits(true)) {
+                    try { await this.onReaderDispatch?.(msg.cmd, msg.msg, msg.content); }
+                    finally { this.resumeEdits(); }
+                }
                 break;
             case 'toggle-wide-mode':
                 this.onToggleWideMode?.();
                 break;
             case 'flush-noop':
-                this.resolveFlushWaiters();
+                this.resolveFlush(msg.flushId, msg.revision === this.store.snapshot.revision && !this.isDirty);
+                break;
+            case 'flush-failed':
+                this.resolveFlush(msg.flushId, false);
+                break;
+            case 'reload-applied': {
+                const reload = this.pendingReload;
+                if (reload?.id === msg.reloadId && reload.nextRevision === msg.revision
+                    && reload.revision === this.store.snapshot.revision) {
+                    this.pendingReload = undefined;
+                    this.adoptContent(reload.content, this.filePath);
+                    this.refreshFromDisk();
+                }
+                break;
+            }
+            case 'reload-rejected': {
+                const reload = this.pendingReload;
+                if (reload?.id === msg.reloadId && msg.revision === this.store.snapshot.revision) {
+                    this.pendingReload = undefined;
+                    if (msg.editVersion >= this.editVersion) {
+                        this.editVersion = msg.editVersion;
+                        this.latestDraft = { ...msg, type: 'auto-save' };
+                    }
+                    this.setDirty(true);
+                    this.showConflict(reload.content);
+                    this.refreshFromDisk();
+                }
+                break;
+            }
+            case 'document-stats':
+                if (msg.stats && Object.values(msg.stats).every(n => typeof n === 'number' && Number.isFinite(n) && n >= 0)) {
+                    this.onStatsChange?.(msg.stats);
+                }
                 break;
         }
     }
@@ -169,13 +272,21 @@ export class WebviewBridge implements vscode.Disposable {
     }
 
     private async handleConflictResolve(msg: WebviewConflictResolveMessage): Promise<void> {
-        if (msg.choice === 'reload' && this.pendingConflictContent !== undefined && this.filePath) {
-            const content = this.pendingConflictContent;
-            this.lastWrittenContent = content;
-            this.sendLoad(content, this.filePath);
+        const pending = this.pendingConflict;
+        if (!pending || !this.filePath || msg.revision !== this.store.snapshot.revision || msg.conflictId !== pending.id) { return; }
+        const latest = await fs.readFile(this.filePath, 'utf8');
+        if (msg.revision !== this.store.snapshot.revision) { return; }
+        if (msg.choice === 'reload') {
+            this.sendLoad(latest, this.filePath);
+        } else if (latest !== pending.content || this.pendingConflict?.id !== pending.id) {
+            this.showConflict(latest);
+        } else {
+            this.cancelAllRequests();
+            const { revision } = this.store.accept(latest);
+            this.lastBodyContent = extractFrontmatter(latest).body;
+            this.pendingConflict = undefined;
+            this.post({ type: 'rebase', revision });
         }
-        // For 'keep', the webview will trigger a save to overwrite the disk.
-        this.pendingConflictContent = undefined;
     }
 
     private async handleBBRequest(msg: WebviewBBRequestMessage): Promise<void> {
@@ -236,100 +347,129 @@ export class WebviewBridge implements vscode.Disposable {
         }
     }
 
-    private async handleAutoSave(content: string): Promise<void> {
-        try {
-            if (!this.filePath) { return; }
-            content = this.prepareBodyForWrite(content);
-            this.lastBodyContent = content;
-            const fullContent = this.storedFrontmatter + content;
-            this.lastWrittenContent = fullContent;
-            await fs.writeFile(this.filePath, fullContent, 'utf-8');
-            this.onDirtyChange?.(false);
-        } catch {
-            // Auto-save failures are silent
-        } finally {
-            this.resolveFlushWaiters();
-        }
+    private setDirty(dirty: boolean): void {
+        this.isDirty = dirty;
+        this.onDirtyChange?.(dirty);
     }
 
-    private handleFrontmatterUpdate(frontmatter: string): void {
-        this.storedFrontmatter = frontmatter;
-        this.onDirtyChange?.(true);
-        // Debounced auto-save for frontmatter changes
-        if (this.frontmatterAutoSaveTimer) { clearTimeout(this.frontmatterAutoSaveTimer); }
-        this.frontmatterAutoSaveTimer = setTimeout(async () => {
-            if (!this.filePath) { return; }
-            try {
-                const fullContent = this.storedFrontmatter + this.lastBodyContent;
-                this.lastWrittenContent = fullContent;
-                await fs.writeFile(this.filePath, fullContent, 'utf-8');
-                this.onDirtyChange?.(false);
-            } catch {
-                // Auto-save failures are silent
-            }
-        }, 500);
+    private showConflict(content: string): void {
+        if (this.pendingConflict?.content !== content) {
+            this.pendingConflict = { content, id: ++this.conflictId };
+        }
+        this.post({ type: 'conflict', conflictId: this.pendingConflict.id, revision: this.store.snapshot.revision });
+    }
+
+    private async persist(msg: WebviewSaveMessage | WebviewAutoSaveMessage | WebviewReaderDispatchMessage): Promise<boolean> {
+        const flushId = 'flushId' in msg ? msg.flushId : undefined;
+        let success = false;
+        try {
+            if (!this.filePath || msg.revision !== this.store.snapshot.revision || this.pendingConflict) { return false; }
+            if (typeof msg.content !== 'string' || typeof msg.frontmatter !== 'string' || !Number.isSafeInteger(msg.editVersion)) { return false; }
+            const body = this.prepareBodyForWrite(msg.content);
+            const result = await this.store.write({ content: msg.frontmatter + body, revision: msg.revision, editVersion: msg.editVersion });
+            if (this.disposed) { return result.kind === 'saved'; }
+            if (msg.revision !== this.store.snapshot.revision) { return false; }
+            if (result.kind === 'conflict') { this.showConflict(result.content); return false; }
+            if (result.kind === 'stale') { return false; }
+            this.lastBodyContent = body;
+            this.storedFrontmatter = msg.frontmatter;
+            if (this.latestDraft && msg.editVersion >= this.latestDraft.editVersion) { this.latestDraft = undefined; }
+            if (msg.editVersion >= this.editVersion) { this.setDirty(false); }
+            this.post({ type: 'saved', success: true, filePath: this.filePath, revision: msg.revision, editVersion: msg.editVersion, content: body });
+            success = true;
+            return true;
+        } catch (error) {
+            // A closing panel can no longer be updated; the caller recovers the draft instead.
+            if (this.disposed) { return false; }
+            const errMsg = error instanceof Error ? error.message : 'Save failed';
+            this.setDirty(true);
+            this.post({ type: 'saved', success: false, revision: msg.revision, editVersion: msg.editVersion, message: errMsg });
+            return false;
+        } finally {
+            if (flushId && success && msg.editVersion < this.editVersion && this.flushWaiters.has(flushId)) {
+                this.post({ type: 'request-save', flushId, freeze: this.frozenFlushes.has(flushId) });
+            } else { this.resolveFlush(flushId, success); }
+        }
     }
 
     private async handleSave(msg: WebviewSaveMessage): Promise<void> {
-        try {
-            if (!this.filePath) {
-                const uri = await vscode.window.showSaveDialog({
-                    filters: { 'Markdown': ['md'] },
-                    defaultUri: vscode.Uri.file('untitled.md'),
-                });
-                if (!uri) {
-                    this.post({ type: 'saved', success: false });
-                    return;
-                }
-                this.filePath = uri.fsPath;
-                this.watchFile();
-            }
-
-            const body = this.prepareBodyForWrite(msg.content);
-            this.lastBodyContent = body;
-            const fullContent = this.storedFrontmatter + body;
-            this.lastWrittenContent = fullContent;
-            await fs.writeFile(this.filePath, fullContent, 'utf-8');
-            this.post({ type: 'saved', success: true, filePath: this.filePath });
-        } catch (error) {
-            const errMsg = error instanceof Error ? error.message : 'Save failed';
-            vscode.window.showErrorMessage(`Failed to save file: ${errMsg}`);
-            this.post({ type: 'saved', success: false });
-        } finally {
-            this.resolveFlushWaiters();
+        if (!this.filePath) {
+            const uri = await vscode.window.showSaveDialog({ filters: { Markdown: ['md'] }, defaultUri: vscode.Uri.file('untitled.md') });
+            if (!uri) { this.resolveFlush(msg.flushId, false); return; }
+            await this.store.retarget(uri.fsPath);
+            this.setFilePath(uri.fsPath);
         }
+        await this.persist(msg);
     }
 
     private watchFile(): void {
-        if (this.fileWatcher) { this.fileWatcher.dispose(); }
+        this.nativeWatcher?.close();
+        this.nativeWatcher = undefined;
+        if (this.externalTimer) { clearTimeout(this.externalTimer); }
+        if (this.externalPoll) { clearInterval(this.externalPoll); }
+        this.refreshDocument = undefined;
         if (!this.filePath) { return; }
 
-        const dirUri = vscode.Uri.file(path.dirname(this.filePath));
-        const fileName = path.basename(this.filePath);
-        const pattern = new vscode.RelativePattern(dirUri, fileName);
-        this.fileWatcher = vscode.workspace.createFileSystemWatcher(pattern);
+        const filePath = this.filePath;
+        const fileName = path.basename(filePath);
+        let unavailable: string | undefined;
 
-        this.fileWatcher.onDidChange(async () => {
-            if (!this.filePath) { return; }
+        const refresh = async (): Promise<void> => {
+            if (this.filePath !== filePath) { return; }
             try {
-                const content = await fs.readFile(this.filePath, 'utf-8');
-                if (content === this.lastWrittenContent) { return; }
+                const content = await this.store.externalContent();
+                if (this.disposed || this.filePath !== filePath) { return; }
+                if (unavailable !== undefined) {
+                    unavailable = undefined;
+                    this.post({ type: 'notice', message: this.isDirty ? '未保存' : '已同步' });
+                }
+                if (content === undefined) { return; }
 
                 if (this.isDirty) {
                     // Editor has unsaved changes — don't stomp them; ask the user to choose.
-                    this.pendingConflictContent = content;
-                    this.post({ type: 'conflict' });
+                    this.showConflict(content);
                     return;
                 }
 
-                this.lastWrittenContent = content;
-                this.sendLoad(content, this.filePath);
-            } catch {
-                // File read failures are silent
+                this.proposeReload(content);
+            } catch (error) {
+                // Report an unreadable file once, not on every poll tick.
+                const message = error instanceof Error ? error.message : '文件暂时不可读，自动保存已暂停。';
+                if (!this.disposed && message !== unavailable) {
+                    unavailable = message;
+                    this.post({ type: 'notice', message: `文件暂时不可读：${message}` });
+                }
             }
-        });
+        };
+        const schedule = (): void => {
+            if (this.externalTimer) { clearTimeout(this.externalTimer); }
+            this.externalTimer = setTimeout(() => { if (!this.disposed) { void refresh(); } }, 30);
+        };
+        this.refreshDocument = refresh;
 
-        this.disposables.push(this.fileWatcher);
+        // Register synchronously, including files outside a workspace. Watching
+        // the parent also survives an agent's temp-file + rename replacement.
+        try {
+            this.nativeWatcher = watch(path.dirname(filePath), { persistent: false }, (_event, name) => {
+                if (name && name.toString() !== fileName) { return; }
+                schedule();
+            });
+            this.nativeWatcher.on('error', () => { /* The metadata poll and write-time validation remain available. */ });
+        } catch { /* Some virtual filesystems do not provide a native watcher; the poll covers them. */ }
+
+        // OS watcher startup and sleep/resume can lose notifications. A cheap
+        // metadata poll closes that gap; it only reads the file when the
+        // metadata (or its availability) changes.
+        let observedStat = '';
+        this.externalPoll = setInterval(() => {
+            if (this.disposed) { return; }
+            void fs.stat(filePath).then(
+                stat => `${stat.mtimeMs}:${stat.ctimeMs}:${stat.size}:${stat.ino}`,
+                () => 'unavailable',
+            ).then(identity => {
+                if (identity !== observedStat) { observedStat = identity; schedule(); }
+            });
+        }, 750);
     }
 
     private async handleOpenFile(): Promise<void> {
@@ -341,7 +481,8 @@ export class WebviewBridge implements vscode.Disposable {
 
         try {
             const content = await fs.readFile(uris[0].fsPath, 'utf-8');
-            this.filePath = uris[0].fsPath;
+            if (this.isDirty && !await this.flushEdits(true)) { return; }
+            this.setFilePath(uris[0].fsPath);
             this.sendLoad(content, this.filePath);
         } catch (error) {
             const errMsg = error instanceof Error ? error.message : 'Open failed';
@@ -365,7 +506,8 @@ export class WebviewBridge implements vscode.Disposable {
         const resolved = path.resolve(docDir, assetDir);
 
         // Ensure resolved path is within docDir (prevent ../ escaping)
-        if (!resolved.startsWith(docDir)) {
+        const relative = path.relative(docDir, resolved);
+        if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
             vscode.window.showWarningMessage('assetDir must be within the document directory. Saving to document directory.');
             return docDir;
         }
@@ -376,14 +518,14 @@ export class WebviewBridge implements vscode.Disposable {
 
     private async handleFileUpload(msg: WebviewFileUploadMessage): Promise<void> {
         if (!this.filePath) {
-            vscode.window.showWarningMessage('Please save the document first before uploading files.');
+            this.post({ type: 'file-upload-error', uploadId: msg.uploadId, message: 'Save the document before uploading files.' });
             return;
         }
 
         try {
             const docDir = path.dirname(this.filePath);
             const dir = await this.resolveAssetDir();
-            const finalName = await getUniqueFileName(dir, msg.fileName);
+            const finalName = await getUniqueFileName(dir, path.basename(msg.fileName));
             const fullPath = path.join(dir, finalName);
 
             const buffer = Buffer.from(msg.dataBase64, 'base64');
@@ -405,25 +547,46 @@ export class WebviewBridge implements vscode.Disposable {
             });
         } catch (error) {
             const errMsg = error instanceof Error ? error.message : 'Upload failed';
-            vscode.window.showErrorMessage(`Failed to save file: ${errMsg}`);
+            this.post({ type: 'file-upload-error', uploadId: msg.uploadId, message: errMsg });
         }
     }
 
     private handleNewFile(): void {
         this.filePath = undefined;
+        this.store.setPath('');
+        this.watchFile();
         this.storedFrontmatter = '';
         this.lastBodyContent = '';
-        this.post({ type: 'load', content: '', frontmatter: '' });
+        this.sendLoad('');
     }
 
     dispose(): void {
-        if (this.frontmatterAutoSaveTimer) { clearTimeout(this.frontmatterAutoSaveTimer); }
+        if (this.disposed) { return; }
+        const draft = this.latestDraft;
+        if (draft && this.isDirty) {
+            // The view can close before its debounce fires. Preserve the last
+            // complete snapshot; a conflict is recovered in an untitled editor.
+            void this.persist(draft).then(success => {
+                if (!success) { this.onRecoverDraft?.(draft.frontmatter + draft.content); }
+            });
+        }
+        this.disposed = true;
+        this.nativeWatcher?.close();
+        if (this.externalTimer) { clearTimeout(this.externalTimer); }
+        if (this.externalPoll) { clearInterval(this.externalPoll); }
+        for (const resolve of this.flushWaiters.values()) { resolve(false); }
+        this.flushWaiters.clear();
+        this.frozenFlushes.clear();
+        this.cancelAllRequests();
+        this.disposables.forEach(d => d.dispose());
+        this.disposables = [];
+    }
+
+    private cancelAllRequests(): void {
         for (const [, state] of this.activeRequests) {
             state.cancelled = true;
         }
         this.activeRequests.clear();
-        this.disposables.forEach(d => d.dispose());
-        this.disposables = [];
     }
 }
 

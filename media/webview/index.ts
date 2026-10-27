@@ -3,22 +3,26 @@ import { rootCtx, defaultValueCtx, editorViewCtx, commandsCtx, remarkStringifyOp
 import { commonmark, toggleStrongCommand } from '@milkdown/kit/preset/commonmark';
 import { gfm } from '@milkdown/kit/preset/gfm';
 import { history } from '@milkdown/kit/plugin/history';
-import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 import { block } from '@milkdown/kit/plugin/block';
 import { upload, uploadConfig } from '@milkdown/kit/plugin/upload';
 import { replaceAll } from '@milkdown/kit/utils';
-import { updateAIBlock, finalizeAIBlock, setAIBlockError, aiBlockPlugin } from './ai-block-plugin';
+import { updateAIBlock, finalizeAIBlock, setAIBlockError, aiBlockPlugin, discardAIBlocks } from './ai-block-plugin';
 import { bbSlashPlugin } from './bb-slash-plugin';
 import { headingKeymapPlugin } from './heading-keymap-plugin';
 import { arrowLigaturesPlugin } from './arrow-ligatures-plugin';
 import { codeHighlightPlugin } from './code-highlight-plugin';
 import { htmlRenderPlugin } from './html-render-plugin';
-import { preprocessMarkdown, serializeForSave } from './markdown-output';
-import { initFrontmatterPanel, updateFrontmatterPanel, onFrontmatterChange } from './frontmatter-panel';
+import { preprocessMarkdown, serializeForSave, setSourceMarkdown, normalizedMarkdown } from './markdown-output';
+import { initFrontmatterPanel, updateFrontmatterPanel, onFrontmatterChange, getFrontmatter } from './frontmatter-panel';
+import type { HostMessage } from '../../src/services/webviewProtocol';
+import { editorInfoPlugin, refreshEditorInfo } from './editor-info-plugin';
+import { $prose } from '@milkdown/kit/utils';
+import { Plugin } from '@milkdown/kit/prose/state';
+import type { EditorState } from '@milkdown/kit/prose/state';
+import { findBBCommandRange, type BBCommandRange } from '../../src/utils/bbCommandRange';
 import './styles.css';
 
-import type { Node } from '@milkdown/kit/prose/model';
-import type { Uploader } from '@milkdown/kit/plugin/upload';
+import type { Node, Schema } from '@milkdown/kit/prose/model';
 import { Decoration } from '@milkdown/kit/prose/view';
 
 // VS Code API
@@ -35,16 +39,21 @@ const vscode = acquireVsCodeApi();
 
 let editor: Editor;
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let draftTimer: ReturnType<typeof setTimeout> | null = null;
+let draftPending = false;
+let hasFilePath = false;
 let baseUri = '';
+let revision = 0;
+let editVersion = 0;
+let loading = false;
+let conflictId: number | null = null;
+let savedSnapshot = '';
+const pendingSaves = new Map<number, { snapshot: string; normalized: string; frontmatter: string }>();
+const pendingFlushes = new Map<string, boolean>();
+let editingLocked = false;
 
-// Serialized snapshot taken right after 'load'. Milkdown's replaceAll fires
-// markdownUpdated just like a user edit would, and the parse→serialize
-// round-trip normalizes syntax — without this guard, merely opening a file
-// rewrites it on disk. While the baseline is set, saves whose content still
-// equals it are skipped; the first real divergence clears it (null), because
-// once the file on disk has changed, even an undo back to the original must
-// be written out again.
-let baselineSerialized: string | null = null;
+// Loading is isolated from user edits. The source serializer retains original
+// bytes, and each draft/save belongs to a document epoch and edit version.
 
 // ---- IME composition guard ----
 // During CJK IME composition, ProseMirror emits intermediate text that must not
@@ -65,7 +74,7 @@ interface FileUploadedResult {
     fileName: string;
 }
 
-const pendingUploads = new Map<string, (result: FileUploadedResult) => void>();
+const pendingUploads = new Map<string, { resolve: (result: FileUploadedResult) => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
 
 function fileToBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -81,7 +90,8 @@ function fileToBase64(file: File): Promise<string> {
     });
 }
 
-const fileUploader: Uploader = async (files, schema) => {
+const fileUploader = async (files: FileList, schema: Schema): Promise<Node[]> => {
+    const uploadRevision = revision;
     const nodes: Node[] = [];
 
     for (let i = 0; i < files.length; i++) {
@@ -91,8 +101,12 @@ const fileUploader: Uploader = async (files, schema) => {
         const dataBase64 = await fileToBase64(file);
         const uploadId = crypto.randomUUID();
 
-        const result = await new Promise<FileUploadedResult>((resolve) => {
-            pendingUploads.set(uploadId, resolve);
+        const result = await new Promise<FileUploadedResult>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                pendingUploads.delete(uploadId);
+                reject(new Error('上传超时，请重试。'));
+            }, 30000);
+            pendingUploads.set(uploadId, { resolve, reject, timer });
             vscode.postMessage({
                 type: 'file-upload',
                 uploadId,
@@ -101,6 +115,8 @@ const fileUploader: Uploader = async (files, schema) => {
                 dataBase64,
             });
         });
+
+        if (revision !== uploadRevision) { throw new Error('文档已更新，请重新上传。'); }
 
         if (result.isImage) {
             const imageType = schema.nodes['image'];
@@ -125,18 +141,68 @@ const fileUploader: Uploader = async (files, schema) => {
 // ---- Auto Save ----
 
 function scheduleAutoSave(): void {
+    if (loading || !editor) { return; }
+    editVersion++;
+    // Keystrokes only flag the edit; the full draft is serialized once typing pauses.
+    vscode.postMessage({ type: 'dirty', isDirty: true, revision, editVersion });
+    updateStatus('未保存');
     if (isComposing) {
         pendingComposedChange = true;
         return;
     }
+    draftPending = true;
+    if (draftTimer) { clearTimeout(draftTimer); }
+    draftTimer = setTimeout(postDraft, 150);
     if (autoSaveTimer) { clearTimeout(autoSaveTimer); }
     autoSaveTimer = setTimeout(() => {
         if (!editor) { return; }
-        const content = serializeForSave(editor, baseUri);
-        if (baselineSerialized !== null && content === baselineSerialized) { return; }
-        baselineSerialized = null;
-        vscode.postMessage({ type: 'auto-save', content });
+        autoSaveTimer = null;
+        sendSave('auto-save');
     }, 500);
+}
+
+/** Hands the host the latest complete snapshot so a closing panel can still save or recover it. */
+function postDraft(): void {
+    if (draftTimer) { clearTimeout(draftTimer); draftTimer = null; }
+    if (!draftPending || !editor || loading || isComposing) { return; }
+    draftPending = false;
+    vscode.postMessage({ type: 'document-change', content: serializeForSave(editor, baseUri), frontmatter: getFrontmatter(), revision, editVersion });
+}
+
+function sendSave(type: 'save' | 'auto-save', flushId?: string): void {
+    if (isComposing) { pendingComposedChange = true; if (flushId && !pendingFlushes.has(flushId)) { pendingFlushes.set(flushId, false); } return; }
+    if (!editor || loading || conflictId !== null) {
+        if (flushId) { vscode.postMessage({ type: 'flush-failed', flushId }); }
+        return;
+    }
+    // An untitled document has nowhere to auto-save; only an explicit save asks for a path.
+    if (type === 'auto-save' && !hasFilePath) {
+        postDraft();
+        if (flushId) { vscode.postMessage({ type: 'flush-failed', flushId }); }
+        return;
+    }
+    const content = serializeForSave(editor, baseUri);
+    const frontmatter = getFrontmatter();
+    const snapshot = frontmatter + content;
+    if (snapshot === savedSnapshot && pendingSaves.size === 0 && type !== 'save') {
+        vscode.postMessage({ type: 'dirty', isDirty: false, revision, editVersion });
+        if (flushId) { vscode.postMessage({ type: 'flush-noop', flushId, revision }); }
+        updateStatus('已保存');
+        return;
+    }
+    postDraft();
+    pendingSaves.set(editVersion, { snapshot, normalized: normalizedMarkdown(editor, baseUri), frontmatter });
+    vscode.postMessage({ type, content, frontmatter, revision, editVersion, flushId });
+    updateStatus('保存中…');
+}
+
+function setEditingLocked(locked: boolean): void {
+    editingLocked = locked;
+    for (const id of ['editor-layout', 'editor-toolbar', 'frontmatter-panel']) {
+        const element = document.getElementById(id);
+        if (element) { element.inert = locked; }
+    }
+    if (editor) { editor.ctx.get(editorViewCtx).setProps({ editable: () => !editingLocked }); }
 }
 
 // ---- Editor Init ----
@@ -154,14 +220,14 @@ async function initEditor(): Promise<void> {
             // "-" style on every save. Match the common style instead.
             ctx.update(remarkStringifyOptionsCtx, (opts) => ({
                 ...opts,
-                bullet: '-',
-                rule: '-',
+                bullet: '-' as const,
+                rule: '-' as const,
             }));
-            ctx.get(listenerCtx).markdownUpdated(() => {
-                scheduleAutoSave();
-            });
             ctx.update(uploadConfig.key, () => ({
-                uploader: fileUploader,
+                uploader: async files => {
+                    try { return await fileUploader(files, editor.ctx.get(editorViewCtx).state.schema); }
+                    catch (error) { updateStatus(`上传失败：${error instanceof Error ? error.message : '请重试'}`); return []; }
+                },
                 enableHtmlFileUploader: true,
                 uploadWidgetFactory: (pos: number, spec: Parameters<typeof Decoration.widget>[2]) => {
                     const el = document.createElement('span');
@@ -174,7 +240,6 @@ async function initEditor(): Promise<void> {
         .use(commonmark)
         .use(gfm)
         .use(history)
-        .use(listener)
         .use(block)
         .use(upload)
         .use(bbSlashPlugin)
@@ -183,40 +248,95 @@ async function initEditor(): Promise<void> {
         .use(codeHighlightPlugin)
         .use(htmlRenderPlugin)
         .use(aiBlockPlugin)
+        .use(editorInfoPlugin({
+            markdown: () => editor ? serializeForSave(editor, baseUri) : '',
+            frontmatter: getFrontmatter,
+            stats: stats => vscode.postMessage({ type: 'document-stats', stats }),
+        }))
+        .use($prose(() => new Plugin({
+            view: () => ({ update: (view, previous) => {
+                if (!view.state.doc.eq(previous.doc)) { scheduleAutoSave(); }
+            } }),
+        })))
         .create();
 
     // IME composition guard on the editor root.
     // ProseMirror emits onChange during composition; suppress auto-save/BB until it ends.
-    editorRoot.addEventListener('compositionstart', () => {
+    document.addEventListener('compositionstart', () => {
         isComposing = true;
+        if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
     });
-    editorRoot.addEventListener('compositionend', () => {
+    document.addEventListener('compositionend', () => {
         isComposing = false;
         if (pendingComposedChange) {
             pendingComposedChange = false;
             scheduleAutoSave();
         }
+        setTimeout(() => {
+            if (isComposing) { return; }
+            for (const [id, freeze] of pendingFlushes) {
+                if (freeze) { setEditingLocked(true); }
+                sendSave('auto-save', id);
+            }
+            pendingFlushes.clear();
+        }, 30);
     });
 }
 
 // Message handler from Extension Host
-window.addEventListener('message', (event) => {
+window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
     const msg = event.data;
+    if (!msg || typeof msg !== 'object') { return; }
     switch (msg.type) {
         case 'load':
-            if (msg.baseUri) { baseUri = msg.baseUri; }
-            if (editor) {
-                editor.action(replaceAll(preprocessMarkdown(msg.content || '', baseUri)));
-                baselineSerialized = serializeForSave(editor, baseUri);
+            if (msg.reloadId !== undefined && (msg.previousRevision !== revision
+                || msg.expectedEditVersion !== editVersion || isComposing
+                || pendingSaves.size > 0 || getFrontmatter() + serializeForSave(editor, baseUri) !== savedSnapshot)) {
+                vscode.postMessage({ type: 'reload-rejected', reloadId: msg.reloadId, revision, editVersion,
+                    content: serializeForSave(editor, baseUri), frontmatter: getFrontmatter() });
+                break;
             }
+            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            if (draftTimer) { clearTimeout(draftTimer); draftTimer = null; }
+            draftPending = false;
+            loading = true;
+            hasFilePath = !!msg.filePath;
+            revision = msg.revision;
+            editVersion = 0;
+            pendingSaves.clear();
+            pendingFlushes.clear();
+            conflictId = null;
+            baseUri = msg.baseUri || '';
+            setSourceMarkdown(msg.content || '', '');
             updateFrontmatterPanel(msg.frontmatter || '');
+            if (editor) {
+                editor.action(replaceAll(preprocessMarkdown(msg.content || '', baseUri), true));
+                setSourceMarkdown(msg.content || '', normalizedMarkdown(editor, baseUri));
+                savedSnapshot = getFrontmatter() + serializeForSave(editor, baseUri);
+            }
+            loading = false;
+            pendingComposedChange = false;
             hideConflictBanner();
-            setTimeout(() => {
-                vscode.postMessage({ type: 'dirty', isDirty: false });
-            }, 100);
+            updateStatus('已同步');
+            setEditingLocked(false);
+            window.dispatchEvent(new Event('bb-document-loaded'));
+            if (msg.reloadId !== undefined) { vscode.postMessage({ type: 'reload-applied', reloadId: msg.reloadId, revision }); }
             break;
         case 'conflict':
+            if (msg.revision !== revision) { break; }
+            conflictId = msg.conflictId;
+            if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+            updateStatus('文件有冲突，自动保存已暂停');
             showConflictBanner();
+            break;
+        case 'rebase':
+            revision = msg.revision;
+            conflictId = null;
+            pendingSaves.clear();
+            setEditingLocked(false);
+            if (editor) { discardAIBlocks(editor); }
+            hideConflictBanner();
+            sendSave('save');
             break;
         case 'chunk':
             if (editor) { updateAIBlock(editor, msg.id, msg.text, msg.replace); }
@@ -228,21 +348,46 @@ window.addEventListener('message', (event) => {
             if (editor) { setAIBlockError(editor, msg.id, msg.message); }
             break;
         case 'saved':
+            if (msg.revision !== revision) { break; }
             if (msg.success) {
-                updateStatus('Saved');
-                vscode.postMessage({ type: 'dirty', isDirty: false });
-                setTimeout(() => updateStatus(''), 2000);
+                if (msg.filePath) { hasFilePath = true; }
+                const pending = pendingSaves.get(msg.editVersion);
+                if (pending !== undefined) {
+                    savedSnapshot = msg.content !== undefined ? pending.frontmatter + msg.content : pending.snapshot;
+                    if (msg.content !== undefined) { setSourceMarkdown(msg.content, pending.normalized); }
+                }
+                for (const version of pendingSaves.keys()) {
+                    if (version <= msg.editVersion) { pendingSaves.delete(version); }
+                }
+                if (msg.editVersion === editVersion) { updateStatus('已保存'); }
+            } else {
+                pendingSaves.delete(msg.editVersion);
+                updateStatus(`保存失败：${msg.message || '请重试'}`);
             }
+            break;
+        case 'notice':
+            updateStatus(msg.message);
             break;
         case 'theme':
             document.body.setAttribute('data-theme', msg.kind);
             break;
         case 'file-uploaded': {
-            const resolve = pendingUploads.get(msg.uploadId);
-            if (resolve) {
-                resolve(msg);
+            const upload = pendingUploads.get(msg.uploadId);
+            if (upload) {
+                clearTimeout(upload.timer);
+                upload.resolve(msg);
                 pendingUploads.delete(msg.uploadId);
             }
+            break;
+        }
+        case 'file-upload-error': {
+            const upload = pendingUploads.get(msg.uploadId);
+            if (upload) {
+                clearTimeout(upload.timer);
+                upload.reject(new Error(msg.message));
+                pendingUploads.delete(msg.uploadId);
+            }
+            updateStatus(`上传失败：${msg.message}`);
             break;
         }
         case 'request-save': {
@@ -253,17 +398,20 @@ window.addEventListener('message', (event) => {
                 clearTimeout(autoSaveTimer);
                 autoSaveTimer = null;
             }
-            const content = editor ? serializeForSave(editor, baseUri) : null;
-            if (content !== null && (baselineSerialized === null || content !== baselineSerialized)) {
-                baselineSerialized = null;
-                vscode.postMessage({ type: 'auto-save', content });
+            if (isComposing) {
+                pendingFlushes.set(msg.flushId, !!msg.freeze);
+                pendingComposedChange = true;
             } else {
-                // Nothing changed since load — tell the host so its flush
-                // resolves immediately instead of waiting out the timeout.
-                vscode.postMessage({ type: 'flush-noop' });
+                if (msg.freeze) { setEditingLocked(true); }
+                sendSave('auto-save', msg.flushId);
             }
             break;
         }
+        case 'edit-unlock':
+            if (msg.flushId) { pendingFlushes.delete(msg.flushId); }
+            else { pendingFlushes.clear(); }
+            setEditingLocked(false);
+            break;
         case 'set-wide-mode': {
             // Host is the source of truth for this global preference; we
             // never flip the class locally — only mirror what the host says.
@@ -289,108 +437,115 @@ document.getElementById('wide-toggle')?.addEventListener('click', () => {
     vscode.postMessage({ type: 'toggle-wide-mode' });
 });
 
+// Closing the panel (tab click, Cmd+W) blurs the webview or sends a modifier
+// key first — hand over the pending draft before the view can disappear.
+window.addEventListener('blur', postDraft);
+document.addEventListener('visibilitychange', () => { if (document.hidden) { postDraft(); } });
+
 // Keyboard shortcuts
 let chordTimer: ReturnType<typeof setTimeout> | null = null;
-let waitingForChord = false;
+
+function toggleBold(): void {
+    editor?.action(ctx => ctx.get(commandsCtx).call(toggleStrongCommand.key));
+}
 
 document.addEventListener('keydown', (e) => {
+    if (e.metaKey || e.ctrlKey) { postDraft(); }
+    if (editingLocked) { if (e.metaKey || e.ctrlKey) { e.preventDefault(); } return; }
     if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         saveFile();
         return;
     }
 
-    // cmd+b / ctrl+b chord detection
+    // cmd+b / ctrl+b: bold immediately, unless a BB tag is in reach — then
+    // wait for a possible second press so the chord never touches formatting.
     if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
-        if (waitingForChord) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.repeat) { return; }
+        if (chordTimer) {
             // Second cmd+b — trigger BB
-            e.preventDefault();
-            e.stopPropagation();
-            if (chordTimer) { clearTimeout(chordTimer); }
-            waitingForChord = false;
+            clearTimeout(chordTimer);
+            chordTimer = null;
             triggerBB();
-        } else {
-            // First cmd+b — start chord wait
-            e.preventDefault();
-            e.stopPropagation();
-            waitingForChord = true;
+        } else if (editor?.action(ctx => findBBTarget(ctx.get(editorViewCtx).state))) {
             chordTimer = setTimeout(() => {
-                waitingForChord = false;
-                // Timeout — was just a single cmd+b, toggle bold
-                if (editor) {
-                    editor.action((ctx) => {
-                        ctx.get(commandsCtx).call(toggleStrongCommand.key);
-                    });
-                }
+                chordTimer = null;
+                if (!editingLocked && !loading) { toggleBold(); }
             }, 400);
+        } else {
+            toggleBold();
         }
     }
 }, true); // capture phase — intercept before Milkdown
 
 // ---- BB Command Execution (cmd+b cmd+b) ----
 
-const BB_TAG_REGEX = /<([\w-]+)(?::([^>]*))?>/;
+/** The BB tag a cmd+b chord would run: within the selection, else the current textblock. */
+function findBBTarget(state: EditorState): { match: BBCommandRange; replaceFrom: number; replaceTo: number } | null {
+    const { selection } = state;
+    const $from = selection.$from;
+
+    let searchText = '';
+    let replaceFrom = 0;
+    let replaceTo = 0;
+
+    // 1. If user has a non-empty selection, search within it
+    if (selection.from !== selection.to) {
+        searchText = state.doc.textBetween(selection.from, selection.to, '\n');
+        replaceFrom = selection.from;
+        replaceTo = selection.to;
+    } else {
+        // 2. Fall back to current textblock
+        const depth = $from.depth;
+        let blockDepth = 0;
+        for (let d = depth; d >= 1; d--) {
+            const node = $from.node(d);
+            if (node.isTextblock) {
+                searchText = node.textContent;
+                blockDepth = d;
+                break;
+            }
+        }
+        if (!searchText || !blockDepth) { return null; }
+        replaceFrom = $from.start(blockDepth);
+        replaceTo = $from.end(blockDepth);
+    }
+
+    const match = findBBCommandRange(state.doc, replaceFrom, replaceTo);
+    return match ? { match, replaceFrom, replaceTo } : null;
+}
 
 function triggerBB(): void {
     if (!editor) { return; }
+    if (editingLocked) { return; }
     if (isComposing) { return; }
 
     editor.action((ctx) => {
         const view = ctx.get(editorViewCtx);
         const { state } = view;
         const { selection, schema } = state;
-        const $from = selection.$from;
 
-        let searchText = '';
-        let replaceFrom = 0;
-        let replaceTo = 0;
-
-        // 1. If user has a non-empty selection, search within it
-        if (selection.from !== selection.to) {
-            searchText = state.doc.textBetween(selection.from, selection.to, '\n');
-            // Expand to block boundaries for clean block-level replacement
-            replaceFrom = $from.before(1);
-            replaceTo = selection.$to.after(1);
-        } else {
-            // 2. Fall back to current textblock
-            const depth = $from.depth;
-            let blockDepth = 0;
-            for (let d = depth; d >= 1; d--) {
-                const node = $from.node(d);
-                if (node.isTextblock) {
-                    searchText = node.textContent;
-                    blockDepth = d;
-                    break;
-                }
-            }
-            if (!searchText || !blockDepth) { return; }
-            replaceFrom = $from.before(blockDepth);
-            replaceTo = $from.after(blockDepth);
-        }
-
-        const match = searchText.match(BB_TAG_REGEX);
-        if (!match) {
-            vscode.postMessage({ type: 'dirty', isDirty: true });
-            return;
-        }
-
-        const fullMatch = match[0];
-        const command = match[1];
-        const message = match[2] || '';
-        const tagStart = match.index!;
-        const tagEnd = tagStart + fullMatch.length;
+        const target = findBBTarget(state);
+        if (!target) { return; }
+        const { match, replaceFrom, replaceTo } = target;
+        const { command, message } = match;
 
         // Text without the BB tag = selectText for the request
-        const selectText = searchText.slice(0, tagStart) + searchText.slice(tagEnd);
+        const selectText = state.doc.textBetween(replaceFrom, match.from, '\n')
+            + state.doc.textBetween(match.to, replaceTo, '\n');
 
         // Render commands bypass the inline ai_block flow entirely. Output goes
         // to a side panel, not back into the document — so we just delete the
         // tag text and dispatch a reader-dispatch message to the host with the
         // current (now tag-free) Markdown.
         if (command.startsWith('bb-render')) {
+            // Keep the tag until the Reader can actually run.
+            if (!hasFilePath) { updateStatus('请先保存文件，再使用 AI Reader'); return; }
             // The block's interior content starts at (replaceFrom + 1).
-            const absTagStart = replaceFrom + 1 + tagStart;
-            const absTagEnd = replaceFrom + 1 + tagEnd;
+            const absTagStart = match.from;
+            const absTagEnd = match.to;
             const delTr = state.tr.delete(absTagStart, absTagEnd);
             view.dispatch(delTr);
 
@@ -401,24 +556,31 @@ function triggerBB(): void {
                     cmd: command,
                     msg: message,
                     content,
+                    frontmatter: getFrontmatter(), revision, editVersion,
                 });
             }
             return;
         }
 
-        // Replace the source range with an AI block
+        // Keep the actual source intact and insert a separate, unsaved suggestion.
         const nodeType = schema.nodes['ai_block'];
         if (!nodeType) { return; }
 
         const requestId = crypto.randomUUID();
+        const tr = state.tr;
+        tr.delete(match.from, match.to);
+        const sourceFrom = tr.mapping.map(replaceFrom, 1);
+        const sourceTo = tr.mapping.map(replaceTo, -1);
+        const source = tr.doc.slice(sourceFrom, sourceTo);
+        const insertPos = tr.mapping.map(selection.$to.after(1), -1);
         const aiNode = nodeType.create({
             requestId,
             status: 'processing',
             content: '',
             bbCmd: command,
+            sourceFrom, sourceTo, sourceJSON: source.toJSON(),
         });
-
-        const tr = state.tr.replaceWith(replaceFrom, replaceTo, aiNode);
+        tr.insert(insertPos, aiNode);
         view.dispatch(tr);
 
         vscode.postMessage({
@@ -432,12 +594,8 @@ function triggerBB(): void {
 }
 
 function saveFile(): void {
-    if (!editor) { return; }
-    const content = serializeForSave(editor, baseUri);
-    // Explicit Cmd+S always writes; the disk may now differ from the load
-    // baseline, so stop skipping baseline-equal auto-saves from here on.
-    baselineSerialized = null;
-    vscode.postMessage({ type: 'save', content });
+    if (autoSaveTimer) { clearTimeout(autoSaveTimer); autoSaveTimer = null; }
+    sendSave('save');
 }
 
 function updateStatus(text: string): void {
@@ -461,14 +619,12 @@ function initConflictBanner(): void {
     const reload = document.getElementById('conflict-reload');
     const keep = document.getElementById('conflict-keep');
     reload?.addEventListener('click', () => {
-        vscode.postMessage({ type: 'conflict-resolve', choice: 'reload' });
-        hideConflictBanner();
+        setEditingLocked(true);
+        vscode.postMessage({ type: 'conflict-resolve', choice: 'reload', revision, conflictId });
     });
     keep?.addEventListener('click', () => {
-        vscode.postMessage({ type: 'conflict-resolve', choice: 'keep' });
-        hideConflictBanner();
-        // Force a save to overwrite disk with current editor content.
-        saveFile();
+        setEditingLocked(true);
+        vscode.postMessage({ type: 'conflict-resolve', choice: 'keep', revision, conflictId });
     });
 }
 
@@ -483,9 +639,10 @@ document.getElementById('editor')?.addEventListener('mousedown', (e) => {
 });
 
 // Init
-initFrontmatterPanel(vscode);
+initFrontmatterPanel();
 onFrontmatterChange(() => {
-    vscode.postMessage({ type: 'dirty', isDirty: true });
+    scheduleAutoSave();
+    refreshEditorInfo();
 });
 initConflictBanner();
 initEditor().then(() => {

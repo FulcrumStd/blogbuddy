@@ -38,7 +38,8 @@ function parseBlocks(md: string): ParsedDoc {
         gap = [];
     };
 
-    for (const line of lines) {
+    for (let index = 0; index < lines.length; index++) {
+        const line = lines[index];
         if (fenceMarker) {
             cur.push(line);
             const m = line.match(FENCE_OPEN_RE);
@@ -48,6 +49,15 @@ function parseBlocks(md: string): ParsedDoc {
             continue;
         }
         if (line.trim() === '') {
+            // remark may turn a tight list into a loose list. Keep list items
+            // in one comparison block so an unrelated edit does not restyle it.
+            if (/^[ \t]*(?:[-+*]|\d+[.)])\s/.test(cur[0] || '')) {
+                const next = lines.slice(index + 1).find(candidate => candidate.trim() !== '');
+                if (next && (/^[ \t]*(?:[-+*]|\d+[.)])\s/.test(next) || /^(?: {2,}|\t)\S/.test(next))) {
+                    cur.push(line);
+                    continue;
+                }
+            }
             if (cur.length) { flush(); }
             gap.push(line);
             continue;
@@ -108,6 +118,11 @@ function blockKey(block: string): string {
     const code = codeKey(block);
     if (code !== null) { return code; }
     let s = block;
+    const rows = s.split('\n');
+    if (rows.length > 1 && /^\s*\|?\s*:?-+:?\s*(?:\|\s*:?-+:?\s*)+\|?\s*$/.test(rows[1])) {
+        rows[1] = rows[1].replace(/-+/g, '-');
+        s = rows.join('\n');
+    }
     // Hard line breaks (two+ trailing spaces or backslash before newline)
     // are real content — a <br> the user can add/remove in the editor. Mark
     // them before soft-wrap collapsing so "foo<br>bar" never keys equal to

@@ -2,10 +2,6 @@ import yaml from 'js-yaml';
 
 // ---- Types ----
 
-interface VsCode {
-    postMessage(message: unknown): void;
-}
-
 type KnownFieldType = 'text' | 'textarea' | 'date' | 'tags' | 'boolean';
 
 interface KnownField {
@@ -33,8 +29,6 @@ let raw = '';
 // Parsed object (non-array, non-null). `null` means parse failure.
 let parsed: Record<string, unknown> | null = null;
 let changeListener: (() => void) | null = null;
-let commitDebounce: ReturnType<typeof setTimeout> | null = null;
-let vscodeRef: VsCode | null = null;
 let isUpdatingRawFromPanel = false;
 
 // ---- Parse / Serialize ----
@@ -283,15 +277,9 @@ function renderPanel(): void {
     }
 }
 
-// Single commit path for both panel-driven and textarea-driven edits.
-// Dirty state flips synchronously; the actual frontmatter-update message is
-// debounced the same 500ms as body auto-save.
+// Form and raw edits join the same versioned body/frontmatter snapshot.
 function scheduleFrontmatterCommit(): void {
     changeListener?.();
-    if (commitDebounce) { clearTimeout(commitDebounce); }
-    commitDebounce = setTimeout(() => {
-        vscodeRef?.postMessage({ type: 'frontmatter-update', frontmatter: raw });
-    }, 500);
 }
 
 function applyParsedToRaw(): void {
@@ -311,13 +299,12 @@ function syncTextarea(): void {
     isUpdatingRawFromPanel = false;
 }
 
-export function initFrontmatterPanel(vscode: VsCode): void {
+export function initFrontmatterPanel(): void {
     const panel = document.getElementById('frontmatter-panel');
     const toggle = document.getElementById('frontmatter-toggle');
     const textarea = document.getElementById('frontmatter-editor') as HTMLTextAreaElement | null;
     if (!panel || !toggle || !textarea) { return; }
 
-    vscodeRef = vscode;
 
     toggle.addEventListener('click', () => {
         panel.classList.toggle('frontmatter-collapsed');
@@ -370,3 +357,5 @@ export function updateFrontmatterPanel(frontmatter: string): void {
 export function onFrontmatterChange(listener: () => void): void {
     changeListener = listener;
 }
+
+export function getFrontmatter(): string { return raw; }

@@ -6,6 +6,21 @@ import { preserveUnchangedBlocks } from '../../utils/preserveUnchanged';
 // escaped punctuation, soft-wraps joined, indented code → fenced.
 
 suite('preserveUnchangedBlocks', () => {
+    test('an unrelated edit preserves table separator widths and cell padding', () => {
+        const table = '| Name | State |\n| --- | --- |\n| Editor | Ready |';
+        const normalized = '| Name   | State |\n| ------ | ----- |\n| Editor | Ready |';
+        assert.strictEqual(preserveUnchangedBlocks(`${table}\n\nOld\n`, `${normalized}\n\nNew\n`), `${table}\n\nNew\n`);
+    });
+    test('changing table alignment remains a content edit', () => {
+        const before = '| A | B |\n| --- | --- |\n| x | y |\n';
+        const after = '| A | B |\n| :---: | --- |\n| x | y |\n';
+        assert.strictEqual(preserveUnchangedBlocks(before, after), after);
+    });
+    test('an unrelated edit preserves tight list spacing after a loose-list round trip', () => {
+        const original = '- [ ] first\n- [x] second\n\nUnchanged paragraph.\n';
+        const serialized = '- [ ] first\n\n- [x] second\n\nEdited paragraph.\n';
+        assert.strictEqual(preserveUnchangedBlocks(original, serialized), '- [ ] first\n- [x] second\n\nEdited paragraph.\n');
+    });
     const onDisk = [
         '# My _Blog_ Post',
         '',

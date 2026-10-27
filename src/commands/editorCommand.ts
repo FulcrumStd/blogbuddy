@@ -4,6 +4,7 @@ import * as path from 'path';
 import { WebviewBridge } from '../services/WebviewBridge';
 import { ReaderPanel } from './readerCommand';
 import { isRenderCmd } from '../core/reader';
+import { editorStatus } from '../services/EditorStatus';
 
 export function registerEditorCommand(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -69,6 +70,7 @@ export function registerEditorCommand(context: vscode.ExtensionContext) {
 }
 
 class EditorPanel implements vscode.Disposable {
+    private readonly statusId = crypto.randomUUID();
     private static panels = new Map<string, EditorPanel>();
 
     // The most recently focused BB Editor panel — the target of the
@@ -128,12 +130,17 @@ class EditorPanel implements vscode.Disposable {
             return;
         }
         const column = this.panel.viewColumn;
-        await this.bridge.flushEdits();
-        await vscode.window.showTextDocument(vscode.Uri.file(filePath), {
-            viewColumn: column,
-            preview: false,
-        });
-        this.panel.dispose();
+        if (!await this.bridge.flushEdits(true)) {
+            vscode.window.showWarningMessage('Save is incomplete. Resolve the conflict or save error before switching to Markdown source.');
+            return;
+        }
+        try {
+            await vscode.window.showTextDocument(vscode.Uri.file(filePath), { viewColumn: column, preview: false });
+            this.panel.dispose();
+        } catch (error) {
+            this.bridge.resumeEdits();
+            vscode.window.showErrorMessage(`Could not open Markdown source: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
 
     private constructor(
@@ -162,11 +169,14 @@ class EditorPanel implements vscode.Disposable {
         this.panel.iconPath = vscode.Uri.joinPath(context.extensionUri, 'images', 'icon.png');
 
         EditorPanel.activePanel = this;
+        editorStatus.activate(this.statusId, true);
         this.disposables.push(
             this.panel.onDidChangeViewState((e) => {
                 if (e.webviewPanel.active) {
                     EditorPanel.activePanel = this;
+                    this.bridge?.refreshFromDisk();
                 }
+                editorStatus.activate(this.statusId, e.webviewPanel.active);
             })
         );
 
@@ -176,6 +186,12 @@ class EditorPanel implements vscode.Disposable {
             onReady: () => this.onWebviewReady(),
             onReaderDispatch: (cmd, msgText, content) => this.handleReaderDispatch(cmd, msgText, content),
             onToggleWideMode: () => this.toggleWideMode(),
+            onStatsChange: (stats) => editorStatus.update(this.statusId, stats),
+            onRecoverDraft: (content) => {
+                void vscode.workspace.openTextDocument({ language: 'markdown', content })
+                    .then(doc => vscode.window.showTextDocument(doc, { preview: false }));
+                vscode.window.showWarningMessage('Your unsaved BB Editor changes were recovered in a new tab because the file could not be saved safely.');
+            },
         });
 
         this.panel.webview.html = this.getWebviewHtml();
@@ -240,11 +256,7 @@ class EditorPanel implements vscode.Disposable {
             return;
         }
         try {
-            // Write the tag-free Markdown to disk so the TextDocument the
-            // Reader opens reflects the user's current state. Same
-            // minimal-churn treatment as the bridge's save paths.
-            const body = this.bridge.prepareBodyForWrite(content);
-            await fs.writeFile(this.filePath, body, 'utf-8');
+            // The bridge has already committed and flushed the full snapshot.
             const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(this.filePath));
             await ReaderPanel.openForDocument(this.context, doc, cmd, msgText);
         } catch (err) {
@@ -284,7 +296,7 @@ class EditorPanel implements vscode.Disposable {
         const nonce = getNonce();
 
         return `<!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -303,9 +315,9 @@ class EditorPanel implements vscode.Disposable {
         <span class="bb-wide-toggle__label bb-wide-toggle__label-read">R</span>
     </button>
     <div id="conflict-banner" class="conflict-banner hidden">
-        <span class="conflict-msg">This file changed on disk. Reload from disk, or keep your current edits?</span>
-        <button id="conflict-reload" class="conflict-btn">Reload</button>
-        <button id="conflict-keep" class="conflict-btn conflict-btn-primary">Keep my version</button>
+        <span class="conflict-msg">文件已被外部修改，自动保存已暂停。请选择加载外部版本，或用当前内容覆盖。</span>
+        <button id="conflict-reload" class="conflict-btn">加载外部版本</button>
+        <button id="conflict-keep" class="conflict-btn conflict-btn-primary">保留当前版本</button>
     </div>
     <div id="frontmatter-panel" class="frontmatter-panel frontmatter-hidden">
         <div class="frontmatter-header">
@@ -324,13 +336,15 @@ class EditorPanel implements vscode.Disposable {
             </details>
         </div>
     </div>
-    <div id="editor"></div>
-    <script nonce="${nonce}" src="${scriptUri}"></script>
+    <div id="editor-layout"><div id="editor"></div></div>
+    <footer class="bb-footer"><span id="status" role="status">正在加载…</span><span id="document-stats" aria-label="文档字数"></span></footer>
+    <script id="editor-script" nonce="${nonce}" src="${scriptUri}"></script>
 </body>
 </html>`;
     }
 
     dispose(): void {
+        editorStatus.remove(this.statusId);
         this.disposables.forEach(d => d.dispose());
         this.disposables = [];
     }

@@ -865,3 +865,56 @@ body:not([data-theme="light"]) .milkdown pre code .token.variable {
 .ProseMirror p:has(> .bb-html-structural):not(:has(> :not(.bb-html-structural))) {
     display: none;
 }
+
+/* Source positions and document status in the original, minimal editor layout. */
+[hidden] { display: none !important; }
+#editor-layout { display: flex; flex: 1; min-height: 0; overflow: hidden; }
+#editor { position: relative; min-width: 0; }
+.bb-source-gutter {
+    position: absolute;
+    left: 8px;
+    top: 0;
+    width: 20px;
+    pointer-events: none;
+    user-select: none;
+    color: var(--vscode-editorLineNumber-foreground, #999);
+    font: 11px/1.7 var(--vscode-editor-font-family, ui-monospace, monospace);
+}
+.bb-source-gutter > span { position: absolute; right: 0; font-variant-numeric: tabular-nums; }
+.bb-heading-hint { position: relative; }
+.bb-heading-hint::after {
+    content: attr(data-heading-level);
+    position: absolute;
+    top: -14px;
+    left: 0;
+    opacity: 0;
+    font: 10px/1.2 ui-monospace, monospace;
+    color: var(--vscode-descriptionForeground, #888);
+    pointer-events: none;
+}
+.bb-heading-hint:hover::after, .bb-heading-hint:focus-within::after { opacity: 1; }
+.bb-footer {
+    display: flex;
+    justify-content: space-between;
+    flex: none;
+    gap: 12px;
+    padding: 5px 14px;
+    font-size: 11px;
+    border-top: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, .12));
+    background: var(--vscode-editor-background);
+    color: var(--vscode-descriptionForeground, #888);
+}
+#status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#document-stats { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ai-block--ready { border: 1px solid var(--vscode-testing-iconPassed, #5a8); }
+.ai-block__header button {
+    padding: 4px 8px;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, .3));
+    border-radius: 4px;
+    cursor: pointer;
+}
+.ai-block__header button:hover { background: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, .15)); }
+.ai-block__header button:focus-visible { outline: 2px solid var(--vscode-focusBorder, #007acc); }

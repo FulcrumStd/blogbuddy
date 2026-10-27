@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 import { MarkdownStatsAnalyzer } from '../utils/MarkdownStatsAnalyzer';
+import { extractFrontmatter } from '../utils/frontmatter';
+import { editorStatus } from '../services/EditorStatus';
+import type { EditorDocumentStats } from '../services/webviewProtocol';
 
 export function registerDocumentInfoCommand(context: vscode.ExtensionContext) {
     const display = new DocumentInfoStatusBar(context);
@@ -17,7 +20,6 @@ class DocumentInfoStatusBar implements vscode.Disposable {
             vscode.StatusBarAlignment.Right,
             100,
         );
-        this.statusBarItem.tooltip = 'Document word count';
         context.subscriptions.push(this.statusBarItem);
 
         this.setupEventListeners();
@@ -27,6 +29,7 @@ class DocumentInfoStatusBar implements vscode.Disposable {
 
     private setupEventListeners(): void {
         this.disposables.push(
+            editorStatus.onDidChange(() => this.scheduleUpdate()),
             vscode.window.onDidChangeTextEditorSelection(() => this.scheduleUpdate()),
             vscode.window.onDidChangeActiveTextEditor(() => this.scheduleUpdate()),
             vscode.workspace.onDidChangeTextDocument((event) => {
@@ -44,6 +47,11 @@ class DocumentInfoStatusBar implements vscode.Disposable {
     }
 
     private refresh(): void {
+        const live = editorStatus.current;
+        if (live) {
+            this.show(live);
+            return;
+        }
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.document.languageId !== 'markdown') {
             this.statusBarItem.hide();
@@ -52,14 +60,26 @@ class DocumentInfoStatusBar implements vscode.Disposable {
 
         try {
             const content = editor.document.getText();
-            const stats = this.markdownAnalyzer.analyze(content);
-            const totalWords = stats.chineseCharacters + stats.englishWords;
-            this.statusBarItem.text = `$(edit) ${totalWords} words`;
-            this.statusBarItem.show();
+            const stats = this.markdownAnalyzer.analyze(extractFrontmatter(content).body);
+            const selected = editor.selection.isEmpty
+                ? undefined : this.markdownAnalyzer.analyze(editor.document.getText(editor.selection));
+            this.show({
+                words: stats.chineseCharacters + stats.englishWords,
+                characters: stats.totalCharacters,
+                lines: editor.document.lineCount,
+                selectedWords: selected ? selected.chineseCharacters + selected.englishWords : 0,
+            });
         } catch (error) {
             console.error('Failed to analyze document:', error);
             this.statusBarItem.hide();
         }
+    }
+
+    /** Same label and tooltip for the BB Editor and the plain text editor. */
+    private show(stats: EditorDocumentStats): void {
+        this.statusBarItem.text = `$(edit) ${stats.words} 字${stats.selectedWords ? ` · 已选 ${stats.selectedWords}` : ''}`;
+        this.statusBarItem.tooltip = `${stats.characters} 字符 · ${stats.lines} 行`;
+        this.statusBarItem.show();
     }
 
     public dispose(): void {

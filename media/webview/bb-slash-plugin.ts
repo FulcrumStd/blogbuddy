@@ -238,6 +238,7 @@ class SlashMenuController {
 
     handleKeyDown(e: KeyboardEvent): boolean {
         if (!this.visible) { return false; }
+        if (this.view.composing || e.isComposing) { return false; }
 
         switch (e.key) {
             case 'ArrowDown':
